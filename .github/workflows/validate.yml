@@ -21,7 +21,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/godot
-          key: godot-editor-4.7-stable-v1
+          key: godot-editor-4.7-stable-v2
 
       - name: Install pinned Godot 4.7-stable (SHA-512 verified)
         run: bash tools/scripts/install_godot.sh "$HOME/godot"

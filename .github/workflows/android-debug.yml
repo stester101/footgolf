@@ -32,7 +32,7 @@ jobs:
           path: |
             ~/godot
             ~/.local/share/godot/export_templates
-          key: godot-4.7-stable-android-v1
+          key: godot-4.7-stable-android-v2
 
       - name: Install pinned Godot 4.7-stable + export templates (SHA-512 verified)
         run: bash tools/scripts/install_godot.sh "$HOME/godot" --templates

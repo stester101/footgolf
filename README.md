@@ -16,7 +16,7 @@ Full brief: [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md).
 | Footballer picker (stats hidden), shot result reveal, scorecard + history, round complete | Implemented |
 | Developer panel (holes, ball placement, lie/wind/surfaces, hole-out radius, undo/replay, CRUD, pool reset, diagnostics, calibration check, scenario save/load) | Implemented |
 | Automated tests | 52 tests + runtime smoke test, all passing locally |
-| Android debug APK | Exported locally and structurally verified; CI workflow added — see Actions for run status |
+| Android debug APK | Built, signed and structurally verified by GitHub Actions (run #2, artifact `football-golf-v0.1-debug-apk`, 86 MB) and locally |
 | On-device install / launch / performance | **Not yet verified** (no device or emulator available to the agent) |
 | Audio, mulligans, mid-round resume | Not implemented in V0.1 |
 

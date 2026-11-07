@@ -23,6 +23,7 @@ if [ ! -x "$EDITOR_BIN" ]; then
   echo "$EDITOR_SHA512  $EDITOR_ZIP" | sha512sum -c -
   unzip -o -q "$EDITOR_ZIP"
   chmod +x "$EDITOR_BIN"
+  rm -f "$EDITOR_ZIP"   # keep CI caches small
 fi
 ln -sf "$DIR/$EDITOR_BIN" "$DIR/godot"
 "$DIR/godot" --headless --version
@@ -36,7 +37,7 @@ if [ "$WANT_TEMPLATES" = "--templates" ]; then
     TMP="$(mktemp -d)"
     unzip -q "$TEMPLATES_TPZ" "templates/android_*" "templates/version.txt" -d "$TMP"
     cp "$TMP"/templates/* "$TPL_DIR/"
-    rm -rf "$TMP"
+    rm -rf "$TMP" "$TEMPLATES_TPZ"
   fi
   cat "$TPL_DIR/version.txt"; echo
   ls -la "$TPL_DIR"

@@ -41,3 +41,5 @@ panel and returns to the main menu. `--screenshots=<dir>` saves frames when a re
 | 2026-11-07 | Same | Smoke test (full round through UI) | PASS |
 | 2026-11-07 | Same, Xvfb + llvmpipe Vulkan, Mobile renderer | Smoke test with screenshots | PASS, frames inspected |
 | 2026-11-07 | Same, Ubuntu `apksigner`/`adb` packages as SDK stand-in | `--export-debug "Android"` | 86 MB APK, v2+v3 signature verifies, manifest portrait, package `com.footballgolf.prototype` |
+| 2026-11-07 | GitHub Actions run #2 of "Android debug APK" (commit 6818839, ubuntu-24.04, JDK 17, Android SDK build-tools 36.0.0 used by Godot for signing) | install (SHA-512 OK) → 52 tests → smoke test → export → verify_apk.sh → upload | Success; artifact `football-golf-v0.1-debug-apk` (ID 13572259472), APK 86,391,864 bytes, sha256 `f9fb4f91…acbf`, v2 signature verifies |
+| 2026-11-07 | GitHub Actions "Validate (headless tests)" runs #1 and #2 | import + tests + smoke | Success |
