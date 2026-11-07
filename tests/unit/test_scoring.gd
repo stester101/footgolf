@@ -1,10 +1,13 @@
 extends TestCase
 
 
-func test_max_score_par_plus_five() -> void:
-	assert_eq(ScoringService.max_score_for_par(3), 8)
-	assert_eq(ScoringService.max_score_for_par(4), 9)
-	assert_eq(ScoringService.max_score_for_par(5), 10)
+func test_no_score_cap() -> void:
+	var hs := HoleState.new()
+	hs.par = 3
+	hs.strokes = 20
+	ScoringService.apply_shot(hs, 1, false)
+	assert_false(hs.complete, "never auto-completes")
+	assert_eq(hs.score(), 21, "strokes + penalties, uncapped")
 
 
 func test_holeout_radius_semantics() -> void:
@@ -19,15 +22,12 @@ func test_holeout_radius_semantics() -> void:
 	assert_false(ScoringService.is_holed(false, true, Units.feet_to_m(10.1), 12.0), "radius clamped to 10 ft")
 
 
-func test_penalty_clamps_to_max() -> void:
+func test_holed_completes() -> void:
 	var hs := HoleState.new()
-	hs.par = 3
-	hs.strokes = 8
-	ScoringService.apply_shot(hs, 1, false)
+	hs.par = 4
+	hs.strokes = 3
+	assert_eq(ScoringService.apply_shot(hs, 0, true), ShotTypes.COMPLETION_HOLED)
 	assert_true(hs.complete)
-	assert_eq(hs.completion, ShotTypes.COMPLETION_MAX_SCORE)
-	assert_eq(hs.score(), 8, "displayed clamped")
-	assert_eq(hs.raw_total(), 9, "raw retained")
 
 
 func test_round_relative() -> void:

@@ -65,12 +65,12 @@ func test_used_footballer_persists_across_holes_and_resets_on_new_round() -> voi
 	s2.take_shot()
 	s2.skip_motion()
 	s2.acknowledge_result()
-	# play to max score on hole 1, then move to hole 2 normally
-	while s2.state == ShotTypes.State.AIMING:
-		TestHelpers.shoot(s2, ShotTypes.Mode.GOALS, 0, 0)
+	# hole out on hole 1 (drop next to the cup, putt it in), then move to hole 2 normally
+	var cup := s2.hole.cup_position()
+	s2.dev_place_ball(cup.x, cup.z - 1.0)
+	TestHelpers.shoot(s2, ShotTypes.Mode.GOALS, 0, 1, Units.dir_to_bearing(cup - s2.ball_pos))
 	assert_eq(s2.state, ShotTypes.State.HOLE_COMPLETE)
-	assert_eq(s2.current_hole_state().completion, ShotTypes.COMPLETION_MAX_SCORE)
-	assert_eq(s2.current_hole_state().score(), 8)
+	assert_eq(s2.current_hole_state().completion, ShotTypes.COMPLETION_HOLED)
 	s2.next_hole()
 	assert_eq(s2.round_state.current_index, 1)
 	assert_false(s2.pool.is_available(a), "still used on hole 2")
@@ -81,14 +81,14 @@ func test_used_footballer_persists_across_holes_and_resets_on_new_round() -> voi
 	TestHelpers.cleanup_repo(s2.repo)
 
 
-func test_par_plus_five_auto_completes() -> void:
+func test_no_maximum_score() -> void:
 	var s := TestHelpers.make_session()
-	for i in 8:
-		assert_eq(s.state, ShotTypes.State.AIMING, "shot %d allowed" % (i + 1))
+	for i in 14:
+		assert_eq(s.state, ShotTypes.State.AIMING, "shot %d allowed (no par+5 cap)" % (i + 1))
 		TestHelpers.shoot(s, ShotTypes.Mode.GOALS, 0, 0)
-	assert_eq(s.state, ShotTypes.State.HOLE_COMPLETE)
-	assert_eq(s.current_hole_state().strokes, 8)
-	assert_false(s.take_shot(), "no shots after completion")
+	assert_eq(s.current_hole_state().strokes, 14)
+	assert_eq(s.current_hole_state().score(), 14, "score is not clamped")
+	assert_false(s.current_hole_state().complete, "hole only ends when holed")
 	TestHelpers.cleanup_repo(s.repo)
 
 

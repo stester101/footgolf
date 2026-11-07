@@ -10,6 +10,8 @@ var shots_dir := ""
 var _log: Array[String] = []
 var _shot_no := 0
 var _picker_shot_done := false
+var _last_pos := Vector3.INF
+var _stuck := 0
 
 
 func _ready() -> void:
@@ -91,7 +93,7 @@ func _run() -> void:
 		return _fail("round scene not created")
 	var session: GameSession = round_node.session
 	await _shot("hole_intro")
-	var guard := 400
+	var guard := 3000
 	var t0 := Time.get_ticks_msec()
 	while session.state != ShotTypes.State.ROUND_COMPLETE and guard > 0:
 		guard -= 1
@@ -104,7 +106,15 @@ func _run() -> void:
 			ShotTypes.State.AIMING:
 				var d := session.distance_to_pin_m()
 				session.aim_at_pin()
-				var want_goals := d < 22.0
+				var want_goals := d < 22.0 or session.current_lie() == Surface.Type.GREEN
+				# no maximum score: if the last shot made no progress (trees + relief), escape sideways
+				_stuck = _stuck + 1 if session.ball_pos.distance_to(_last_pos) < 3.0 else 0
+				_last_pos = session.ball_pos
+				if _stuck > 0:
+					var offs := [35.0, -35.0, 70.0, -70.0, 100.0, -100.0]
+					session.set_aim(session.aim_bearing_deg + float(offs[(_stuck - 1) % offs.size()]))
+					want_goals = _stuck % 2 == 0
+					d = minf(d * 0.5, 60.0)
 				if not _press_id("mode_goals" if want_goals else "mode_caps"):
 					return _fail("mode button missing")
 				if not _press_id("player_row"):
@@ -116,14 +126,28 @@ func _run() -> void:
 				var picker := get_tree().root.find_children("*", "FootballerPicker", true, false)
 				if picker.is_empty():
 					return _fail("picker did not open")
-				# pick first available footballer button in picker list
+				# First shot of the round: tap the first list entry (covers the list). Afterwards behave
+				# like a knowledgeable player (no score cap any more, so the bot must be able to hole out).
 				var picked := false
-				for c in (picker[0] as Node).find_children("*", "Button", true, false):
-					var b := c as Button
-					if not b.disabled and b.has_meta("footballer_id"):
-						b.pressed.emit()
+				if session.round_state.current_index == 0 and session.current_hole_state().strokes == 0:
+					for c in (picker[0] as Node).find_children("*", "Button", true, false):
+						var b := c as Button
+						if not b.disabled and b.has_meta("footballer_id"):
+							b.pressed.emit()
+							picked = true
+							break
+				else:
+					var need := Units.m_to_feet(d) if want_goals else Units.m_to_yards(d)
+					var best: Footballer = null
+					for fb in session.repo.all_sorted():
+						if not session.pool.is_available(fb.id):
+							continue
+						var stat := float(fb.goals if want_goals else fb.caps)
+						if best == null or absf(stat - need) < absf(float(best.goals if want_goals else best.caps) - need):
+							best = fb
+					if best != null and session.select_footballer(best.id):
+						(picker[0] as FootballerPicker).picked.emit(best.id)
 						picked = true
-						break
 				if not picked:
 					# first page is all used by now: use the picker's Random button (also covers that feature)
 					for c in (picker[0] as Node).find_children("*", "Button", true, false):

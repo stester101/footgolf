@@ -65,5 +65,45 @@ static func shoot(s: GameSession, mode: int, caps: int, goals: int, bearing: flo
 	return r
 
 
+## Greedy bot shot used by round-completion tests: aim at pin, Caps when far, Goals when near.
+## If the ball made no progress (blocked by trees / relief at the same spot), it tries escape
+## angles and ground shots like a real player would, since there is no maximum score.
+static func bot_shot(s: GameSession, stuck: int, caps_far_m: float = 25.0) -> ShotResult:
+	var d := s.distance_to_pin_m()
+	s.aim_at_pin()
+	if stuck > 0:
+		var offs := [35.0, -35.0, 70.0, -70.0, 100.0, -100.0, 15.0, -15.0]
+		s.set_aim(s.aim_bearing_deg + float(offs[(stuck - 1) % offs.size()]))
+		if stuck % 2 == 0:
+			return shoot(s, ShotTypes.Mode.GOALS, 0, int(Units.m_to_feet(minf(d, 40.0))))
+		return shoot(s, ShotTypes.Mode.CAPS, int(Units.m_to_yards(minf(d * 0.5, 80.0))), 0)
+	if s.current_lie() == Surface.Type.GREEN or d <= caps_far_m:
+		return shoot(s, ShotTypes.Mode.GOALS, 0, maxi(1, int(Units.m_to_feet(d))))
+	return shoot(s, ShotTypes.Mode.CAPS, int(Units.m_to_yards(minf(d, 200.0)) * 0.9), 0)
+
+
+## Plays a whole round with bot_shot. Returns true when the round completes within the guard.
+static func bot_round(s: GameSession, guard: int = 4000) -> bool:
+	var stuck := 0
+	var last := Vector3.INF
+	while not s.is_round_complete() and guard > 0:
+		guard -= 1
+		match s.state:
+			ShotTypes.State.HOLE_INTRO:
+				s.begin_play()
+				stuck = 0
+				last = Vector3.INF
+			ShotTypes.State.AIMING:
+				var before := s.ball_pos
+				stuck = stuck + 1 if before.distance_to(last) < 3.0 else 0
+				bot_shot(s, stuck)
+				last = before
+			ShotTypes.State.SHOT_RESULT:
+				s.acknowledge_result()
+			ShotTypes.State.HOLE_COMPLETE:
+				s.next_hole()
+	return s.is_round_complete()
+
+
 static func flat_sim(surface: int) -> BallSim:
 	return BallSim.new(HoleDefinition.make_flat(surface), PhysicsConfig.new())
