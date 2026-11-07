@@ -834,20 +834,93 @@ func _on_shot_resolved(r: ShotResult) -> void:
 			tw.tween_property(n, "modulate:a", 1.0, 0.18)
 
 
+# --- hole summary + next-hole loading (round_controller prepares the next hole in slices and
+# reports progress through set_next_hole_progress; "Next hole" stays greyed until it is ready)
+var _next_btn: Button
+var _next_bar: ProgressBar
+var _next_status: Label
+var _next_progress_seen := false
+
+
+static func _score_name(hs: HoleState) -> String:
+	if hs.strokes == 1 and hs.penalties == 0:
+		return "HOLE IN ONE!"
+	var names := {-3: "ALBATROSS!", -2: "EAGLE!", -1: "BIRDIE!", 0: "PAR", 1: "BOGEY", 2: "DOUBLE BOGEY", 3: "TRIPLE BOGEY"}
+	return String(names.get(hs.relative_to_par(), "HOLED"))
+
+
+func _summary_cell(caption: String, value: String) -> VBoxContainer:
+	var v := UiKit.vbox(0)
+	UiKit.expand(v)
+	v.add_child(UiKit.label(value, 28, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UiKit.label(caption, 16, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	return v
+
+
 func _on_hole_completed(hs: HoleState) -> void:
 	var parts := _centered_card()
 	var root: Control = parts[0]
 	var v: VBoxContainer = parts[1]
-	var title := "HOLED!"
-	v.add_child(UiKit.text(title, 42, UiKit.C_WARN, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UiKit.text("%s · Par %d" % [hs.hole_name, hs.par], 26, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UiKit.text("Score %d (%s)  ·  %d shots, %d penalty" % [hs.score(), RoundState.fmt_relative(hs.relative_to_par()), hs.strokes, hs.penalties], 28, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
+	var rs := session.round_state
+	v.add_child(UiKit.text("HOLE %d COMPLETE" % (rs.current_index + 1), 22, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UiKit.text(_score_name(hs), 42, UiKit.C_WARN, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UiKit.text("%s · Par %d · Score %d (%s)" % [hs.hole_name, hs.par, hs.score(), RoundState.fmt_relative(hs.relative_to_par())], 24, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
+	var longest := 0.0
+	for r in hs.shots:
+		if r is ShotResult:
+			longest = maxf(longest, (r as ShotResult).total_m)
+	var stats := UiKit.hbox(6)
+	stats.add_child(_summary_cell("SHOTS", str(hs.strokes)))
+	stats.add_child(_summary_cell("PENALTY", str(hs.penalties)))
+	stats.add_child(_summary_cell("LONGEST", "%d yd" % int(round(Units.m_to_yards(longest)))))
+	stats.add_child(_summary_cell("ROUND", RoundState.fmt_relative(rs.relative_to_par())))
+	v.add_child(stats)
+	v.add_child(_rule())
 	v.add_child(_scorecard_grid())
-	var last := session.round_state.current_index >= session.round_state.holes.size() - 1 or session.round_state.all_complete()
-	v.add_child(UiKit.primary(UiKit.button("Finish round" if last else "Next hole", func() -> void:
+	var last := rs.current_index >= rs.holes.size() - 1 or rs.all_complete()
+	var upcoming := rs.upcoming_index()
+	_next_bar = null
+	_next_status = null
+	_next_progress_seen = false
+	if upcoming >= 0 and upcoming < session.hole_defs.size():
+		var nh: HoleDefinition = session.hole_defs[upcoming]
+		v.add_child(_rule())
+		v.add_child(UiKit.text("UP NEXT · HOLE %d" % (upcoming + 1), 18, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		v.add_child(UiKit.text("%s · Par %d · %d yd" % [nh.display_name, nh.par, int(nh.yards)], 26, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
+		_next_bar = ProgressBar.new()
+		_next_bar.min_value = 0.0
+		_next_bar.max_value = 1.0
+		_next_bar.step = 0.0
+		_next_bar.show_percentage = false
+		_next_bar.custom_minimum_size = Vector2(0, 10)
+		_next_bar.add_theme_stylebox_override("background", UiKit.box(UiKit.C_RAISED, 3, 0))
+		_next_bar.add_theme_stylebox_override("fill", UiKit.box(UiKit.C_ACCENT, 3, 0))
+		_next_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(_next_bar)
+		_next_status = UiKit.label("Preparing course…", 18, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+		v.add_child(_next_status)
+	_next_btn = UiKit.primary(UiKit.button("Finish round" if last else "Next hole", func() -> void:
 		_remove_overlay(root)
-		session.next_hole(), 90, 32)))
+		session.next_hole(), 90, 32))
+	v.add_child(_next_btn)
+	if _next_bar != null:
+		_next_btn.disabled = true
+		# safety net: if no loader ever reports in, never leave the button greyed
+		get_tree().create_timer(3.0).timeout.connect(func() -> void:
+			if not _next_progress_seen:
+				set_next_hole_progress(1.0))
 	push_overlay(root)
+
+
+## Loading progress of the upcoming hole (0..1); at 1 the "Next hole" button is enabled.
+func set_next_hole_progress(p: float) -> void:
+	_next_progress_seen = true
+	if _next_bar != null and is_instance_valid(_next_bar):
+		_next_bar.value = p
+	if _next_status != null and is_instance_valid(_next_status):
+		_next_status.text = "Ready" if p >= 1.0 else "Preparing course… %d%%" % int(p * 100.0)
+	if p >= 1.0 and _next_btn != null and is_instance_valid(_next_btn):
+		_next_btn.disabled = false
 
 
 func _on_round_completed() -> void:

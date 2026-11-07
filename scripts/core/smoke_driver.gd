@@ -192,6 +192,16 @@ func _run() -> void:
 				await _frames(2)
 			ShotTypes.State.HOLE_COMPLETE:
 				await _shot("hole_complete")
+				# "Next hole" stays greyed while the next hole is prepared behind the loading bar.
+				var waited := 0
+				while _find_button(get_tree().root, "Next hole") == null and _find_button(get_tree().root, "Finish round") == null:
+					waited += 1
+					if waited > 1800:
+						return _fail("no next hole button (still greyed after %d frames)" % waited)
+					await _frames(1)
+				if waited > 0:
+					_say("next hole ready after %d frames" % waited)
+					await _shot("hole_ready")
 				if not (_press("Next hole") or _press("Finish round")):
 					return _fail("no next hole button")
 				await _frames(10)

@@ -32,6 +32,12 @@ var course_id := "starter"
 var _marker: MeshInstance3D
 var _marker_pos := Vector3.INF
 var _shown_cup_r := -1.0
+# Next hole prepared incrementally behind the hole summary (loading bar).
+const PRELOAD_BUDGET_USEC := 9000
+const PRELOAD_TIMEOUT_MS := 20000
+var _pending: CourseView
+var _pending_key := ""
+var _pending_t0 := 0
 
 
 func _ready() -> void:
@@ -96,6 +102,8 @@ func _ready() -> void:
 			rig.overhead_zoom(f, get_viewport().get_visible_rect().size * 0.5))
 	ui.main_menu_requested.connect(func() -> void: exit_to_menu.emit())
 	ui.developer_requested.connect(toggle_dev_panel)
+	# after ui.setup(): the summary card exists before preloading reports progress into it
+	session.hole_completed.connect(func(_hs: HoleState) -> void: _start_preload())
 	DisplayServer.screen_set_keep_on(true)
 	App.telemetry.attach(session, course_id, String(App.course_info(course_id).get("name", course_id)))
 	session.start_round(App.load_holes(course_id))
@@ -144,10 +152,66 @@ func _build_environment() -> void:
 	add_child(sun)
 
 
+func _hole_key(index: int) -> String:
+	return (session.hole_defs[index] as HoleDefinition).id + str(index)
+
+
+## Start building the upcoming hole in a hidden CourseView, a slice per frame (see _process).
+func _start_preload() -> void:
+	_cancel_preload()
+	var idx := session.round_state.upcoming_index()
+	if idx < 0 or idx >= session.hole_defs.size():
+		ui.set_next_hole_progress(1.0)
+		return
+	_pending = CourseView.new()
+	_pending.name = "PendingCourse"
+	_pending.visible = false
+	add_child(_pending)
+	_pending.begin_build(session.hole_defs[idx], session.cfg.cup_radius)
+	_pending_key = _hole_key(idx)
+	_pending_t0 = Time.get_ticks_msec()
+	ui.set_next_hole_progress(0.0)
+
+
+func _cancel_preload() -> void:
+	if _pending != null and is_instance_valid(_pending):
+		_pending.queue_free()
+	_pending = null
+	_pending_key = ""
+
+
+func _step_preload() -> void:
+	if _pending == null or _pending.is_built():
+		return
+	if Time.get_ticks_msec() - _pending_t0 > PRELOAD_TIMEOUT_MS:
+		# never leave the player stuck behind a greyed button: give up, build on demand instead
+		push_warning("next hole preload timed out; building on demand")
+		_cancel_preload()
+		ui.set_next_hole_progress(1.0)
+		return
+	_pending.build_step(PRELOAD_BUDGET_USEC)
+	ui.set_next_hole_progress(_pending.progress)
+
+
 func _on_hole_started(_i: int) -> void:
-	if _built_hole_id != session.hole.id + str(session.round_state.current_index):
+	var key := session.hole.id + str(session.round_state.current_index)
+	if _pending != null and _pending_key == key:
+		if not _pending.is_built():
+			_pending.build_step(1000000000)
+		course.visible = false
+		course.queue_free()
+		course = _pending
+		course.name = "Course"
+		course.visible = true
+		_pending = null
+		_pending_key = ""
+		_built_hole_id = key
+		_shown_cup_r = -1.0
+	else:
+		_cancel_preload()
+	if _built_hole_id != key:
 		course.build(session.hole, session.cfg.cup_radius)
-		_built_hole_id = session.hole.id + str(session.round_state.current_index)
+		_built_hole_id = key
 	rig.set_hole(session.hole)
 	_set_overhead(true)
 	trail_line.clear()
@@ -213,6 +277,7 @@ func toggle_dev_panel() -> void:
 func _process(delta: float) -> void:
 	if session == null or session.hole == null:
 		return
+	_step_preload()
 	session.advance(delta, App.settings.sim_speed)
 	var bpos := session.ball_render_pos()
 	var moving := session.is_ball_moving()
@@ -229,6 +294,10 @@ func _process(delta: float) -> void:
 	if not is_equal_approx(_shown_cup_r, session.cfg.cup_radius):
 		_shown_cup_r = session.cfg.cup_radius
 		course.set_cup_radius(_shown_cup_r)
+	course.update_view(rig.cam)
+	course.set_grass_visible(rig.mode == CameraRig.Mode.BEHIND)
+	if not moving and session.state != ShotTypes.State.HOLE_COMPLETE:
+		course.place_grass(session.ball_pos)
 	if course.pin_label != null and course.pin_label.visible:
 		course.pin_label.visible = false  # the HUD draws the pin distance label now (HudMarkers)
 	_update_aim_guide(bpos)

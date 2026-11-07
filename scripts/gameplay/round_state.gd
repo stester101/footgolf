@@ -8,6 +8,20 @@ var holes: Array = []  # Array[HoleState], one per hole id
 var round_seed := 0
 
 
+## Index of the hole GameSession.next_hole() will start from the current one (same rule: next
+## incomplete hole after the current, else the first incomplete one), or -1 if the round ends.
+func upcoming_index() -> int:
+	var next := current_index + 1
+	while next < holes.size() and (holes[next] as HoleState).complete:
+		next += 1
+	if next < holes.size():
+		return next
+	for i in holes.size():
+		if not (holes[i] as HoleState).complete:
+			return i
+	return -1
+
+
 func current() -> HoleState:
 	if current_index < 0 or current_index >= holes.size():
 		return null
