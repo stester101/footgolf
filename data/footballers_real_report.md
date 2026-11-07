@@ -9,17 +9,17 @@ Source: Wikidata SPARQL (CC0). Provisional snapshot.
 | Wales | Q180857 | 441 | 49 | 3 | 2 | 0 |
 | Northern Ireland | Q190978 | 240 | 57 | 5 | 2 | 0 |
 | Republic of Ireland | Q163547 | 398 | 37 | 0 | 2 | 10 |
-| Spain | Q42267 | 751 | 19 | 0 | 0 | 3 |
+| Spain | Q42267 | 749 | 19 | 0 | 0 | 3 |
 | Germany | Q43310 | 943 | 9 | 0 | 1 | 14 |
 | France | Q47774 | 926 | 9 | 0 | 1 | 8 |
-| Italy | Q676899 | 811 | 31 | 5 | 3 | 2 |
-| Netherlands | Q47050 | 592 | 47 | 6 | 0 | 2 |
+| Italy | Q676899 | 804 | 31 | 5 | 3 | 2 |
+| Netherlands | Q47050 | 588 | 47 | 6 | 0 | 2 |
 | Portugal | Q267245 | 590 | 24 | 1 | 0 | 0 |
-| Belgium | Q166776 | 419 | 57 | 2 | 0 | 3 |
-| Brazil | Q83459 | 711 | 138 | 4 | 4 | 1 |
-| Argentina | Q79800 | 838 | 117 | 10 | 12 | 1 |
+| Belgium | Q166776 | 418 | 57 | 2 | 0 | 3 |
+| Brazil | Q83459 | 705 | 138 | 4 | 4 | 1 |
+| Argentina | Q79800 | 835 | 117 | 10 | 12 | 1 |
 
-**Total players: 9851**
+**Total players: 9828**
 
 Corrections applied: 1
 
@@ -59,5 +59,33 @@ Corrections applied: 1
 - **Brazil**: Cafu 142/5; Neymar 130/80; Roberto Carlos 125/10; Daniel Alves 118/8; Thiago Silva 113/7
 - **Argentina**: Lionel Messi 208/126; Javier Mascherano 147/3; Javier Zanetti 145/5; Ángel Di María 145/31; Nicolás Otamendi 139/8
 
-Players with 0 goals: 5970. Players with exactly 1 cap: 2070.
+Players with 0 goals: 5949. Players with exactly 1 cap: 2070.
+Negative goals treated as 0 (goals-conceded convention): 2. Zero-cap records excluded: 23.
+
+## Review: goals > caps (146 players; often genuine for pre-1930 strikers)
+
+Most suspicious (goals > 2x caps); fix via tools/data/corrections.json if wrong:
+
+- José Águas (Portugal, Q1340083): 25 caps / 311 goals
+- Luis Miguel Rodríguez Mamani (Argentina, Q3840384): 68 caps / 176 goals
+- Tessier (France, Q3519014): 5 caps / 36 goals
+- Robert Braet (Belgium, Q1625049): 14 caps / 42 goals
+- Just Göbel (Netherlands, Q1352833): 22 caps / 46 goals
+- Zacharie Baton (France, Q3574514): 4 caps / 19 goals
+- André Renaux (France, Q2848516): 1 caps / 12 goals
+- Mario De Simoni (Italy, Q3848515): 7 caps / 16 goals
+- Charles Berthelot (France, Q2958540): 1 caps / 8 goals
+- Gottfried Fuchs (Germany, Q215055): 6 caps / 13 goals
+- Manuel Badenes (Spain, Q951937): 2 caps / 8 goals
+- Eduardo González Valiño (Spain, Q2708343): 3 caps / 7 goals
+- Jean Loubière (France, Q3173255): 1 caps / 5 goals
+- Maurice Baudier (France, Q3300381): 3 caps / 7 goals
+- Angelo Cameroni (Italy, Q1533095): 1 caps / 4 goals
+- Charles Allé (France, Q2958378): 1 caps / 4 goals
+- Francesco Pernigo (Italy, Q3081054): 2 caps / 5 goals
+- Giovanni Costa (Italy, Q3767055): 1 caps / 4 goals
+- Jake Madden (Scotland, Q1700951): 2 caps / 5 goals
+- Raoul Chaisaz (France, Q3419147): 2 caps / 5 goals
+- William Dickson (Scotland, Q8007824): 1 caps / 4 goals
+- Émile Friess (France, Q3588513): 2 caps / 5 goals
 Duplicate names (disambiguated by birth year/nationality): 91

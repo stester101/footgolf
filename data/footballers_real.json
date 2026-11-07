@@ -1490,21 +1490,6 @@
 "provisional": true
 },
 {
-"id": "wd-Q2827354",
-"name": "Agustín Eizaguirre",
-"country_code": "ESP",
-"nationality": "Spain",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1897,
-"career_years": "1920–1920",
-"source": "wikidata",
-"wikidata": "Q2827354",
-"team_qid": "Q42267",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
 "id": "wd-Q3751885",
 "name": "Agustín Gajate Vidriales",
 "country_code": "ESP",
@@ -3100,7 +3085,7 @@
 "country_code": "FRA",
 "nationality": "France",
 "senior_international_caps": 1,
-"senior_international_goals": -2,
+"senior_international_goals": 0,
 "birth_year": 1953,
 "career_years": "1986–1986",
 "source": "wikidata",
@@ -4035,21 +4020,6 @@
 "career_years": "1910–1915",
 "source": "wikidata",
 "wikidata": "Q1169780",
-"team_qid": "Q676899",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
-"id": "wd-Q749706",
-"name": "Aldo Donati",
-"country_code": "ITA",
-"nationality": "Italy",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1910,
-"career_years": "1938–1938",
-"source": "wikidata",
-"wikidata": "Q749706",
 "team_qid": "Q676899",
 "retrieved": "2026-11-07",
 "provisional": true
@@ -8397,21 +8367,6 @@
 "provisional": true
 },
 {
-"id": "wd-Q2847888",
-"name": "André Dias",
-"country_code": "BRA",
-"nationality": "Brazil",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1979,
-"career_years": "2009–2009",
-"source": "wikidata",
-"wikidata": "Q2847888",
-"team_qid": "Q83459",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
 "id": "wd-Q2717811",
 "name": "André Doring",
 "country_code": "BRA",
@@ -9023,21 +8978,6 @@
 "source": "wikidata",
 "wikidata": "Q303597",
 "team_qid": "Q79800",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
-"id": "wd-Q212223",
-"name": "Andrés Palop",
-"country_code": "ESP",
-"nationality": "Spain",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1973,
-"career_years": "2007–2008",
-"source": "wikidata",
-"wikidata": "Q212223",
-"team_qid": "Q42267",
 "retrieved": "2026-11-07",
 "provisional": true
 },
@@ -12365,21 +12305,6 @@
 "career_years": "1938–1949",
 "source": "wikidata",
 "wikidata": "Q658299",
-"team_qid": "Q47050",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
-"id": "wd-Q426585",
-"name": "Arie de Winter",
-"country_code": "NED",
-"nationality": "Netherlands",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1915,
-"career_years": "1938–1938",
-"source": "wikidata",
-"wikidata": "Q426585",
 "team_qid": "Q47050",
 "retrieved": "2026-11-07",
 "provisional": true
@@ -20183,21 +20108,6 @@
 "provisional": true
 },
 {
-"id": "wd-Q993153",
-"name": "Bruno Chizzo",
-"country_code": "ITA",
-"nationality": "Italy",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1916,
-"career_years": "1938–1938",
-"source": "wikidata",
-"wikidata": "Q993153",
-"team_qid": "Q676899",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
 "id": "wd-Q355923",
 "name": "Bruno Conti",
 "country_code": "ITA",
@@ -25867,21 +25777,6 @@
 "provisional": true
 },
 {
-"id": "wd-Q943470",
-"name": "Cleiton Xavier",
-"country_code": "BRA",
-"nationality": "Brazil",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1983,
-"career_years": "2009–2009",
-"source": "wikidata",
-"wikidata": "Q943470",
-"team_qid": "Q83459",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
 "id": "wd-Q1443593",
 "name": "Clem Stephenson",
 "country_code": "ENG",
@@ -28098,21 +27993,6 @@
 "source": "wikidata",
 "wikidata": "Q315043",
 "team_qid": "Q42267",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
-"id": "wd-Q1150828",
-"name": "Cícero Santos",
-"country_code": "BRA",
-"nationality": "Brazil",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1984,
-"career_years": "2010–2010",
-"source": "wikidata",
-"wikidata": "Q1150828",
-"team_qid": "Q83459",
 "retrieved": "2026-11-07",
 "provisional": true
 },
@@ -34030,7 +33910,7 @@
 "country_code": "ITA",
 "nationality": "Italy",
 "senior_international_caps": 112,
-"senior_international_goals": -84,
+"senior_international_goals": 0,
 "birth_year": 1942,
 "career_years": "1968–1983",
 "source": "wikidata",
@@ -41296,21 +41176,6 @@
 "provisional": true
 },
 {
-"id": "wd-Q1943303",
-"name": "Eugène Gerards",
-"country_code": "NED",
-"nationality": "Netherlands",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1940,
-"career_years": "1965–1977",
-"source": "wikidata",
-"wikidata": "Q1943303",
-"team_qid": "Q47050",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
 "id": "wd-Q3059961",
 "name": "Eugène Langenove",
 "country_code": "FRA",
@@ -44683,21 +44548,6 @@
 "provisional": true
 },
 {
-"id": "wd-Q977956",
-"name": "Francesco Romano",
-"country_code": "ITA",
-"nationality": "Italy",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1960,
-"career_years": "1988–1988",
-"source": "wikidata",
-"wikidata": "Q977956",
-"team_qid": "Q676899",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
 "id": "wd-Q3750555",
 "name": "Francesco Rosetta",
 "country_code": "ITA",
@@ -47046,21 +46896,6 @@
 "source": "wikidata",
 "wikidata": "Q2478998",
 "team_qid": "Q166776",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
-"id": "wd-Q2464676",
-"name": "Frans Hogenbirk",
-"country_code": "NED",
-"nationality": "Netherlands",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1918,
-"career_years": "1938–1938",
-"source": "wikidata",
-"wikidata": "Q2464676",
-"team_qid": "Q47050",
 "retrieved": "2026-11-07",
 "provisional": true
 },
@@ -55104,21 +54939,6 @@
 "provisional": true
 },
 {
-"id": "wd-Q647563",
-"name": "Giuseppe Cavanna",
-"country_code": "ITA",
-"nationality": "Italy",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1905,
-"career_years": "1934–1934",
-"source": "wikidata",
-"wikidata": "Q647563",
-"team_qid": "Q676899",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
 "id": "wd-Q1385297",
 "name": "Giuseppe Chiappella",
 "country_code": "ITA",
@@ -58344,21 +58164,6 @@
 "provisional": true
 },
 {
-"id": "wd-Q690968",
-"name": "Hans Schmidt",
-"country_code": "GER",
-"nationality": "Germany",
-"senior_international_caps": 1,
-"senior_international_goals": 0,
-"birth_year": 1887,
-"career_years": "1908–1908",
-"source": "wikidata",
-"wikidata": "Q690968",
-"team_qid": "Q43310",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
 "id": "wd-Q882939",
 "name": "Hans Schmidt",
 "country_code": "GER",
@@ -58369,6 +58174,21 @@
 "career_years": "1913–1926",
 "source": "wikidata",
 "wikidata": "Q882939",
+"team_qid": "Q43310",
+"retrieved": "2026-11-07",
+"provisional": true
+},
+{
+"id": "wd-Q690968",
+"name": "Hans Schmidt",
+"country_code": "GER",
+"nationality": "Germany",
+"senior_international_caps": 1,
+"senior_international_goals": 0,
+"birth_year": 1887,
+"career_years": "1908–1908",
+"source": "wikidata",
+"wikidata": "Q690968",
 "team_qid": "Q43310",
 "retrieved": "2026-11-07",
 "provisional": true
@@ -60589,21 +60409,6 @@
 "career_years": "1932–1946",
 "source": "wikidata",
 "wikidata": "Q1605272",
-"team_qid": "Q47050",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
-"id": "wd-Q2464656",
-"name": "Henk Plenter",
-"country_code": "NED",
-"nationality": "Netherlands",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1913,
-"career_years": "1938–1938",
-"source": "wikidata",
-"wikidata": "Q2464656",
 "team_qid": "Q47050",
 "retrieved": "2026-11-07",
 "provisional": true
@@ -78519,21 +78324,6 @@
 "provisional": true
 },
 {
-"id": "wd-Q3810052",
-"name": "Jorge Bartero",
-"country_code": "ARG",
-"nationality": "Argentina",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1957,
-"career_years": "1987–1987",
-"source": "wikidata",
-"wikidata": "Q3810052",
-"team_qid": "Q79800",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
 "id": "wd-Q2390359",
 "name": "Jorge Borelli",
 "country_code": "ARG",
@@ -85800,21 +85590,6 @@
 "career_years": "2007–2014",
 "source": "wikidata",
 "wikidata": "Q314099",
-"team_qid": "Q83459",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
-"id": "wd-Q1715156",
-"name": "Jônatas Domingos",
-"country_code": "BRA",
-"nationality": "Brazil",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1982,
-"career_years": "2006–2006",
-"source": "wikidata",
-"wikidata": "Q1715156",
 "team_qid": "Q83459",
 "retrieved": "2026-11-07",
 "provisional": true
@@ -100023,21 +99798,6 @@
 "provisional": true
 },
 {
-"id": "wd-Q23700957",
-"name": "Matheus Vidotto",
-"country_code": "BRA",
-"nationality": "Brazil",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1993,
-"career_years": "2013–2013",
-"source": "wikidata",
-"wikidata": "Q23700957",
-"team_qid": "Q83459",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
 "id": "wd-Q2848272",
 "name": "Mathieu André",
 "country_code": "FRA",
@@ -104611,21 +104371,6 @@
 "provisional": true
 },
 {
-"id": "wd-Q718186",
-"name": "Morais",
-"country_code": "BRA",
-"nationality": "Brazil",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1984,
-"career_years": "2006–2006",
-"source": "wikidata",
-"wikidata": "Q718186",
-"team_qid": "Q83459",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
 "id": "wd-Q776677",
 "name": "Moreno Mannini",
 "country_code": "ITA",
@@ -107455,21 +107200,6 @@
 "career_years": "1965–1967",
 "source": "wikidata",
 "wikidata": "Q7050420",
-"team_qid": "Q79800",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
-"id": "wd-Q2732596",
-"name": "Norberto Scoponi",
-"country_code": "ARG",
-"nationality": "Argentina",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1961,
-"career_years": "1993–1994",
-"source": "wikidata",
-"wikidata": "Q2732596",
 "team_qid": "Q79800",
 "retrieved": "2026-11-07",
 "provisional": true
@@ -127570,36 +127300,6 @@
 "provisional": true
 },
 {
-"id": "wd-Q1091577",
-"name": "Salvatore Fresi",
-"country_code": "ITA",
-"nationality": "Italy",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1973,
-"career_years": "1997–1998",
-"source": "wikidata",
-"wikidata": "Q1091577",
-"team_qid": "Q676899",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
-"id": "wd-Q970864",
-"name": "Salvatore Lanna",
-"country_code": "ITA",
-"nationality": "Italy",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1976,
-"career_years": "2002–2002",
-"source": "wikidata",
-"wikidata": "Q970864",
-"team_qid": "Q676899",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
 "id": "wd-Q295307",
 "name": "Salvatore Schillaci",
 "country_code": "ITA",
@@ -129620,21 +129320,6 @@
 "career_years": "1951–1960",
 "source": "wikidata",
 "wikidata": "Q1367362",
-"team_qid": "Q676899",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
-"id": "wd-Q916088",
-"name": "Sergio Floccari",
-"country_code": "ITA",
-"nationality": "Italy",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1981,
-"career_years": "2010–2010",
-"source": "wikidata",
-"wikidata": "Q916088",
 "team_qid": "Q676899",
 "retrieved": "2026-11-07",
 "provisional": true
@@ -135437,21 +135122,6 @@
 "source": "wikidata",
 "wikidata": "Q296979",
 "team_qid": "Q47050",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
-"id": "wd-Q353158",
-"name": "Tim Matthys",
-"country_code": "BEL",
-"nationality": "Belgium",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1983,
-"career_years": "2006–2006",
-"source": "wikidata",
-"wikidata": "Q353158",
-"team_qid": "Q166776",
 "retrieved": "2026-11-07",
 "provisional": true
 },
@@ -146913,21 +146583,6 @@
 "career_years": "1965–1965",
 "source": "wikidata",
 "wikidata": "Q3577001",
-"team_qid": "Q79800",
-"retrieved": "2026-11-07",
-"provisional": true
-},
-{
-"id": "wd-Q526276",
-"name": "Ángel Comizzo",
-"country_code": "ARG",
-"nationality": "Argentina",
-"senior_international_caps": 0,
-"senior_international_goals": 0,
-"birth_year": 1962,
-"career_years": "1990–1990",
-"source": "wikidata",
-"wikidata": "Q526276",
 "team_qid": "Q79800",
 "retrieved": "2026-11-07",
 "provisional": true
