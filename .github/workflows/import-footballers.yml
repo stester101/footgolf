@@ -38,4 +38,8 @@ jobs:
           git add data/footballers_real.json data/footballers_real_report.md
           if git diff --cached --quiet; then echo "No changes"; exit 0; fi
           git commit -m "data: Wikidata footballer snapshot ($(date -u +%F))"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          for i in 1 2 3 4; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            sleep $((i * 5))
+          done
+          exit 1
