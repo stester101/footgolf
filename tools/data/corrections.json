@@ -1,0 +1,6 @@
+{
+  "description": "Manual fixes applied after the Wikidata import. Match by 'id' (wd-Q...) or exact 'name' (+ optional 'nationality'). 'set' overrides fields (e.g. name, senior_international_caps, senior_international_goals); 'remove': true drops a record. Keep a 'reason' for every entry.",
+  "corrections": [
+    {"name": "João Moutinh0", "nationality": "Portugal", "set": {"name": "João Moutinho"}, "reason": "typo/vandalism in Wikidata label"}
+  ]
+}

@@ -67,6 +67,13 @@ SELECT ?team WHERE {{
     return qid(val(rows[0], "team")), f"enwiki '{title}'"
 
 
+# Regional / non-FIFA "national" sides that must never count as a player's final national team.
+NON_FIFA = re.compile(r"\b(catalonia|catalan|basque|euskadi|galicia|andalusia|asturias|aragon|canary|corsica|brittany|"
+                      r"occitania|padania|sicily|sardinia|cornwall|yorkshire|isle of man|jersey|guernsey|"
+                      r"county of nice|provence|savoy|sapmi|sápmi|kurdistan|tibet|flanders|wallonia|"
+                      r"great britain|united kingdom|conifa|bavaria|south tyrol)\b", re.I)
+
+
 NATIONAL_LABEL = re.compile(r"national.*(football|soccer)|(football|soccer).*national", re.I)
 
 
@@ -114,7 +121,7 @@ def main():
             d = by_p.setdefault(p, {"name": val(r, "pLabel"), "birth": year(val(r, "birth")), "teams": {}})
             team = qid(val(r, "team"))
             label = val(r, "teamLabel") or ""
-            if team != t and (BAD_TEAM_LABEL.search(label) or not NATIONAL_LABEL.search(label)):
+            if team != t and (BAD_TEAM_LABEL.search(label) or NON_FIFA.search(label) or not NATIONAL_LABEL.search(label)):
                 continue
             caps = val(r, "caps")
             goals = val(r, "goals")
@@ -163,6 +170,23 @@ def main():
             s["kept"] += 1
         time.sleep(2)
 
+    # Manual corrections (tools/data/corrections.json): match by "id" or exact "name" (+ optional "nationality").
+    corrections = []
+    try:
+        corrections = json.load(open("tools/data/corrections.json", encoding="utf-8")).get("corrections", [])
+    except FileNotFoundError:
+        pass
+    applied = []
+    for corr in corrections:
+        for r in players.values():
+            if ("id" in corr and r["id"] == corr["id"]) or (
+                    "name" in corr and r["name"] == corr["name"] and corr.get("nationality", r["nationality"]) == r["nationality"]):
+                for k, v in corr.get("set", {}).items():
+                    r[k] = v
+                if corr.get("remove"):
+                    r["_remove"] = True
+                applied.append(f"{r['id']} {corr}")
+    players = {k: v for k, v in players.items() if not v.get("_remove")}
     out = sorted(players.values(), key=lambda r: (r["name"].lower(), r["nationality"], r["birth_year"] or 0))
     # drop empty optional fields
     for r in out:
@@ -180,7 +204,9 @@ def main():
     for c in cfg["countries"]:
         s = stats[c["code"]]
         lines.append(f"| {c['name']} | {team_info[c['code']][0]} | {s['kept']} | {s['no_caps']} | {s['no_goals']} | {s['final_elsewhere']} | {s['final_unselected']} |")
-    lines += ["", f"**Total players: {len(out)}**", "", "## Team resolution", ""]
+    lines += ["", f"**Total players: {len(out)}**", "", f"Corrections applied: {len(applied)}", ""]
+    lines += [f"- {a}" for a in applied]
+    lines += ["", "## Team resolution", ""]
     for c in cfg["countries"]:
         lines.append(f"- {c['name']}: {team_info[c['code']][1]}")
     lines += ["", "## Sanity check: top 5 by caps per country", ""]
