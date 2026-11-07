@@ -149,6 +149,15 @@ def main():
             if mine["goals"] is None:
                 s["no_goals"] += 1
                 continue
+            if mine["caps"] <= 0:
+                s.setdefault("zero_caps", 0)
+                s["zero_caps"] += 1
+                continue
+            if mine["goals"] < 0:
+                # Wikidata sometimes records a goalkeeper's goals CONCEDED as negative goals.
+                s.setdefault("negative_goals_fixed", 0)
+                s["negative_goals_fixed"] += 1
+                mine["goals"] = 0
             if not d["name"] or re.match(r"^Q\d+$", d["name"]):
                 continue
             first = mine["first"] if mine["first"] != 9999 else 0
@@ -216,6 +225,15 @@ def main():
     zero = sum(1 for r in out if r["senior_international_goals"] == 0)
     one = sum(1 for r in out if r["senior_international_caps"] == 1)
     lines += ["", f"Players with 0 goals: {zero}. Players with exactly 1 cap: {one}."]
+    fixed = sum(stats[c["code"]].get("negative_goals_fixed", 0) for c in cfg["countries"])
+    zc = sum(stats[c["code"]].get("zero_caps", 0) for c in cfg["countries"])
+    lines.append(f"Negative goals treated as 0 (goals-conceded convention): {fixed}. Zero-cap records excluded: {zc}.")
+    sus = sorted([r for r in out if r["senior_international_goals"] > max(3, 2 * r["senior_international_caps"])],
+                 key=lambda r: -(r["senior_international_goals"] - r["senior_international_caps"]))
+    gc = sum(1 for r in out if r["senior_international_goals"] > r["senior_international_caps"])
+    lines += ["", f"## Review: goals > caps ({gc} players; often genuine for pre-1930 strikers)", "",
+              "Most suspicious (goals > 2x caps); fix via tools/data/corrections.json if wrong:", ""]
+    lines += [f"- {r['name']} ({r['nationality']}, {r['wikidata']}): {r['senior_international_caps']} caps / {r['senior_international_goals']} goals" for r in sus[:40]]
     names = {}
     for r in out:
         names.setdefault(r["name"], []).append(r)
