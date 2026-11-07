@@ -1,0 +1,41 @@
+name: Import footballers (Wikidata)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "tools/data/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: import-footballers
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Query Wikidata and build dataset
+        run: python3 tools/data/import_wikidata.py
+      - name: Upload dataset + report
+        uses: actions/upload-artifact@v4
+        with:
+          name: footballers-real
+          path: |
+            data/footballers_real.json
+            data/footballers_real_report.md
+      - name: Commit dataset to this branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/footballers_real.json data/footballers_real_report.md
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "data: Wikidata footballer snapshot ($(date -u +%F))"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

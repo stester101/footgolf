@@ -1,0 +1,19 @@
+{
+  "description": "Countries whose COMPLETE senior men's national-team caps/goals lists are imported from Wikidata. 'country' is the Wikidata country item; 'team' may pin the national-team item, otherwise the importer picks the team for that country with the most capped players (the senior men's side) and reports its choice.",
+  "countries": [
+    {"code": "ENG", "name": "England",             "country": "Q21"},
+    {"code": "SCO", "name": "Scotland",            "country": "Q22"},
+    {"code": "WAL", "name": "Wales",               "country": "Q25"},
+    {"code": "NIR", "name": "Northern Ireland",    "country": "Q26"},
+    {"code": "IRL", "name": "Republic of Ireland", "country": "Q27"},
+    {"code": "ESP", "name": "Spain",               "country": "Q29"},
+    {"code": "GER", "name": "Germany",             "country": "Q183"},
+    {"code": "FRA", "name": "France",              "country": "Q142"},
+    {"code": "ITA", "name": "Italy",               "country": "Q38"},
+    {"code": "NED", "name": "Netherlands",         "country": "Q55"},
+    {"code": "POR", "name": "Portugal",            "country": "Q45"},
+    {"code": "BEL", "name": "Belgium",             "country": "Q31"},
+    {"code": "BRA", "name": "Brazil",              "country": "Q155"},
+    {"code": "ARG", "name": "Argentina",           "country": "Q414"}
+  ]
+}
