@@ -68,13 +68,13 @@ Negative goals treated as 0 (goals-conceded convention): 2. Zero-cap records exc
 - Arthur Savage (England, Q4800239): 1 caps, 3 -> 0 goals
 - John Sands (England, Q6256641): 1 caps, 2 -> 0 goals
 - José María Echevarría (Spain, Q2396303): 1 caps, 2 -> 0 goals
-- Albert Parsys (France, Q2831448): 5 caps, 8 -> 0 goals
 - André Renaux (France, Q2848516): 1 caps, 12 -> 0 goals
 - Charles Allé (France, Q2958378): 1 caps, 4 -> 0 goals
 - Charles Berthelot (France, Q2958540): 1 caps, 8 -> 0 goals
 - Jean Loubière (France, Q3173255): 1 caps, 5 -> 0 goals
 - Maurice Baudier (France, Q3300381): 3 caps, 7 -> 0 goals
 - Raoul Chaisaz (France, Q3419147): 2 caps, 5 -> 0 goals
+- Albert Parsys (France, Q2831448): 5 caps, 8 -> 0 goals
 - Tessier (France, Q3519014): 5 caps, 36 -> 0 goals
 - Zacharie Baton (France, Q3574514): 4 caps, 19 -> 0 goals
 - Émile Friess (France, Q3588513): 2 caps, 5 -> 0 goals
@@ -85,10 +85,6 @@ Negative goals treated as 0 (goals-conceded convention): 2. Zero-cap records exc
 - Bruno Venturini (Italy, Q640818): 4 caps, 2 -> 0 goals
 - Giuseppe Vavassori (Italy, Q678453): 1 caps, 2 -> 0 goals
 - Ugo Amoretti (Italy, Q980829): 1 caps, 2 -> 0 goals
-- Carlo Ceresoli (Italy, Q1042039): 8 caps, 10 -> 0 goals
-- Giuseppe Peruchetti (Italy, Q1145748): 2 caps, 3 -> 0 goals
-- Giuliano Sarti (Italy, Q1527940): 8 caps, 5 -> 0 goals
-- Angelo Cameroni (Italy, Q1533095): 1 caps, 4 -> 0 goals
 - Leonardo Costagliola (Italy, Q2546680): 3 caps, 2 -> 0 goals
 - Giovanni De Prà (Italy, Q2738936): 19 caps, 29 -> 0 goals
 - Ezio Sclavi (Italy, Q3062839): 3 caps, 4 -> 0 goals
@@ -99,23 +95,27 @@ Negative goals treated as 0 (goals-conceded convention): 2. Zero-cap records exc
 - Giuseppe Trivellini (Italy, Q3771555): 7 caps, 11 -> 0 goals
 - Mario De Simoni (Italy, Q3848515): 7 caps, 16 -> 0 goals
 - William Negri (Italy, Q4020111): 12 caps, 9 -> 0 goals
+- Carlo Ceresoli (Italy, Q1042039): 8 caps, 10 -> 0 goals
+- Giuseppe Peruchetti (Italy, Q1145748): 2 caps, 3 -> 0 goals
+- Giuliano Sarti (Italy, Q1527940): 8 caps, 5 -> 0 goals
+- Angelo Cameroni (Italy, Q1533095): 1 caps, 4 -> 0 goals
 - Just Göbel (Netherlands, Q1352833): 22 caps, 46 -> 0 goals
 - Wim Landman (Netherlands, Q3183480): 7 caps, 12 -> 0 goals
 - Jan Schindeler (Netherlands, Q3806931): 1 caps, 2 -> 0 goals
 - Robert Braet (Belgium, Q1625049): 14 caps, 42 -> 0 goals
+- Roberto Costa (Brazil, Q974847): 1 caps, 2 -> 0 goals
 - Raul Plassmann (Brazil, Q1616952): 8 caps, 7 -> 0 goals
 - Wagner Fernando Velloso (Brazil, Q1648860): 1 caps, 3 -> 0 goals
-- Roberto Costa (Brazil, Q974847): 1 caps, 2 -> 0 goals
 - Ado (Brazil, Q2447165): 3 caps, 3 -> 0 goals
 - Miguel Ángel Santoro (Argentina, Q577910): 14 caps, 11 -> 0 goals
 - Carlos Tomás Wilson (Argentina, Q616127): 25 caps, 36 -> 0 goals
 - Enrique Vidallé (Argentina, Q2459785): 6 caps, 12 -> 0 goals
-- Jorge Iribarren (Argentina, Q3810073): 3 caps, 4 -> 0 goals
-- Juan Rithner (Argentina, Q3810915): 10 caps, 19 -> 0 goals
 - Juan Pablo Carrizo (Argentina, Q336870): 12 caps, 13 -> 0 goals
 - Edgardo Andrada (Argentina, Q1757383): 20 caps, 29 -> 0 goals
 - Carlos Isola (Argentina, Q2013014): 21 caps, 25 -> 0 goals
 - Federico Cancino (Argentina, Q3741655): 2 caps, 3 -> 0 goals
+- Jorge Iribarren (Argentina, Q3810073): 3 caps, 4 -> 0 goals
+- Juan Rithner (Argentina, Q3810915): 10 caps, 19 -> 0 goals
 
 ## Excluded as implausible (>3 goals per cap, 5+ caps) (1)
 
