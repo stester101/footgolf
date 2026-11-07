@@ -10,12 +10,12 @@ Full brief: [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md).
 ## Current status (evidence-based)
 | Area | State |
 |---|---|
-| Three playable 3D holes (par 3 / 4 / 5: 150 / 360 / 510 yd) with bunkers, trees, lakes, OOB | Implemented; completed by test bot and UI smoke test |
+| Nine playable 3D holes in 3 courses: Starter Links (3 classic holes) and Pinewood Ridge (6 hilly forest-mountainside holes, par 24), or the Full 9 | Implemented; each course completed by a test bot and a UI smoke test |
 | Calibrated physics (flight, drag, wind, bounce, roll, slopes, lies, trees, cup) | Implemented; calibration error < 0.001% on all spec inputs |
 | Atomic shot commit, once-per-match footballer pool, par+5, water/OOB relief, hole-out rules | Implemented + tested |
 | Footballer picker (stats hidden), shot result reveal, scorecard + history, round complete | Implemented |
 | Developer panel (holes, ball placement, lie/wind/surfaces, hole-out radius, undo/replay, CRUD, pool reset, diagnostics, calibration check, scenario save/load) | Implemented |
-| Automated tests | 52 tests + runtime smoke test, all passing locally |
+| Automated tests | 64 tests + 2 runtime smoke tests (Starter Links, Pinewood Ridge), passing locally and in CI |
 | Android debug APK | Built, signed and structurally verified by GitHub Actions (run #2, artifact `football-golf-v0.1-debug-apk`, 86 MB) and locally |
 | On-device install / launch / performance | **Not yet verified** (no device or emulator available to the agent) |
 | Audio, mulligans, mid-round resume | Not implemented in V0.1 |
@@ -48,6 +48,7 @@ Docs: [Architecture](docs/ARCHITECTURE.md) · [Physics calibration](docs/PHYSICS
 [Asset licences](docs/ASSET_LICENCES.md) · [Agent rules](CLAUDE.md)
 
 ## Known limitations
+- Hole load takes ~0.3–1.4 s on a desktop (terrain, trees); expect a few seconds on phones — a graphics-pass item.
 - **TEST MODE is ON by default in this build:** the footballer picker shows caps/goals before the
   shot so mechanics can be checked. Turn it off (Settings or DEV → Players) for normal hidden-stat rules.
 - Footballers: a **provisional Wikidata snapshot** of complete senior men's caps/goals lists for 14 countries

@@ -7,6 +7,7 @@ signal camera_toggle_requested
 ## factor > 0 zooms the overhead map; 0 = fit whole hole.
 signal overhead_zoom_requested(factor: float)
 signal main_menu_requested
+signal aim_here_requested
 signal developer_requested
 
 var session: GameSession
@@ -33,6 +34,8 @@ var _map_row: HBoxContainer
 var _badge_num: Label
 var _reveal: Tween
 var _spin: SpinControl
+var _aim_here_btn: Button
+var _aim_label: Label
 var _spin_box: VBoxContainer
 var _spin_label: Label
 var _round_label: Label
@@ -150,6 +153,12 @@ func _build_top(col: VBoxContainer) -> void:
 	wc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wc.add_child(wind_chip)
 	bar.add_child(wc)
+	var ac := UiKit.panel(Color(0.04, 0.07, 0.06, 0.72))
+	ac.add_theme_stylebox_override("panel", UiKit.box(Color(0.04, 0.07, 0.06, 0.72), 27, 8))
+	ac.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_aim_label = UiKit.label("Aim 0°", 20)
+	ac.add_child(_aim_label)
+	bar.add_child(ac)
 	var sp := Control.new()
 	UiKit.expand(sp)
 	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -164,6 +173,10 @@ func _build_top(col: VBoxContainer) -> void:
 	col.add_child(bar)
 	_map_row = UiKit.hbox(8)
 	_map_row.alignment = BoxContainer.ALIGNMENT_END
+	_aim_here_btn = UiKit.primary(UiKit.button("AIM HERE", func() -> void: aim_here_requested.emit(), 54, 20))
+	_aim_here_btn.custom_minimum_size.x = 150
+	_aim_here_btn.disabled = true
+	_map_row.add_child(_aim_here_btn)
 	for spec in [["−", 1.0 / 1.4], ["+", 1.4], ["FIT", 0.0]]:
 		var f: float = spec[1]
 		_map_row.add_child(_small_btn(spec[0], func() -> void: overhead_zoom_requested.emit(f)))
@@ -228,6 +241,11 @@ func set_measure(text: String) -> void:
 	_measure_label.text = text
 
 
+func set_marker_ready(on: bool) -> void:
+	if _aim_here_btn != null:
+		_aim_here_btn.disabled = not on
+
+
 func _process(delta: float) -> void:
 	if _toast_t > 0.0:
 		_toast_t -= delta
@@ -237,6 +255,7 @@ func _process(delta: float) -> void:
 		return
 	var h := session.hole
 	_pin_label.text = "Par %d · %d yd · Pin %s" % [h.par, int(h.yards), Units.fmt_distance(Units.horizontal_distance(session.ball_render_pos(), h.cup_position()))]
+	_aim_label.text = "Aim %d°" % int(round(session.aim_bearing_deg))
 	var wb := deg_to_rad(session.wind_bearing())
 	_wind.set_wind(camera_yaw - wb, session.wind_speed())
 
@@ -288,9 +307,17 @@ func refresh() -> void:
 		_spin_label.text = "No spin"
 	else:
 		_spin_label.text = "%s %d%%" % ["Top" if session.spin > 0.0 else "Back", int(round(absf(session.spin) * 100.0))]
-	_shot_btn.disabled = not (aiming and session.can_take_shot() == "" and _overlays.is_empty())
-	_shot_btn.text = "Ball in motion…" if moving else "TAKE SHOT"
-	_caps_btn.disabled = moving
+	var on_green := session.current_lie() == Surface.Type.GREEN
+	# Always tappable while aiming: with no footballer chosen it opens the picker instead.
+	_shot_btn.disabled = not (aiming and _overlays.is_empty())
+	if moving:
+		_shot_btn.text = "Ball in motion…"
+	elif fb == null:
+		_shot_btn.text = "CHOOSE A FOOTBALLER"
+	else:
+		_shot_btn.text = "TAKE SHOT"
+	_caps_btn.text = "CAPS\nnot allowed on the green" if on_green else "CAPS\nin the air · 1 cap = 1 yd"
+	_caps_btn.disabled = moving or on_green
 	_goals_btn.disabled = moving
 	_pick_btn.disabled = moving
 	if moving:
@@ -307,6 +334,9 @@ func refresh() -> void:
 
 func _on_take_shot() -> void:
 	if not _overlays.is_empty():
+		return
+	if session.selected_id == "" and session.state == ShotTypes.State.AIMING:
+		show_picker()
 		return
 	session.take_shot()
 	refresh()
@@ -375,7 +405,7 @@ func show_hole_intro() -> void:
 	var parts := _centered_card()
 	var root: Control = parts[0]
 	var v: VBoxContainer = parts[1]
-	v.add_child(UiKit.text("HOLE %d" % (session.round_state.current_index + 1), 30, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UiKit.text("HOLE %d OF %d" % [session.round_state.current_index + 1, session.round_state.holes.size()], 30, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UiKit.text(h.display_name, 44, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UiKit.text("Par %d · %d yd" % [h.par, int(h.yards)], 32, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UiKit.text("Max score %d (par + 5) · Round %s" % [h.par + 5, RoundState.fmt_relative(session.round_state.relative_to_par())], 22, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
@@ -591,7 +621,31 @@ func show_pause() -> void:
 		_remove_overlay(root)
 		show_scorecard(), 76, 26))
 	v.add_child(UiKit.button("Restart round", func() -> void:
-		close_all_overlays()
-		session.start_round(session.hole_defs), 76, 26))
-	v.add_child(UiKit.button("Main menu", func() -> void: main_menu_requested.emit(), 76, 26))
+		_remove_overlay(root)
+		confirm("Restart the round?", "Your score and used footballers for this round will be lost.", "Restart", func() -> void:
+			close_all_overlays()
+			session.start_round(session.hole_defs)), 76, 26))
+	v.add_child(UiKit.button("Main menu", func() -> void:
+		_remove_overlay(root)
+		confirm("Leave the round?", "Progress in this round will be lost.", "Main menu", func() -> void: main_menu_requested.emit()), 76, 26))
+	push_overlay(root)
+
+
+## Simple confirm card for destructive actions.
+func confirm(title: String, body: String, ok_text: String, on_ok: Callable) -> void:
+	var parts := _centered_card(560.0)
+	var root: Control = parts[0]
+	var v: VBoxContainer = parts[1]
+	v.add_child(UiKit.text(title, 34, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UiKit.text(body, 22, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	var row := UiKit.hbox(10)
+	var cancel := UiKit.button("Cancel", func() -> void: _remove_overlay(root), 80, 26)
+	UiKit.expand(cancel)
+	row.add_child(cancel)
+	var ok := UiKit.primary(UiKit.button(ok_text, func() -> void:
+		_remove_overlay(root)
+		on_ok.call(), 80, 26), Color(0.75, 0.3, 0.25))
+	UiKit.expand(ok)
+	row.add_child(ok)
+	v.add_child(row)
 	push_overlay(root)

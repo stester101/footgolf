@@ -16,7 +16,11 @@ var rest_speed := 0.02
 var rest_time := 0.3
 var static_factor := 1.0
 var max_motion_time := 60.0
-var cup_radius := 0.054
+## Cup radius in metres. Regulation is 0.054 m (4.25 in diameter); the game default is a deliberately
+## larger 12 in diameter so more shots drop. Adjustable in Settings / DEV.
+const REGULATION_CUP_RADIUS := 0.054
+const DEFAULT_CUP_DIAMETER_IN := 12.0
+var cup_radius := DEFAULT_CUP_DIAMETER_IN * 0.0254 * 0.5
 var cup_capture_speed := 1.6
 var cup_landing_capture_speed := 7.0
 var canopy_damping := 5.0
@@ -31,6 +35,19 @@ var surfaces: Dictionary = {}
 
 func _init() -> void:
 	surfaces = Surface.default_params()
+
+
+func cup_diameter_in() -> float:
+	return cup_radius * 2.0 / 0.0254
+
+
+func set_cup_diameter_in(inches: float) -> void:
+	cup_radius = clampf(inches, 4.25, 40.0) * 0.0254 * 0.5
+
+
+## Bigger cups also accept slightly faster rolling balls (sqrt scaling, capped).
+func cup_capture_speed_eff() -> float:
+	return cup_capture_speed * clampf(sqrt(cup_radius / REGULATION_CUP_RADIUS), 1.0, 3.0)
 
 
 func surface(t: int) -> Dictionary:

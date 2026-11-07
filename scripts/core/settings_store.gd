@@ -3,6 +3,7 @@ extends RefCounted
 ## Local preferences and developer test settings, persisted to user://settings.json.
 
 const PATH := "user://settings.json"
+const VERSION := 2
 
 var save_path := PATH
 var holeout_radius_ft := ScoringService.DEFAULT_HOLEOUT_FT
@@ -16,6 +17,7 @@ var show_stats := true
 ## "real" = bundled Wikidata snapshot, "test" = synthetic test players.
 var dataset := "real"
 var tutorial_seen := false
+var last_course := "starter"
 var lie_override := -1
 var force_surface := false
 var physics := PhysicsConfig.new()
@@ -39,6 +41,7 @@ func load_settings() -> void:
 	show_trail = bool(d.get("show_trail", true))
 	show_stats = bool(d.get("show_stats", true))
 	tutorial_seen = bool(d.get("tutorial_seen", false))
+	last_course = String(d.get("last_course", "starter"))
 	dataset = "test" if String(d.get("dataset", "real")) == "test" else "real"
 	lie_override = int(d.get("lie_override", -1))
 	if not Surface.PLAYABLE.has(lie_override):
@@ -46,6 +49,8 @@ func load_settings() -> void:
 	force_surface = bool(d.get("force_surface", false))
 	if typeof(d.get("physics")) == TYPE_DICTIONARY:
 		physics.apply_dict(d["physics"])
+		if int(d.get("settings_version", 1)) < 2:
+			physics.cup_radius = PhysicsConfig.new().cup_radius  # v2: larger default hole
 	if typeof(d.get("scenario")) == TYPE_DICTIONARY:
 		scenario = d["scenario"]
 
@@ -55,6 +60,8 @@ func save() -> void:
 	if f == null:
 		return
 	f.store_string(JSON.stringify({
+		"settings_version": VERSION,
+		"last_course": last_course,
 		"holeout_radius_ft": holeout_radius_ft,
 		"wind_custom": wind_custom,
 		"wind_speed": wind_speed,

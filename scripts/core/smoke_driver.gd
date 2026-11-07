@@ -63,8 +63,12 @@ func _press(text_prefix: String) -> bool:
 func _run() -> void:
 	await _frames(5)
 	await _shot("main_menu")
-	if not _press("Play Three Holes"):
-		return _fail("no Play button")
+	var course_name := "Starter Links"
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--smoke-course="):
+			course_name = a.substr(15)
+	if not _press(course_name):
+		return _fail("no course button '%s'" % course_name)
 	await _frames(10)
 	var round_node: Node = get_tree().root.find_child("Round", true, false)
 	if round_node == null:
@@ -105,6 +109,13 @@ func _run() -> void:
 						b.pressed.emit()
 						picked = true
 						break
+				if not picked:
+					# first page is all used by now: use the picker's Random button (also covers that feature)
+					for c in (picker[0] as Node).find_children("*", "Button", true, false):
+						if (c as Button).text == "Random" and not (c as Button).disabled:
+							(c as Button).pressed.emit()
+							picked = true
+							break
 				if not picked:
 					return _fail("no available footballer")
 				await _frames(2)

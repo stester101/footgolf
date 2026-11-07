@@ -19,3 +19,24 @@ Changes to locked rules in `docs/SPECIFICATION.md`, made explicitly by the produ
 
 ## 2026-11-07 — Real footballer data
 - Wikidata (CC0) snapshot, men only, complete squads for selected countries (`tools/data/countries.json`).
+
+## 2026-11-07 — Bigger hole, hole-size setting
+- Default cup is now 12 in diameter (regulation 4.25 in) so more shots drop; adjustable 4.25–40 in in
+  Settings and the DEV panel. Larger cups also accept slightly faster balls (sqrt scaling of capture speed).
+  Old saved settings are migrated to the new default (settings_version 2).
+
+## 2026-11-07 — No chips from the green
+- A ball on the GREEN may only be played with Goals. Caps is disabled in the UI, the mode switches to
+  Goals automatically when the ball reaches the green, and `take_shot()` refuses a Caps shot there
+  (nothing consumed). Fringe is not green. Overrides spec §3.2 ("Caps may be selected on the green").
+- Spin resets to none after every shot.
+
+## 2026-11-07 — Stat sorting/filtering in TEST MODE only
+- The picker has search, sort (name, country, birth year), country chips with live counts, era filters,
+  "available only" and Random for everyone. Sorting/filtering by caps/goals exists ONLY in TEST MODE
+  (stats visible); in normal play it is hidden, preserving the "no pre-shot stat sorting or filtering" rule.
+
+## 2026-11-07 — Courses and nine holes
+- Courses are data (`data/courses.json`): Starter Links (holes 1-3), Pinewood Ridge (holes 4-9, hilly forest
+  mountainside, par 24) and Full 9. Future themed courses are added the same way.
+- Pinewood Ridge holes are authored with `tools/data/gen_forest_holes.py`; the JSON is the source of truth.

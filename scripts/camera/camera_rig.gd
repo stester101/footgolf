@@ -59,7 +59,9 @@ func _apply_overhead() -> void:
 	var pad := float(hole.camera.get("overhead_padding", 1.15))
 	var vp := get_viewport().get_visible_rect().size if is_inside_tree() else Vector2(720, 1280)
 	var aspect := vp.x / maxf(vp.y, 1.0)
-	cam.size = maxf((max_along * 2.0 + 30.0) * pad, (max_side * 2.0 + 50.0) / maxf(aspect, 0.1))
+	# The top HUD and bottom panel cover roughly 45% of the screen: size the view so the whole hole
+	# fits in the free middle band (zoom in from there).
+	cam.size = maxf((max_along * 2.0 + 30.0) * pad, (max_side * 2.0 + 50.0) / maxf(aspect, 0.1)) * 1.55
 	var c3 := Vector3(center.x, hole.terrain_height(center.x, center.y), center.y)
 	cam.global_transform = Transform3D(Basis(), c3 + Vector3(0, 600, 0))
 	cam.look_at(c3, Vector3(up2.x, 0, up2.y))

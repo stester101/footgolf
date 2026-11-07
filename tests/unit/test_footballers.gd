@@ -137,3 +137,44 @@ func test_provenance_round_trips() -> void:
 	assert_eq(d["wikidata"], "Q1")
 	assert_eq(d["source"], "wikidata")
 	assert_false(fb.display_label().contains("Q1"), "provenance never in label")
+
+
+func _mk(repo: FootballerRepository, id: String, nm: String, nat: String, born: int, caps: int, goals: int) -> void:
+	assert(repo.add_record({"id": id, "name": nm, "nationality": nat, "country_code": nat.substr(0, 3).to_upper(),
+		"birth_year": born, "senior_international_caps": caps, "senior_international_goals": goals}) == "")
+
+
+func test_query_filters_sorts_and_facets() -> void:
+	var repo := TestHelpers.make_repo()
+	for id in repo.all_sorted().map(func(f: Footballer) -> String: return f.id):
+		repo.delete_record(id)
+	_mk(repo, "q1", "Alpha One", "Spain", 1955, 100, 30)
+	_mk(repo, "q2", "Bravo Two", "Spain", 1991, 10, 0)
+	_mk(repo, "q3", "Charlie Müller", "Germany", 1988, 55, 20)
+	_mk(repo, "q4", "Delta Four", "Germany", 1962, 1, 0)
+	_mk(repo, "q5", "Echo Five", "Italy", 0, 25, 4)
+	var pool := FootballerPool.new()
+	pool.consume("q2")
+	assert_eq(repo.query({}).size(), 5)
+	assert_eq(repo.query({"nations": {"Spain": true}}).size(), 2, "nation filter")
+	assert_eq(repo.query({"q": "muller"}).size(), 1, "accent-insensitive search")
+	assert_eq(repo.query({"available_only": true}, pool).size(), 4, "available only excludes used")
+	assert_eq(repo.query({"eras": {4: true}}).size(), 1, "1980s era (index 4)")
+	assert_eq(repo.query({"eras": {1: true, 5: true}}).size(), 2, "1950s OR 1990s (Alpha, Bravo)")
+	assert_eq(repo.query({"eras": {0: true, 6: true}}).size(), 0, "pre-1950 / 2000+: nobody; unknown birth year never matches an era")
+	assert_eq(repo.query({"caps_band": 5}).size(), 1, "caps 100+")
+	assert_eq(repo.query({"goals_band": 1}).size(), 2, "0 goals")
+	var names: Array = repo.query({"sort": "caps_hi"}).map(func(f: Footballer) -> String: return f.name)
+	assert_eq(names[0], "Alpha One")
+	assert_eq(names[4], "Delta Four")
+	assert_eq(repo.query({"sort": "name_za"})[0].name, "Echo Five")
+	assert_eq(repo.query({"sort": "country"})[0].nationality, "Germany")
+	assert_eq(repo.query({"sort": "born_old"})[0].name, "Alpha One")
+	assert_eq(repo.query({"sort": "born_old"})[4].name, "Echo Five", "unknown birth year sorts last")
+	assert_eq(repo.query({"limit": 2}).size(), 2)
+	var facets := repo.facet_counts({"q": "o"})
+	assert_eq(int(facets.get("Spain", 0)), 2, "facets honour search ('o' in Alpha One, Bravo Two)")
+	assert_eq(int(facets.get("Germany", 0)), 1, "Delta Four only (Charlie Müller has no 'o')")
+	var facets2 := repo.facet_counts({"q": "o", "nations": {"Spain": true}})
+	assert_eq(int(facets2.get("Germany", 0)), 1, "facets ignore the nation filter itself")
+	TestHelpers.cleanup_repo(repo)

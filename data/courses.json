@@ -1,0 +1,10 @@
+{
+  "courses": [
+    {"id": "starter", "name": "Starter Links", "blurb": "3 classic test holes · par 12",
+     "holes": ["hole_01", "hole_02", "hole_03"]},
+    {"id": "ridge", "name": "Pinewood Ridge", "blurb": "6 hilly forest holes · par 24",
+     "holes": ["hole_04", "hole_05", "hole_06", "hole_07", "hole_08", "hole_09"]},
+    {"id": "all", "name": "Full 9", "blurb": "Starter Links + Pinewood Ridge · par 36",
+     "holes": ["hole_01", "hole_02", "hole_03", "hole_04", "hole_05", "hole_06", "hole_07", "hole_08", "hole_09"]}
+  ]
+}

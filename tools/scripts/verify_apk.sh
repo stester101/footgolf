@@ -9,7 +9,7 @@ SIZE=$(stat -c %s "$APK")
 unzip -tq "$APK" > /dev/null || { echo "APK is not a valid ZIP"; exit 1; }
 LISTING=$(unzip -l "$APK")
 for needed in "AndroidManifest.xml" "classes.dex" "lib/arm64-v8a/libgodot_android.so" "assets/project.binary" \
-              "assets/data/footballers_seed.json" "assets/data/holes/hole_01.json"; do
+              "assets/data/footballers_seed.json" "assets/data/courses.json" "assets/data/holes/hole_01.json" "assets/data/holes/hole_09.json"; do
   echo "$LISTING" | grep -q " $needed\$" || { echo "Missing entry in APK: $needed"; exit 1; }
 done
 if echo "$LISTING" | grep -q "assets/tests/"; then echo "Test scripts leaked into APK"; exit 1; fi

@@ -20,6 +20,9 @@ Run everything: `GODOT=<godot> tools/scripts/run_tests.sh` (import + automated t
 | Dev undo restores ball/strokes/pool; replay = same result, no duplicate scoring | `integration/test_game_session.gd` |
 | Stats unavailable while in motion | `integration/test_game_session.gd` |
 | Three holes: par, nominal length, tee/pin lies, hazards, finite terrain, bot completes round | `integration/test_course.gd` |
+| Ridge holes: valid polygon/tee/pin/length, relief ≥ 12 m, fairway/green slope limits, ≥150 trees; bot completes Pinewood Ridge | `integration/test_course.gd` |
+| No Caps on the green (UI, mode switch, `take_shot` refusal), spin resets, cup size default/clamp | `integration/test_game_session.gd` |
+| Picker query: filters, sorts, facets, accent-insensitive search | `unit/test_footballers.gd` |
 | Deterministic developer scenarios (water, OOB, tree, zero goals, neutral tee shot) | `scenarios/test_scenarios.gd` + `scenarios.json` |
 
 ## Runtime smoke test (`scripts/core/smoke_driver.gd`, `-- --smoke-test`)

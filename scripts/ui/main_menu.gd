@@ -1,8 +1,8 @@
 class_name MainMenu
 extends Control
-## Main menu: Play Three Holes, Developer Test, Settings, version/build info.
+## Main menu: course select, Developer Test, Settings, How to play, version/build info.
 
-signal play_requested(dev: bool)
+signal play_requested(course_id: String, dev: bool)
 
 var _settings_box: VBoxContainer
 var _main_box: VBoxContainer
@@ -51,8 +51,13 @@ func setup() -> void:
 	v.add_child(spacer)
 	_main_box = UiKit.vbox(16)
 	v.add_child(_main_box)
-	_main_box.add_child(UiKit.primary(UiKit.button("Play Three Holes", func() -> void: play_requested.emit(false), 110, 36)))
-	var dev := UiKit.button("Developer Test", func() -> void: play_requested.emit(true), 86, 28)
+	for c in App.courses():
+		var cid: String = c["id"]
+		var cb := UiKit.button("%s\n%s" % [c["name"], c["blurb"]], func() -> void: play_requested.emit(cid, false), 96, 28)
+		if cid == App.settings.last_course:
+			UiKit.primary(cb)
+		_main_box.add_child(cb)
+	var dev := UiKit.button("Developer Test", func() -> void: play_requested.emit("all", true), 70, 24)
 	dev.add_theme_color_override("font_color", UiKit.C_DEV)
 	_main_box.add_child(dev)
 	var row := UiKit.hbox(12)
@@ -87,6 +92,13 @@ func _show_settings() -> void:
 		st.holeout_radius_ft = ScoringService.clamp_radius_ft(val)
 		st.save()))
 	v.add_child(row)
+	var cup_row := UiKit.hbox()
+	cup_row.add_child(UiKit.expand(UiKit.label("Hole size (diameter, inches)", 24)))
+	cup_row.add_child(UiKit.spin(4.25, 40, 0.25, st.physics.cup_diameter_in(), func(val: float) -> void:
+		st.physics.set_cup_diameter_in(val)
+		st.save()))
+	v.add_child(cup_row)
+	v.add_child(UiKit.text("Regulation is 4.25 in. The game default is a friendlier 12 in.", 18, UiKit.C_MUTED))
 	var trail := CheckButton.new()
 	trail.text = "Show ball trail"
 	trail.button_pressed = st.show_trail

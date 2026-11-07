@@ -27,6 +27,10 @@ var _built_hole_id := ""
 var _last_aim := -1.0
 var _last_ball := Vector3.INF
 var open_dev_on_start := false
+var course_id := "starter"
+var _marker: MeshInstance3D
+var _marker_pos := Vector3.INF
+var _shown_cup_r := -1.0
 
 
 func _ready() -> void:
@@ -53,6 +57,20 @@ func _ready() -> void:
 	add_child(trail_line)
 	measure_line = LineDrawer.new(Color.WHITE)
 	add_child(measure_line)
+	_marker = MeshInstance3D.new()
+	var mk := SphereMesh.new()
+	mk.radius = 1.0
+	mk.height = 2.0
+	mk.radial_segments = 12
+	mk.rings = 6
+	_marker.mesh = mk
+	var mkm := StandardMaterial3D.new()
+	mkm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mkm.albedo_color = Color(1.0, 0.8, 0.1)
+	mkm.no_depth_test = true
+	_marker.material_override = mkm
+	_marker.visible = false
+	add_child(_marker)
 	rig = CameraRig.new()
 	add_child(rig)
 	session = GameSession.new(App.settings.physics, App.repo)
@@ -66,6 +84,7 @@ func _ready() -> void:
 	_canvas.add_child(ui)
 	ui.setup(session)
 	ui.camera_toggle_requested.connect(_toggle_camera)
+	ui.aim_here_requested.connect(_aim_at_marker)
 	ui.overhead_zoom_requested.connect(func(f: float) -> void:
 		if f <= 0.0:
 			rig.overhead_fit()
@@ -73,7 +92,8 @@ func _ready() -> void:
 			rig.overhead_zoom(f, get_viewport().get_visible_rect().size * 0.5))
 	ui.main_menu_requested.connect(func() -> void: exit_to_menu.emit())
 	ui.developer_requested.connect(toggle_dev_panel)
-	session.start_round(App.load_holes())
+	DisplayServer.screen_set_keep_on(true)
+	session.start_round(App.load_holes(course_id))
 	if open_dev_on_start:
 		toggle_dev_panel()
 
@@ -121,7 +141,7 @@ func _build_environment() -> void:
 
 func _on_hole_started(_i: int) -> void:
 	if _built_hole_id != session.hole.id + str(session.round_state.current_index):
-		course.build(session.hole)
+		course.build(session.hole, session.cfg.cup_radius)
 		_built_hole_id = session.hole.id + str(session.round_state.current_index)
 	rig.set_hole(session.hole)
 	_set_overhead(true)
@@ -157,6 +177,9 @@ func _set_overhead(on: bool) -> void:
 	if not on:
 		measure_line.clear()
 		ui.set_measure("")
+		_marker.visible = false
+		_marker_pos = Vector3.INF
+		ui.set_marker_ready(false)
 	ui.refresh()
 
 
@@ -198,6 +221,9 @@ func _process(delta: float) -> void:
 	ball_mesh.visible = session.state != ShotTypes.State.HOLE_COMPLETE or moving
 	var fwd := -rig.cam.global_transform.basis.z
 	ui.camera_yaw = deg_to_rad(Units.dir_to_bearing(fwd))
+	if not is_equal_approx(_shown_cup_r, session.cfg.cup_radius):
+		_shown_cup_r = session.cfg.cup_radius
+		course.set_cup_radius(_shown_cup_r)
 	if course.pin_label != null:
 		course.pin_label.text = Units.fmt_distance(Units.horizontal_distance(bpos, session.hole.cup_position()))
 	_update_aim_guide(bpos)
@@ -210,22 +236,26 @@ func _update_aim_guide(bpos: Vector3) -> void:
 	if not show:
 		_last_aim = -1.0
 		return
-	if is_equal_approx(_last_aim, session.aim_bearing_deg) and _last_ball.is_equal_approx(bpos):
+	var over := rig.mode == CameraRig.Mode.OVERHEAD
+	var k := clampf(rig.cam.size / 70.0, 1.0, 8.0) if over else 1.0
+	var key := session.aim_bearing_deg + k * 1000.0
+	if is_equal_approx(_last_aim, key) and _last_ball.is_equal_approx(bpos):
 		return
-	_last_aim = session.aim_bearing_deg
+	_last_aim = key
 	_last_ball = bpos
 	var d := session.aim_dir()
+	var length := AIM_GUIDE_LEN * k * (1.6 if over else 1.0)
 	var segs: Array = []
-	var s := 1.2
+	var s := 1.2 * k
 	var h := session.hole
-	while s < AIM_GUIDE_LEN:
+	while s < length:
 		var a := bpos + d * s
-		var b := bpos + d * (s + 1.1)
+		var b := bpos + d * (s + 1.1 * k)
 		a.y = h.contact_height(a.x, a.z) + 0.05
 		b.y = h.contact_height(b.x, b.z) + 0.05
 		segs.append([a, b])
-		s += 2.2
-	aim_line.draw_dashes(segs, 0.55, Color(1, 1, 1, 0.75))
+		s += 2.2 * k
+	aim_line.draw_dashes(segs, 0.55 * k, Color(1, 1, 0.5, 0.85) if over else Color(1, 1, 1, 0.75))
 
 
 func _update_trail(bpos: Vector3, moving: bool) -> void:
@@ -320,17 +350,42 @@ func _overhead_tap(screen_pos: Vector2) -> void:
 		var err := session.dev_place_ball(p.x, p.z)
 		ui.toast("DEV: ball placed" if err == "" else "DEV: %s" % err)
 		return
+	_set_marker(p)
+
+
+func _set_marker(p: Vector3) -> void:
+	_marker_pos = p
 	var b := session.ball_pos
 	var d := Units.horizontal_distance(b, p)
 	var a := Vector3(b.x, session.hole.contact_height(b.x, b.z) + 0.3, b.z)
 	var c := Vector3(p.x, session.hole.contact_height(p.x, p.z) + 0.3, p.z)
 	measure_line.draw_ribbon(PackedVector3Array([a, c]), clampf(rig.cam.size * 0.004, 0.3, 2.0), Color(1.0, 0.8, 0.2, 0.9))
-	ui.set_measure("Measured %s from ball (%s)" % [Units.fmt_yards(d), Surface.name_of(session.hole.surface_at(p.x, p.z))])
+	var bearing := Units.dir_to_bearing(p - b)
+	ui.set_measure("%s · bearing %d° · %s" % [Units.fmt_yards(d), int(round(bearing)), Surface.name_of(session.hole.surface_at(p.x, p.z))])
+	_marker.visible = true
+	_marker.position = c
+	ui.set_marker_ready(true)
+
+
+func _aim_at_marker() -> void:
+	if _marker_pos == Vector3.INF:
+		ui.toast("Tap the map first to pick a target point")
+		return
+	if session.state != ShotTypes.State.AIMING:
+		return
+	var dir := _marker_pos - session.ball_pos
+	if Vector2(dir.x, dir.z).length() < 0.5:
+		return
+	session.set_aim(Units.dir_to_bearing(dir))
+	ui.toast("Aim set: %d°" % int(round(session.aim_bearing_deg)))
+	_set_marker(_marker_pos)
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		handle_back()
+	elif what == NOTIFICATION_PREDELETE or what == NOTIFICATION_EXIT_TREE:
+		DisplayServer.screen_set_keep_on(false)
 
 
 func handle_back() -> void:

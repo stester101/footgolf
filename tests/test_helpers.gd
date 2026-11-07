@@ -2,6 +2,8 @@ class_name TestHelpers
 extends RefCounted
 
 const HOLE_PATHS := ["res://data/holes/hole_01.json", "res://data/holes/hole_02.json", "res://data/holes/hole_03.json"]
+const RIDGE_PATHS := ["res://data/holes/hole_04.json", "res://data/holes/hole_05.json", "res://data/holes/hole_06.json",
+	"res://data/holes/hole_07.json", "res://data/holes/hole_08.json", "res://data/holes/hole_09.json"]
 
 
 static func make_repo() -> FootballerRepository:
@@ -21,6 +23,13 @@ static func cleanup_repo(repo: FootballerRepository) -> void:
 static func load_holes() -> Array:
 	var out: Array = []
 	for p in HOLE_PATHS:
+		out.append(HoleDefinition.load_from_file(p))
+	return out
+
+
+static func load_ridge_holes() -> Array:
+	var out: Array = []
+	for p in RIDGE_PATHS:
 		out.append(HoleDefinition.load_from_file(p))
 	return out
 

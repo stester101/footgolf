@@ -20,6 +20,17 @@ var _sorted_cache: Array[Footballer] = []
 var _folded_names := PackedStringArray()  # parallel to _sorted_cache
 var _sorted_dirty := true
 var _nat_cache: Array[String] = []
+var _sort_cache: Dictionary = {}
+
+const SORT_LABELS := [["name_az", "Name A–Z"], ["name_za", "Name Z–A"], ["country", "Country"],
+	["born_old", "Born: oldest first"], ["born_new", "Born: youngest first"]]
+## Stat-based sorting/filtering is a TEST-MODE aid only (normal play never ranks by hidden stats).
+const STAT_SORT_LABELS := [["caps_hi", "Caps: most first"], ["caps_lo", "Caps: fewest first"],
+	["goals_hi", "Goals: most first"], ["goals_lo", "Goals: fewest first"]]
+const ERAS := [["Pre-1950", 0, 1949], ["1950s", 1950, 1959], ["1960s", 1960, 1969], ["1970s", 1970, 1979],
+	["1980s", 1980, 1989], ["1990s", 1990, 1999], ["2000+", 2000, 9999]]
+const CAPS_BANDS := [["Any caps", -1, -1], ["1 cap", 1, 1], ["2–9", 2, 9], ["10–49", 10, 49], ["50–99", 50, 99], ["100+", 100, 999999]]
+const GOALS_BANDS := [["Any goals", -1, -1], ["0 goals", 0, 0], ["1–4", 1, 4], ["5–19", 5, 19], ["20–49", 20, 49], ["50+", 50, 999999]]
 
 
 func load_all() -> void:
@@ -94,6 +105,7 @@ func _load_file(path: String) -> bool:
 func _invalidate() -> void:
 	_sorted_dirty = true
 	_nat_cache.clear()
+	_sort_cache.clear()
 
 
 func save() -> bool:
@@ -147,6 +159,103 @@ static func _compare(a: Footballer, b: Footballer) -> bool:
 
 
 ## Name search + optional nationality filter. No stat-based filtering/sorting.
+## All players in a given sort order (cached per key; built lazily on first use).
+func sorted_by(key: String) -> Array[Footballer]:
+	var base := all_sorted()
+	if key == "name_az" or key == "":
+		return base
+	if _sort_cache.has(key):
+		return _sort_cache[key]
+	var arr: Array[Footballer] = base.duplicate()
+	match key:
+		"name_za":
+			arr.reverse()
+		"country":
+			arr.sort_custom(func(a: Footballer, b: Footballer) -> bool:
+				return _compare(a, b) if a.nationality == b.nationality else a.nationality < b.nationality)
+		"born_old":
+			arr.sort_custom(func(a: Footballer, b: Footballer) -> bool:
+				var ya := a.birth_year if a.birth_year > 0 else 9999
+				var yb := b.birth_year if b.birth_year > 0 else 9999
+				return _compare(a, b) if ya == yb else ya < yb)
+		"born_new":
+			arr.sort_custom(func(a: Footballer, b: Footballer) -> bool:
+				return _compare(a, b) if a.birth_year == b.birth_year else a.birth_year > b.birth_year)
+		"caps_hi":
+			arr.sort_custom(func(a: Footballer, b: Footballer) -> bool:
+				return _compare(a, b) if a.caps == b.caps else a.caps > b.caps)
+		"caps_lo":
+			arr.sort_custom(func(a: Footballer, b: Footballer) -> bool:
+				return _compare(a, b) if a.caps == b.caps else a.caps < b.caps)
+		"goals_hi":
+			arr.sort_custom(func(a: Footballer, b: Footballer) -> bool:
+				return _compare(a, b) if a.goals == b.goals else a.goals > b.goals)
+		"goals_lo":
+			arr.sort_custom(func(a: Footballer, b: Footballer) -> bool:
+				return _compare(a, b) if a.goals == b.goals else a.goals < b.goals)
+		_:
+			return base
+	_sort_cache[key] = arr
+	return arr
+
+
+## Filtered + sorted query. Options: q (name text), nations {name:true}, eras {index:true} (see ERAS),
+## available_only (needs pool), caps_band / goals_band (index into CAPS_BANDS / GOALS_BANDS),
+## sort (see SORT_LABELS), limit (<0 = all).
+func query(o: Dictionary, pool: FootballerPool = null) -> Array[Footballer]:
+	var out: Array[Footballer] = []
+	var limit := int(o.get("limit", -1))
+	for fb in sorted_by(String(o.get("sort", "name_az"))):
+		if _passes(fb, o, pool, true):
+			out.append(fb)
+			if limit >= 0 and out.size() >= limit:
+				break
+	return out
+
+
+## Per-nationality match counts for the current filters, ignoring the nationality filter itself
+## (so country chips can show "how many would I get if I picked this").
+func facet_counts(o: Dictionary, pool: FootballerPool = null) -> Dictionary:
+	var counts := {}
+	for fb in all_sorted():
+		if _passes(fb, o, pool, false):
+			counts[fb.nationality] = int(counts.get(fb.nationality, 0)) + 1
+	return counts
+
+
+func _passes(fb: Footballer, o: Dictionary, pool: FootballerPool, use_nations: bool) -> bool:
+	if use_nations:
+		var nations: Dictionary = o.get("nations", {})
+		if not nations.is_empty() and not nations.has(fb.nationality):
+			return false
+	var q := fold(String(o.get("q", "")).strip_edges())
+	if q != "" and not fb.folded().contains(q):
+		return false
+	if bool(o.get("available_only", false)) and pool != null and pool.is_used(fb.id):
+		return false
+	var eras: Dictionary = o.get("eras", {})
+	if not eras.is_empty():
+		var ok := false
+		for idx in eras.keys():
+			var e: Array = ERAS[int(idx)]
+			if fb.birth_year > 0 and fb.birth_year >= int(e[1]) and fb.birth_year <= int(e[2]):
+				ok = true
+				break
+		if not ok:
+			return false
+	var cb := int(o.get("caps_band", 0))
+	if cb > 0:
+		var b: Array = CAPS_BANDS[cb]
+		if fb.caps < int(b[1]) or fb.caps > int(b[2]):
+			return false
+	var gb := int(o.get("goals_band", 0))
+	if gb > 0:
+		var b2: Array = GOALS_BANDS[gb]
+		if fb.goals < int(b2[1]) or fb.goals > int(b2[2]):
+			return false
+	return true
+
+
 ## limit < 0 = no limit. Matching is accent/case-insensitive on name.
 func search(query: String, nationality: String = "", limit: int = -1) -> Array[Footballer]:
 	var q := fold(query.strip_edges())

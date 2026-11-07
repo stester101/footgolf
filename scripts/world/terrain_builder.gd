@@ -20,13 +20,24 @@ const SURFACE_ALPHA := {
 	Surface.Type.BUNKER: 0.0, Surface.Type.WATER: 0.0,
 }
 const MAP_M_PER_PX := 1.0
+const MAP_MAX_PIXELS := 120000.0
+const MESH_TARGET_VERTS := 45000.0
 
+
+## Metres per surface-map pixel: 1 m, coarser on very large holes (keeps load time bounded).
+static func map_scale(hole: HoleDefinition) -> float:
+	return maxf(MAP_M_PER_PX, sqrt(hole.bounds.get_area() / MAP_MAX_PIXELS))
+
+
+static func mesh_spacing(hole: HoleDefinition) -> float:
+	return clampf(sqrt(hole.bounds.get_area() / MESH_TARGET_VERTS), 2.0, 3.2)
 
 ## Per-pixel surface colour map covering hole.bounds (same classifier as physics).
 static func build_surface_texture(hole: HoleDefinition) -> ImageTexture:
 	var r := hole.bounds
-	var w := int(ceil(r.size.x / MAP_M_PER_PX))
-	var h := int(ceil(r.size.y / MAP_M_PER_PX))
+	var mpp := map_scale(hole)
+	var w := int(ceil(r.size.x / mpp))
+	var h := int(ceil(r.size.y / mpp))
 	var data := PackedByteArray()
 	data.resize(w * h * 4)
 	var k := 0
@@ -35,9 +46,9 @@ static func build_surface_texture(hole: HoleDefinition) -> ImageTexture:
 		var c: Color = COLORS[t]
 		cache[t] = PackedByteArray([c.r8, c.g8, c.b8, int(float(SURFACE_ALPHA[t]) * 255.0)])
 	for iy in h:
-		var z := r.position.y + (iy + 0.5) * MAP_M_PER_PX
+		var z := r.position.y + (iy + 0.5) * mpp
 		for ix in w:
-			var x := r.position.x + (ix + 0.5) * MAP_M_PER_PX
+			var x := r.position.x + (ix + 0.5) * mpp
 			var px: PackedByteArray = cache[hole.surface_at(x, z)]
 			data[k] = px[0]
 			data[k + 1] = px[1]

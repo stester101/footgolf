@@ -7,14 +7,18 @@ const TERRAIN_SPACING := 2.0
 
 var hole: HoleDefinition
 var pin_label: Label3D
+var cup_radius := 0.1524
+var _cup_disc: MeshInstance3D
+var _cup_ring: MeshInstance3D
 var _terrain_shader: Shader = preload("res://assets/shaders/terrain.gdshader")
 var _water_shader: Shader = preload("res://assets/shaders/water.gdshader")
 var _flag_shader: Shader = preload("res://assets/shaders/flag.gdshader")
 var _foliage_shader: Shader = preload("res://assets/shaders/foliage.gdshader")
 
 
-func build(p_hole: HoleDefinition) -> void:
+func build(p_hole: HoleDefinition, p_cup_radius: float = 0.1524) -> void:
 	hole = p_hole
+	cup_radius = p_cup_radius
 	for c in get_children():
 		c.queue_free()
 	_build_terrain()
@@ -29,7 +33,7 @@ func build(p_hole: HoleDefinition) -> void:
 func _build_terrain() -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = "Terrain"
-	mi.mesh = TerrainBuilder.build_mesh(hole, TERRAIN_SPACING)
+	mi.mesh = TerrainBuilder.build_mesh(hole, TerrainBuilder.mesh_spacing(hole))
 	var mat := ShaderMaterial.new()
 	mat.shader = _terrain_shader
 	var d := (hole.pin - hole.tee).normalized()
@@ -242,31 +246,31 @@ func _build_backdrop(blob: Mesh) -> void:
 
 func _build_pin() -> void:
 	var cup := hole.cup_position()
-	var cup_mi := MeshInstance3D.new()
+	_cup_disc = MeshInstance3D.new()
 	var cm := CylinderMesh.new()
-	cm.top_radius = 0.054
-	cm.bottom_radius = 0.054
+	cm.top_radius = 1.0
+	cm.bottom_radius = 1.0
 	cm.height = 0.01
-	cm.radial_segments = 16
-	cup_mi.mesh = cm
+	cm.radial_segments = 24
+	_cup_disc.mesh = cm
 	var cmat := StandardMaterial3D.new()
 	cmat.albedo_color = Color(0.03, 0.03, 0.03)
-	cup_mi.material_override = cmat
-	cup_mi.position = cup + Vector3(0, 0.006, 0)
-	add_child(cup_mi)
-	var ring := MeshInstance3D.new()
+	_cup_disc.material_override = cmat
+	_cup_disc.position = cup + Vector3(0, 0.006, 0)
+	add_child(_cup_disc)
+	_cup_ring = MeshInstance3D.new()
 	var tm := TorusMesh.new()
-	tm.inner_radius = 0.054
-	tm.outer_radius = 0.075
-	tm.rings = 16
+	tm.inner_radius = 0.92
+	tm.outer_radius = 1.12
+	tm.rings = 24
 	tm.ring_segments = 4
-	ring.mesh = tm
+	_cup_ring.mesh = tm
 	var rmat := StandardMaterial3D.new()
 	rmat.albedo_color = Color(0.95, 0.95, 0.95)
-	ring.material_override = rmat
-	ring.scale = Vector3(1, 0.1, 1)
-	ring.position = cup + Vector3(0, 0.004, 0)
-	add_child(ring)
+	_cup_ring.material_override = rmat
+	_cup_ring.position = cup + Vector3(0, 0.004, 0)
+	add_child(_cup_ring)
+	set_cup_radius(cup_radius)
 	var pole := MeshInstance3D.new()
 	var pm := CylinderMesh.new()
 	pm.top_radius = 0.012
@@ -299,6 +303,14 @@ func _build_pin() -> void:
 	pin_label.modulate = Color(1, 1, 1)
 	pin_label.position = cup + Vector3(0, 3.0, 0)
 	add_child(pin_label)
+
+
+func set_cup_radius(r: float) -> void:
+	cup_radius = r
+	if _cup_disc != null:
+		_cup_disc.scale = Vector3(r, 1.0, r)
+	if _cup_ring != null:
+		_cup_ring.scale = Vector3(r, 0.1, r)
 
 
 func _build_tee_markers() -> void:

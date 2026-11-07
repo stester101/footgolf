@@ -105,12 +105,19 @@ func _build_ball_tab() -> VBoxContainer:
 	var holes: Array = []
 	for i in session.hole_defs.size():
 		var idx := i
-		holes.append(_b("Hole %d" % (i + 1), func() -> void:
+		holes.append(_b("%d" % (i + 1), func() -> void:
 			session.dev_select_hole(idx)
 			session.begin_play()
 			_say("Jumped to hole %d (its state reset)" % (idx + 1))))
 	v.add_child(UiKit.text("Select / restart hole", 20, UiKit.C_MUTED))
-	v.add_child(_btn_row(holes))
+	var hole_grid := GridContainer.new()
+	hole_grid.columns = 5
+	hole_grid.add_theme_constant_override("h_separation", 6)
+	hole_grid.add_theme_constant_override("v_separation", 6)
+	for hb in holes:
+		UiKit.expand(hb)
+		hole_grid.add_child(hb)
+	v.add_child(hole_grid)
 	v.add_child(_btn_row([_b("Restart hole", func() -> void:
 		session.dev_restart_hole()
 		session.begin_play()
@@ -148,9 +155,8 @@ func _build_ball_tab() -> VBoxContainer:
 	lie.selected = 0 if session.lie_override < 0 else Surface.PLAYABLE.find(session.lie_override) + 1
 	lie.custom_minimum_size = Vector2(0, 58)
 	lie.item_selected.connect(func(i: int) -> void:
-		session.lie_override = -1 if i == 0 else int(Surface.PLAYABLE[i - 1])
+		session.dev_set_lie_override(-1 if i == 0 else int(Surface.PLAYABLE[i - 1]))
 		_save()
-		session.selection_changed.emit()
 		_say("Lie override %s" % ("off" if i == 0 else Surface.name_of(session.lie_override))))
 	v.add_child(lie)
 	var force := CheckButton.new()
@@ -235,6 +241,12 @@ func _build_env_tab() -> VBoxContainer:
 		ws.set_value_no_signal(0.0)
 		_save()
 		_say("Wind zeroed")))
+	var cup_spin := UiKit.spin(4.25, 40, 0.25, session.cfg.cup_diameter_in(), Callable())
+	cup_spin.value_changed.connect(func(val: float) -> void:
+		session.cfg.set_cup_diameter_in(val)
+		_save())
+	v.add_child(_row("Hole size (diameter, in)", cup_spin))
+	v.add_child(_btn_row([_b("Regulation 4.25", func() -> void: cup_spin.value = 4.25), _b("Default 12", func() -> void: cup_spin.value = 12.0), _b("Huge 24", func() -> void: cup_spin.value = 24.0)]))
 	v.add_child(_row("Hole-out radius (ft, 0 = cup only)", UiKit.spin(0, 10, 0.5, session.holeout_radius_ft, func(val: float) -> void:
 		session.holeout_radius_ft = ScoringService.clamp_radius_ft(val)
 		_save())))

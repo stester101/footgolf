@@ -1,11 +1,8 @@
 extends Node
 ## Autoload "App": shared offline services (footballer repository, settings, hole data).
 
-const HOLE_PATHS := [
-	"res://data/holes/hole_01.json",
-	"res://data/holes/hole_02.json",
-	"res://data/holes/hole_03.json",
-]
+const COURSES_PATH := "res://data/courses.json"
+const HOLE_DIR := "res://data/holes/"
 
 var settings := SettingsStore.new()
 var repo := FootballerRepository.new()
@@ -38,10 +35,29 @@ func dataset_label() -> String:
 	return "Synthetic test players (%d)" % repo.count()
 
 
-func load_holes() -> Array:
+## [{id, name, blurb, holes:[hole ids]}]
+func courses() -> Array:
+	var f := FileAccess.open(COURSES_PATH, FileAccess.READ)
+	if f == null:
+		return []
+	var d = JSON.parse_string(f.get_as_text())
+	if typeof(d) == TYPE_DICTIONARY and d.has("courses"):
+		return d["courses"]
+	return []
+
+
+func course_info(course_id: String) -> Dictionary:
+	for c in courses():
+		if String(c["id"]) == course_id:
+			return c
+	var all := courses()
+	return all[0] if not all.is_empty() else {}
+
+
+func load_holes(course_id: String = "starter") -> Array:
 	var out: Array = []
-	for p in HOLE_PATHS:
-		var h := HoleDefinition.load_from_file(p)
+	for hid in course_info(course_id).get("holes", []):
+		var h := HoleDefinition.load_from_file("%s%s.json" % [HOLE_DIR, hid])
 		if h != null:
 			out.append(h)
 	return out

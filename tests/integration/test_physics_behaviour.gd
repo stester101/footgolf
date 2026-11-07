@@ -104,7 +104,7 @@ func test_tree_canopy_shortens_flight() -> void:
 func test_ball_always_stops_and_stays_finite_on_real_holes() -> void:
 	var cfg := PhysicsConfig.new()
 	var max_t := 0.0
-	for hd in TestHelpers.load_holes():
+	for hd in TestHelpers.load_holes() + TestHelpers.load_ridge_holes():
 		var hole: HoleDefinition = hd
 		for bearing in [0.0, 30.0, 75.0, 150.0, 210.0, 300.0, 345.0]:
 			for caps in [5, 60, 180, 400]:
@@ -139,7 +139,7 @@ func test_shallow_slope_micro_roll_terminates() -> void:
 
 func test_extreme_speed_is_finite() -> void:
 	var cfg := PhysicsConfig.new()
-	for hd in TestHelpers.load_holes():
+	for hd in TestHelpers.load_holes() + TestHelpers.load_ridge_holes():
 		var sim := BallSim.new(hd, cfg)
 		sim.launch((hd as HoleDefinition).tee_position(cfg.ball_radius), Vector3(400, 300, 900), true)
 		sim.run_until_done()

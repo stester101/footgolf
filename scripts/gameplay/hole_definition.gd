@@ -87,8 +87,8 @@ class Box:
 		return maxf(lx - hw, lz - hl)
 
 
-const TEE_BLEND := 1.5
-const GREEN_BLEND := 5.0
+const TEE_BLEND := 4.0
+const GREEN_BLEND := 8.0
 const FRINGE_WIDTH := 1.6
 const BUNKER_INNER := 2.0
 const BUNKER_LIP := 0.8
@@ -124,6 +124,8 @@ var boundary := PackedVector2Array()
 var bounds := Rect2(-100, -50, 200, 300)
 var trees: Array = []           # [{x,z,base_y,trunk_r,trunk_h,canopy_y,canopy_r,canopy_ry,kind}]
 var _tree_grid: Dictionary = {}
+var _spacing_grid: Dictionary = {}  # 4.5 m cells -> tree indices (placement spacing check)
+var conifer_ratio := 0.5
 var wind_speed := 0.0
 var wind_bearing := 0.0
 var relief_points: Array = []   # [Vector2]
@@ -179,7 +181,7 @@ func _parse(d: Dictionary) -> void:
 	for bd in t.get("bumps", []):
 		var bc := _v2(bd.get("center", [0, 0]))
 		var sigma := float(bd.get("radius", 10.0)) * 0.5
-		var ext := sigma * 3.0
+		var ext := sigma * 4.6  # Gaussian tail < 3e-5 of height at the cutoff (no visible step)
 		bumps.append({"x": bc.x, "z": bc.y, "sigma2": 2.0 * sigma * sigma, "h": float(bd.get("height", 0.0)),
 			"aabb": Rect2(bc.x - ext, bc.y - ext, 2.0 * ext, 2.0 * ext)})
 	for td in d.get("tee_boxes", []):
@@ -206,6 +208,7 @@ func _parse(d: Dictionary) -> void:
 	var bb: Array = d.get("bounds", [])
 	if bb.size() == 4:
 		bounds = Rect2(float(bb[0]), float(bb[1]), float(bb[2]) - float(bb[0]), float(bb[3]) - float(bb[1]))
+	conifer_ratio = clampf(float((d.get("theme", {}) as Dictionary).get("conifer", 0.5)), 0.0, 1.0)
 	var w: Dictionary = d.get("wind", {})
 	wind_speed = float(w.get("speed", 0.0))
 	wind_bearing = float(w.get("bearing", 0.0))
@@ -402,9 +405,13 @@ func _add_tree(p: Vector2, height: float, rng: RandomNumberGenerator, filter: bo
 			var s := surface_at(p.x + off.x, p.y + off.y)
 			if s != Surface.Type.ROUGH and s != Surface.Type.OOB:
 				return
-		for other in trees:
-			if Vector2(float(other["x"]), float(other["z"])).distance_to(p) < 4.5:
-				return
+		var ck := Vector2i(floori(p.x / 4.5), floori(p.y / 4.5))
+		for ix in range(ck.x - 1, ck.x + 2):
+			for iz in range(ck.y - 1, ck.y + 2):
+				for ti in _spacing_grid.get(Vector2i(ix, iz), []):
+					var other: Dictionary = trees[ti]
+					if Vector2(float(other["x"]), float(other["z"])).distance_to(p) < 4.5:
+						return
 		if p.distance_to(tee) < 12.0 or p.distance_to(pin) < 18.0:
 			return
 	var base_y := terrain_height(p.x, p.y)
@@ -417,8 +424,12 @@ func _add_tree(p: Vector2, height: float, rng: RandomNumberGenerator, filter: bo
 		"canopy_r": canopy_r,
 		"canopy_ry": canopy_r * 1.05,
 		"height": height,
-		"kind": rng.randi() % 2,
+		"kind": 1 if (rng.randi() % 100) < int(conifer_ratio * 100.0) else 0,
 	})
+	var sk := Vector2i(floori(p.x / 4.5), floori(p.y / 4.5))
+	if not _spacing_grid.has(sk):
+		_spacing_grid[sk] = []
+	(_spacing_grid[sk] as Array).append(trees.size() - 1)
 
 
 ## Indices of trees whose collision proxies could touch a ball at (x, z).

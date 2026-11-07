@@ -258,3 +258,42 @@ func test_spin_recorded_and_replayed() -> void:
 	assert_eq(s.last_result.final_pos, first.final_pos, "replay with spin is deterministic")
 	assert_near(s.last_result.spin, -0.75, 1e-9)
 	TestHelpers.cleanup_repo(s.repo)
+
+
+func test_no_caps_on_the_green_and_spin_resets() -> void:
+	var s := TestHelpers.make_session()
+	var cup := s.hole.cup_position()
+	assert_eq(s.dev_place_ball(cup.x, cup.z - 5.0), "")
+	assert_eq(s.current_lie(), Surface.Type.GREEN)
+	s.set_mode(ShotTypes.Mode.CAPS)
+	assert_eq(s.mode, ShotTypes.Mode.GOALS, "caps refused on the green")
+	var id := TestHelpers.add_player(s.repo, 30, 3)
+	s.select_footballer(id)
+	s.mode = ShotTypes.Mode.CAPS  # bypass set_mode: take_shot must still refuse
+	assert_true(s.can_take_shot() != "", "take_shot validates the green rule")
+	assert_false(s.take_shot())
+	assert_eq(s.current_hole_state().strokes, 0, "refused shot costs nothing")
+	assert_true(s.pool.is_available(id))
+	# ball lands on the green after a caps shot -> mode auto-switches to Goals
+	var s2 := TestHelpers.make_session()
+	var c2 := s2.hole.cup_position()
+	s2.dev_place_ball(c2.x, c2.z - 30.0)
+	s2.set_mode(ShotTypes.Mode.CAPS)
+	s2.set_spin(0.5)
+	var r := TestHelpers.shoot(s2, ShotTypes.Mode.CAPS, 33, 0)
+	assert_eq(s2.spin, 0.0, "spin reset after the shot")
+	if s2.current_lie() == Surface.Type.GREEN:
+		assert_eq(s2.mode, ShotTypes.Mode.GOALS, "auto-switched to Goals on the green")
+	assert_true(r != null)
+	TestHelpers.cleanup_repo(s.repo)
+	TestHelpers.cleanup_repo(s2.repo)
+
+
+func test_bigger_cup_default_and_setting() -> void:
+	var cfg := PhysicsConfig.new()
+	assert_near(cfg.cup_diameter_in(), 12.0, 1e-6, "default 12 in")
+	cfg.set_cup_diameter_in(4.25)
+	assert_near(cfg.cup_radius, PhysicsConfig.REGULATION_CUP_RADIUS, 0.0005)
+	assert_near(cfg.cup_capture_speed_eff(), cfg.cup_capture_speed, 0.01, "regulation cup: base capture speed")
+	cfg.set_cup_diameter_in(100.0)
+	assert_near(cfg.cup_diameter_in(), 40.0, 1e-6, "clamped to 40 in")

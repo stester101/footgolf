@@ -14,6 +14,7 @@ var career_years := ""
 var notes := ""
 ## Internal provenance (source, wikidata id, retrieval date, provisional flag). Never shown pre-shot.
 var provenance: Dictionary = {}
+var _folded := ""
 
 const PROVENANCE_KEYS := ["source", "wikidata", "team_qid", "retrieved", "provisional"]
 
@@ -53,6 +54,13 @@ func to_dict() -> Dictionary:
 	for k in provenance.keys():
 		d[k] = provenance[k]
 	return d
+
+
+## Lower-case, accent-stripped name (cached) for fast search.
+func folded() -> String:
+	if _folded == "":
+		_folded = FootballerRepository.fold(name)
+	return _folded
 
 
 func copy() -> Footballer:

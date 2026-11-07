@@ -33,5 +33,12 @@ if [ $smoke_rc -ne 0 ]; then echo "Smoke test failed (rc=$smoke_rc)"; status=1; 
 if ! grep -q "^\[SMOKE\] PASS" "$LOG_DIR/smoke.log"; then echo "Smoke test did not report PASS"; status=1; fi
 if grep -E "SCRIPT ERROR" "$LOG_DIR/smoke.log"; then echo "Script errors during smoke test"; status=1; fi
 
+echo "== Runtime smoke test #2 (Pinewood Ridge, 6 hilly holes)"
+timeout 900 "$GODOT" --headless --path . -- --smoke-test --smoke-course="Pinewood Ridge" > "$LOG_DIR/smoke_ridge.log" 2>&1
+ridge_rc=$?
+grep -E "ROUND COMPLETE|SMOKE\] (PASS|FAIL)|SCRIPT ERROR" "$LOG_DIR/smoke_ridge.log" || true
+if [ $ridge_rc -ne 0 ] || ! grep -q "^\[SMOKE\] PASS" "$LOG_DIR/smoke_ridge.log"; then echo "Ridge smoke test failed"; status=1; fi
+if grep -E "SCRIPT ERROR" "$LOG_DIR/smoke_ridge.log"; then echo "Script errors during ridge smoke test"; status=1; fi
+
 if [ $status -eq 0 ]; then echo "ALL VALIDATION PASSED"; else echo "VALIDATION FAILED"; fi
 exit $status

@@ -93,6 +93,7 @@ func start_hole(index: int) -> void:
 	_hole_start_pool = pool.snapshot()
 	if selected_id != "" and not pool.is_available(selected_id):
 		selected_id = ""
+	_enforce_lie_rules()
 	_set_state(ShotTypes.State.HOLE_INTRO)
 	hole_started.emit(index)
 	ball_placed.emit()
@@ -124,9 +125,24 @@ func set_aim(bearing_deg: float) -> void:
 	aim_bearing_deg = fposmod(bearing_deg, 360.0)
 
 
+const GREEN_CAPS_MSG := "No chipping on the green: Goals only"
+
+
 func set_mode(m: int) -> void:
-	if m == ShotTypes.Mode.CAPS or m == ShotTypes.Mode.GOALS:
-		mode = m
+	if m != ShotTypes.Mode.CAPS and m != ShotTypes.Mode.GOALS:
+		return
+	if m == ShotTypes.Mode.CAPS and current_lie() == Surface.Type.GREEN:
+		message.emit(GREEN_CAPS_MSG)
+		return
+	mode = m
+	selection_changed.emit()
+
+
+## Owner rule (docs/DECISIONS.md): a ball on the GREEN may only be played with Goals (ground).
+func _enforce_lie_rules() -> void:
+	if mode == ShotTypes.Mode.CAPS and hole != null and current_lie() == Surface.Type.GREEN:
+		mode = ShotTypes.Mode.GOALS
+		message.emit("On the green: switched to Goals")
 		selection_changed.emit()
 
 
@@ -198,6 +214,8 @@ func can_take_shot() -> String:
 		return "Footballer already used this match"
 	if mode != ShotTypes.Mode.CAPS and mode != ShotTypes.Mode.GOALS:
 		return "Choose Caps or Goals"
+	if mode == ShotTypes.Mode.CAPS and current_lie() == Surface.Type.GREEN:
+		return GREEN_CAPS_MSG
 	return ""
 
 
@@ -293,6 +311,7 @@ func _launch(req: ShotRequest, plan: Dictionary) -> void:
 	sim.wind = Units.bearing_to_dir(req.wind_bearing_deg) * req.wind_speed_mps
 	sim.surface_override = req.launch_lie if (force_surface and lie_override >= 0) else -1
 	sim.launch(req.start_pos, plan["velocity"], plan["airborne"], ShotCalculator.quantise_spin(req.spin))
+	spin = 0.0  # spin applies to one shot only
 	_accum = 0.0
 	_set_state(ShotTypes.State.BALL_IN_MOTION)
 	shot_started.emit(req)
@@ -405,6 +424,7 @@ func _resolve() -> void:
 		last_safe_pos = final
 	hs.shots.append(r)
 	history.append(r)
+	_enforce_lie_rules()
 	last_result = r
 	last_request = req
 	sim = null
@@ -547,8 +567,16 @@ func dev_place_ball(x: float, z: float) -> String:
 	if state == ShotTypes.State.SHOT_RESULT or state == ShotTypes.State.HOLE_INTRO:
 		_set_state(ShotTypes.State.AIMING)
 	aim_at_pin()
+	_enforce_lie_rules()
 	ball_placed.emit()
 	return ""
+
+
+## Developer lie override (-1 = off). Re-applies lie rules (e.g. Goals-only on the green).
+func dev_set_lie_override(lie: int) -> void:
+	lie_override = lie
+	_enforce_lie_rules()
+	selection_changed.emit()
 
 
 func dev_reset_ball() -> void:

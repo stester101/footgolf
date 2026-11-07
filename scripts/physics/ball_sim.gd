@@ -286,7 +286,7 @@ func _step_roll() -> void:
 		p_new = res[0]
 		vel = res[1]
 		p_new.y = hole.terrain_height(p_new.x, p_new.z) + r
-	if hole.has_cup and vel.length() <= cfg.cup_capture_speed:
+	if hole.has_cup and vel.length() <= cfg.cup_capture_speed_eff():
 		var q := Geometry3D.get_closest_point_to_segment(_cup, pos, p_new)
 		if Units.horizontal_distance(q, _cup) <= cfg.cup_radius:
 			_hole_out()

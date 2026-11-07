@@ -16,7 +16,8 @@ Owner-approved deviations from the spec are logged in `docs/DECISIONS.md`.
 - `scripts/world/`, `scripts/camera/`, `scripts/ui/`, `scripts/round_controller.gd`, `scripts/main.gd`
   — presentation only; UI never decides score or consumption.
 - Autoload `App` (`scripts/core/app.gd`): repo, settings, hole loading. Logic classes must not use it.
-- Holes: `data/holes/hole_0{1,2,3}.json`. Units: 1 world unit = 1 m, Y up, horizontal = X/Z.
+- Holes: `data/holes/hole_01..09.json`; courses in `data/courses.json` (Starter Links 1-3, Pinewood Ridge 4-9,
+  Full 9). Ridge holes come from `tools/data/gen_forest_holes.py`. Units: 1 world unit = 1 m, Y up, horizontal = X/Z.
   Bearing 0° = +Z, 90° = +X.
 
 ## Locked gameplay invariants (never change silently)
@@ -31,12 +32,14 @@ Owner-approved deviations from the spec are logged in `docs/DECISIONS.md`.
 - Footballer usable once per match (all 3 holes); new round resets pool, keeps DB edits.
 - Water/OOB: +1 penalty, deterministic safe relief. Max score par+5 ends hole.
 - Hole-out only when AT REST within radius (default 5 ft, 0–10); at 0 ft physical cup entry only.
+- Cup default is 12 in diameter (owner-approved); no Caps shots from the GREEN (Goals only); spin resets each shot.
+- Picker never sorts/filters by stats outside TEST MODE.
 - Developer Undo ≠ mulligan (keep names separate).
 
 ## Commands
 ```bash
 tools/scripts/install_godot.sh ~/godot [--templates]   # pinned 4.7-stable, SHA-512 verified
-GODOT=~/godot/godot tools/scripts/run_tests.sh         # import + 59 tests + full-round smoke test
+GODOT=~/godot/godot tools/scripts/run_tests.sh         # import + 64 tests + 2 full-round smoke tests
 godot --headless --path . -s res://tests/run_tests.gd -- --filter=<name>   # subset
 godot --path . -- --smoke-test [--screenshots=<dir>]   # play a full round via real UI
 godot --headless --path . --export-debug "Android" builds/football-golf-v0.1-debug.apk
