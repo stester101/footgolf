@@ -1,13 +1,13 @@
 {
   "description": "Deterministic DeveloperScenario fixtures: hole, ball position, environment, shot and expected outcome.",
   "scenarios": [
-    {"id": "h1_tee_150caps_calm", "hole": 0, "ball": null, "wind": [0, 0], "mode": "CAPS", "caps": 150, "goals": 0, "aim": "pin",
-     "expect": {"hazard": "", "penalty": 0, "carry_yd_min": 140, "carry_yd_max": 160}},
-    {"id": "h1_green_putt_zero_goals", "hole": 0, "ball": [2.0, 131.0], "wind": [0, 0], "mode": "GOALS", "caps": 0, "goals": 0, "aim": "pin",
+    {"id": "h1_tee_60caps_calm", "hole": 0, "ball": null, "wind": [0, 0], "mode": "CAPS", "caps": 60, "goals": 0, "aim": "pin",
+     "expect": {"hazard": "", "penalty": 0, "carry_yd_min": 55, "carry_yd_max": 65}},
+    {"id": "h1_green_putt_zero_goals", "hole": 0, "ball": [1.0, 62.5], "wind": [0, 0], "mode": "GOALS", "caps": 0, "goals": 0, "aim": "pin",
      "expect": {"total_m_max": 0.0, "strokes": 1}},
-    {"id": "h3_lake_short_carry", "hole": 2, "ball": [-18.0, 262.0], "wind": [0, 0], "mode": "CAPS", "caps": 44, "goals": 0, "aim": 0.0,
+    {"id": "h3_lake_short_carry", "hole": 2, "ball": [-13.6, 104.8], "wind": [0, 0], "mode": "CAPS", "caps": 44, "goals": 0, "aim": 0.0,
      "expect": {"hazard": "WATER", "penalty": 1, "score": 2}},
-    {"id": "h3_lake_full_carry", "hole": 2, "ball": [-18.0, 262.0], "wind": [0, 0], "mode": "CAPS", "caps": 90, "goals": 0, "aim": 0.0,
+    {"id": "h3_lake_full_carry", "hole": 2, "ball": [-13.6, 104.8], "wind": [0, 0], "mode": "CAPS", "caps": 90, "goals": 0, "aim": 0.0,
      "expect": {"hazard": "", "penalty": 0}},
     {"id": "h1_oob_right", "hole": 0, "ball": null, "wind": [0, 0], "mode": "CAPS", "caps": 120, "goals": 0, "aim": 90.0,
      "expect": {"hazard": "OOB", "penalty": 1}},

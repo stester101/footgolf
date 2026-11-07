@@ -6,7 +6,7 @@ func test_three_holes_par_and_length() -> void:
 	var defs := TestHelpers.load_holes()
 	assert_eq(defs.size(), 3)
 	var pars := [3, 4, 5]
-	var yards := [150, 360, 510]
+	var yards := [75, 160, 260]
 	for i in 3:
 		var h: HoleDefinition = defs[i]
 		assert_eq(h.par, pars[i])
@@ -199,19 +199,19 @@ func _bot_round(defs: Array, label: String) -> void:
 func test_ridge_holes_valid_and_hilly() -> void:
 	var defs := TestHelpers.load_ridge_holes()
 	var pars := [4, 3, 5, 4, 3, 5]
-	var yards := [380, 195, 540, 335, 160, 575]
+	var yards := [170, 90, 270, 150, 70, 290]
 	assert_eq(defs.size(), 6)
 	for i in 6:
 		var h: HoleDefinition = defs[i]
 		var st := _check_generated_hole(h, pars[i], yards[i])
 		assert_gt(float(st["relief"]), 12.0, "%s is hilly" % h.id)
-		assert_gt(h.trees.size(), 150, "%s forested" % h.id)
+		assert_gt(h.trees.size(), 100, "%s forested" % h.id)
 
 
 func test_coastal_holes_valid_and_open() -> void:
 	var defs := TestHelpers.load_hole_ids(TestHelpers.COASTAL_IDS)
 	var pars := [4, 3, 5, 4]
-	var yards := [395, 170, 555, 350]
+	var yards := [175, 80, 275, 155]
 	assert_eq(defs.size(), 4)
 	var pots := 0
 	var water := 0
@@ -233,7 +233,7 @@ func test_coastal_holes_valid_and_open() -> void:
 func test_lakeside_holes_valid_with_water() -> void:
 	var defs := TestHelpers.load_hole_ids(TestHelpers.LAKESIDE_IDS)
 	var pars := [4, 3, 5, 4]
-	var yards := [365, 165, 525, 405]
+	var yards := [165, 85, 250, 185]
 	assert_eq(defs.size(), 4)
 	for i in defs.size():
 		var h: HoleDefinition = defs[i]

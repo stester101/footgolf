@@ -18,7 +18,8 @@ Owner-approved deviations from the spec are logged in `docs/DECISIONS.md`.
 - Autoload `App` (`scripts/core/app.gd`): repo, settings, hole loading. Logic classes must not use it.
 - Holes: `data/holes/hole_01..17.json`; courses in `data/courses.json` (Starter Links 1-3, Pinewood Ridge 4-9,
   Coastal Links 10-13, Lakeside 14-17, Full 9 = 1-9, Grand Tour = all 17 / Developer Test). Holes 4-17 come
-  from `tools/data/gen_forest_holes.py` (themed specs; JSON is the source of truth). Units: 1 world unit = 1 m, Y up, horizontal = X/Z.
+  from `tools/data/gen_forest_holes.py` (themed specs; JSON is the source of truth). Hole lengths (owner-approved):
+  par 3 = 50-100 yd, par 4 = 100-200 yd, par 5 = 200-300 yd (docs/DECISIONS.md). Units: 1 world unit = 1 m, Y up, horizontal = X/Z.
   Bearing 0° = +Z, 90° = +X.
 
 ## Locked gameplay invariants (never change silently)

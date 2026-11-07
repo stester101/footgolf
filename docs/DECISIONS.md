@@ -58,7 +58,18 @@ Changes to locked rules in `docs/SPECIFICATION.md`, made explicitly by the produ
 - Lakeside (holes 14-17, par 16): parkland, water carries off the tee / into greens, a long lake on
   hole 17, mostly deciduous trees, gentle hills, light wind.
 - Both come from `tools/data/gen_forest_holes.py` (now theme-parametrised; Pinewood Ridge regenerates
-  identically). Lengths are nominal, in the existing ranges (par 3 165-170, par 4 350-405,
-  par 5 525-555 yd); the owner will revisit hole lengths later, so no length simulations were run.
+  identically apart from the boundary). Lengths: see "Hole lengths" below.
 - Course list: Starter Links, Pinewood Ridge, Coastal Links, Lakeside, Full 9 (id `full9`, holes 1-9)
   and Grand Tour (id `all`, all 17 holes; Developer Test plays it). The main-menu course list scrolls.
+
+## 2026-11-07 — Hole lengths (owner-approved)
+- New owner ranges for ALL holes: **par 3 = 50-100 yd, par 4 = 100-200 yd, par 5 = 200-300 yd**
+  (overrides spec §6's 150 / 360 / 510 yd test holes). Geometry was set from the ranges only; no length
+  simulations or tuning loops were run.
+- Starter Links 75 / 160 / 260; Pinewood Ridge 170 / 90 / 270 / 150 / 70 / 290; Coastal Links 175 / 80 / 275 / 155;
+  Lakeside 165 / 85 / 250 / 185 yd.
+- How: the centreline is scaled to the new length; features keep their lateral offsets, tee and green
+  surrounds (first 15 m / last 35 m) keep their metres and only the middle of the hole is compressed. Water
+  radii along the line of play shrink with the middle (to >= 50 %). Sizes of greens, bunkers, fairway
+  widths and trees are unchanged. Generated holes: `design_yards` (original layout) + `yards` in
+  `tools/data/gen_forest_holes.py`; Starter Links: one-off `tools/data/rescale_starter_holes.py`.
