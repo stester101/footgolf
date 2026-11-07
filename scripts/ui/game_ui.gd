@@ -200,7 +200,12 @@ func refresh() -> void:
 	_caps_btn.disabled = moving
 	_goals_btn.disabled = moving
 	_pick_btn.disabled = moving
-	_hint.text = "Tap a point to measure yardage" if overhead else "Drag the course left/right to aim · 360°"
+	if moving:
+		_hint.text = "Ball in motion · Skip fast-forwards the same simulation"
+	elif overhead:
+		_hint.text = "Tap a point to measure yardage"
+	else:
+		_hint.text = "Drag the course left/right to aim · 360°"
 	_view_btn.text = "Behind" if overhead else "Overhead"
 
 
