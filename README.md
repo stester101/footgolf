@@ -42,6 +42,8 @@ Docs: [Architecture](docs/ARCHITECTURE.md) · [Physics calibration](docs/PHYSICS
 - **TEST MODE is ON by default in this build:** the footballer picker shows caps/goals before the
   shot so mechanics can be checked. Turn it off (Settings or DEV → Players) for normal hidden-stat rules.
 - Seed footballers are **synthetic fictional test data**, not real players.
+- Overhead map edges are noise-warped for a natural look, so visual surface boundaries can differ from
+  the physics boundary by up to ~1.5 m.
 - Visuals are procedural (no imported art); the ball is drawn larger than its physical 42.7 mm when
   far from the camera so it stays visible.
 - Debug signing identity can change between CI builds unless a keystore secret is configured

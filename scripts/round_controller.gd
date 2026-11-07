@@ -66,6 +66,11 @@ func _ready() -> void:
 	_canvas.add_child(ui)
 	ui.setup(session)
 	ui.camera_toggle_requested.connect(_toggle_camera)
+	ui.overhead_zoom_requested.connect(func(f: float) -> void:
+		if f <= 0.0:
+			rig.overhead_fit()
+		else:
+			rig.overhead_zoom(f, get_viewport().get_visible_rect().size * 0.5))
 	ui.main_menu_requested.connect(func() -> void: exit_to_menu.emit())
 	ui.developer_requested.connect(toggle_dev_panel)
 	session.start_round(App.load_holes())
@@ -237,25 +242,73 @@ func _update_trail(bpos: Vector3, moving: bool) -> void:
 
 # ------------------------------------------------------------------ input
 
+var _touches: Dictionary = {}  # index -> position
+var _pinch_dist := 0.0
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if ui.has_overlay():
+		_touches.clear()
 		return
-	if event is InputEventScreenTouch:
+	var overhead := rig.mode == CameraRig.Mode.OVERHEAD
+	if event is InputEventMouseButton and overhead:
+		var mb := event as InputEventMouseButton
+		if mb.pressed and mb.button_index == MOUSE_BUTTON_WHEEL_UP:
+			rig.overhead_zoom(1.15, mb.position)
+		elif mb.pressed and mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			rig.overhead_zoom(1.0 / 1.15, mb.position)
+	elif event is InputEventMagnifyGesture and overhead:
+		var mg := event as InputEventMagnifyGesture
+		rig.overhead_zoom(mg.factor, mg.position)
+	elif event is InputEventScreenTouch:
 		var st := event as InputEventScreenTouch
 		if st.pressed:
-			_drag_active = true
-			_drag_moved = 0.0
+			_touches[st.index] = st.position
+			if _touches.size() == 1:
+				_drag_active = true
+				_drag_moved = 0.0
+			else:
+				_drag_moved = 999.0  # multi-touch is never a tap
+				_pinch_dist = _pinch_distance()
 		else:
-			if _drag_active and _drag_moved < 12.0 and rig.mode == CameraRig.Mode.OVERHEAD:
+			if _touches.size() == 1 and _drag_active and _drag_moved < 12.0 and overhead:
 				_overhead_tap(st.position)
-			_drag_active = false
+			_touches.erase(st.index)
+			if _touches.is_empty():
+				_drag_active = false
+			else:
+				_pinch_dist = _pinch_distance()
 	elif event is InputEventScreenDrag:
 		var sd := event as InputEventScreenDrag
 		if not _drag_active:
 			return
 		_drag_moved += absf(sd.relative.x) + absf(sd.relative.y)
-		if rig.mode == CameraRig.Mode.BEHIND and session.state == ShotTypes.State.AIMING:
+		_touches[sd.index] = sd.position
+		if overhead:
+			if _touches.size() >= 2:
+				var d := _pinch_distance()
+				if _pinch_dist > 1.0 and d > 1.0:
+					rig.overhead_zoom(d / _pinch_dist, _pinch_center())
+				_pinch_dist = d
+				rig.overhead_pan(sd.relative / float(_touches.size()))
+			else:
+				rig.overhead_pan(sd.relative)
+		elif session.state == ShotTypes.State.AIMING and _touches.size() == 1:
 			session.set_aim(session.aim_bearing_deg - sd.relative.x * AIM_DEG_PER_PX)
+
+
+func _pinch_distance() -> float:
+	var pts := _touches.values()
+	if pts.size() < 2:
+		return 0.0
+	return (pts[0] as Vector2).distance_to(pts[1])
+
+
+func _pinch_center() -> Vector2:
+	var pts := _touches.values()
+	if pts.size() < 2:
+		return Vector2.ZERO
+	return ((pts[0] as Vector2) + (pts[1] as Vector2)) * 0.5
 
 
 func _overhead_tap(screen_pos: Vector2) -> void:

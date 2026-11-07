@@ -64,6 +64,7 @@ func setup(s: GameSession, st: SettingsStore) -> void:
 
 func _scroll(title: String, content: Control) -> ScrollContainer:
 	var sc := ScrollContainer.new()
+	sc.scroll_deadzone = 14
 	sc.name = title
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -92,7 +93,9 @@ func _btn_row(buttons: Array) -> HBoxContainer:
 
 
 func _b(text: String, cb: Callable) -> Button:
-	return UiKit.button(text, cb, 60, 20)
+	var b := UiKit.button(text, cb, 60, 20)
+	b.mouse_filter = Control.MOUSE_FILTER_PASS  # allow touch-drag scrolling of the panel
+	return b
 
 
 # ------------------------------------------------------------------ Ball tab

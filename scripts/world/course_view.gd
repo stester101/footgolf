@@ -35,6 +35,7 @@ func _build_terrain() -> void:
 	var d := (hole.pin - hole.tee).normalized()
 	mat.set_shader_parameter("stripe_dir", Vector2(-d.y, d.x))
 	mat.set_shader_parameter("surface_tex", TerrainBuilder.build_surface_texture(hole))
+	mat.set_shader_parameter("map_size", hole.bounds.size)
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)

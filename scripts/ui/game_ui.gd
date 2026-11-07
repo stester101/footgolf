@@ -4,6 +4,8 @@ extends Control
 ## pause, round complete). Reads from GameSession; only calls session APIs to act.
 
 signal camera_toggle_requested
+## factor > 0 zooms the overhead map; 0 = fit whole hole.
+signal overhead_zoom_requested(factor: float)
 signal main_menu_requested
 signal developer_requested
 
@@ -27,6 +29,7 @@ var _toast: Label
 var _toast_t := 0.0
 var _measure_label: Label
 var _view_btn: Button
+var _map_row: HBoxContainer
 var _overlays: Array[Control] = []
 var _margin: MarginContainer
 var camera_yaw := 0.0
@@ -102,11 +105,20 @@ func _build_top(col: VBoxContainer) -> void:
 	_view_btn = UiKit.button("Overhead", func() -> void: camera_toggle_requested.emit(), 58, 22)
 	actions.add_child(_view_btn)
 	actions.add_child(UiKit.button("Card", show_scorecard, 58, 22))
+	_map_row = UiKit.hbox(8)
+	_map_row.alignment = BoxContainer.ALIGNMENT_END
+	for spec in [["−", 1.0 / 1.4], ["+", 1.4], ["Fit", 0.0]]:
+		var f: float = spec[1]
+		var zb := UiKit.button(spec[0], func() -> void: overhead_zoom_requested.emit(f), 58, 24)
+		zb.custom_minimum_size.x = 76
+		_map_row.add_child(zb)
+
 	var dev := UiKit.button("DEV", func() -> void: developer_requested.emit(), 58, 22)
 	dev.add_theme_color_override("font_color", UiKit.C_DEV)
 	actions.add_child(dev)
 	actions.add_child(UiKit.button("II", show_pause, 58, 22))
 	col.add_child(actions)
+	col.add_child(_map_row)
 	_measure_label = UiKit.text("", 22, UiKit.C_WARN, HORIZONTAL_ALIGNMENT_RIGHT)
 	_measure_label.add_theme_constant_override("outline_size", 6)
 	col.add_child(_measure_label)
@@ -211,10 +223,11 @@ func refresh() -> void:
 	if moving:
 		_hint.text = "Ball in motion · Skip fast-forwards the same simulation"
 	elif overhead:
-		_hint.text = "Tap a point to measure yardage"
+		_hint.text = "Pinch/± to zoom · drag to pan · tap to measure"
 	else:
 		_hint.text = "Drag the course left/right to aim · 360°"
 	_view_btn.text = "Behind" if overhead else "Overhead"
+	_map_row.visible = overhead
 
 
 func _on_take_shot() -> void:
@@ -421,6 +434,7 @@ func show_scorecard() -> void:
 	v.add_child(_scorecard_grid())
 	v.add_child(UiKit.text("Shot history (revealed after each shot)", 22, UiKit.C_MUTED))
 	var sc := ScrollContainer.new()
+	sc.scroll_deadzone = 14
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	v.add_child(sc)

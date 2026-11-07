@@ -13,6 +13,8 @@ var _list: VBoxContainer
 var _nations: Array[String] = []
 ## Test mode: reveal caps/goals before the shot (normal rules hide them).
 var show_stats := false
+var _sc: ScrollContainer
+var _press_scroll := 0
 
 
 func setup(s: GameSession) -> void:
@@ -56,6 +58,8 @@ func setup(s: GameSession) -> void:
 	_nation.item_selected.connect(func(_i: int) -> void: _rebuild())
 	v.add_child(_nation)
 	var sc := ScrollContainer.new()
+	_sc = sc
+	sc.scroll_deadzone = 14
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	v.add_child(sc)
@@ -80,6 +84,9 @@ func _rebuild() -> void:
 		if used:
 			txt += "   · USED"
 		var b := UiKit.button(txt, func() -> void: _on_pick(fb.id), 68, 24)
+		# Let drags reach the ScrollContainer (touch scrolling); a press only picks if the list didn't scroll.
+		b.mouse_filter = Control.MOUSE_FILTER_PASS
+		b.button_down.connect(func() -> void: _press_scroll = _sc.scroll_vertical)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		b.disabled = used
@@ -94,5 +101,7 @@ func _rebuild() -> void:
 
 
 func _on_pick(id: String) -> void:
+	if absi(_sc.scroll_vertical - _press_scroll) > 6:
+		return
 	if session.select_footballer(id):
 		picked.emit(id)

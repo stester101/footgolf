@@ -63,6 +63,62 @@ func _apply_overhead() -> void:
 	var c3 := Vector3(center.x, hole.terrain_height(center.x, center.y), center.y)
 	cam.global_transform = Transform3D(Basis(), c3 + Vector3(0, 600, 0))
 	cam.look_at(c3, Vector3(up2.x, 0, up2.y))
+	_fit_size = cam.size
+	_fit_pos = cam.global_position
+
+
+# ------------------------------------------------------------------ overhead pan / zoom
+
+var _fit_size := 300.0
+var _fit_pos := Vector3.ZERO
+const MIN_OVERHEAD_SIZE := 25.0
+
+
+func _units_per_px() -> float:
+	var vp := get_viewport().get_visible_rect().size
+	return cam.size / maxf(vp.y, 1.0)  # KEEP_HEIGHT: size = visible height in metres
+
+
+## Drag the map: content follows the finger.
+func overhead_pan(delta_px: Vector2) -> void:
+	if mode != Mode.OVERHEAD:
+		return
+	var upp := _units_per_px()
+	var b := cam.global_transform.basis
+	var move := -b.x * delta_px.x * upp + b.y * delta_px.y * upp
+	move.y = 0.0
+	cam.global_position += move
+	_clamp_overhead()
+
+
+## Zoom by factor (>1 zooms in) keeping the world point under screen_pos fixed.
+func overhead_zoom(factor: float, screen_pos: Vector2) -> void:
+	if mode != Mode.OVERHEAD or factor <= 0.0:
+		return
+	var vp := get_viewport().get_visible_rect().size
+	var from_center := screen_pos - vp * 0.5
+	var upp_old := _units_per_px()
+	cam.size = clampf(cam.size / factor, MIN_OVERHEAD_SIZE, _fit_size * 1.6)
+	var upp_new := _units_per_px()
+	var b := cam.global_transform.basis
+	var shift := b.x * from_center.x * (upp_old - upp_new) - b.y * from_center.y * (upp_old - upp_new)
+	shift.y = 0.0
+	cam.global_position += shift
+	_clamp_overhead()
+
+
+func overhead_fit() -> void:
+	if mode == Mode.OVERHEAD:
+		cam.size = _fit_size
+		cam.global_position = _fit_pos
+
+
+func _clamp_overhead() -> void:
+	var r := hole.bounds.grow(40.0)
+	var p := cam.global_position
+	p.x = clampf(p.x, r.position.x, r.end.x)
+	p.z = clampf(p.z, r.position.y, r.end.y)
+	cam.global_position = p
 
 
 ## Called every frame by the round controller.

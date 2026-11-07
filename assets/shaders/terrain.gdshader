@@ -7,6 +7,8 @@ uniform sampler2D surface_tex : source_color, filter_linear_mipmap, repeat_disab
 uniform vec2 stripe_dir = vec2(1.0, 0.0);
 uniform float stripe_width = 8.0;
 uniform float detail_fade = 60.0;
+// Size of the hole bounds in metres (for warping the 1 m surface map into organic edges).
+uniform vec2 map_size = vec2(200.0, 300.0);
 
 varying vec3 wpos;
 
@@ -27,10 +29,12 @@ void vertex() {
 }
 
 void fragment() {
-	vec4 s = texture(surface_tex, UV);
+	vec2 p = wpos.xz;
+	vec2 warp = vec2(vnoise(p * 0.9) - 0.5, vnoise(p * 0.9 + 17.3) - 0.5) * 1.1
+		+ vec2(vnoise(p * 3.1) - 0.5, vnoise(p * 3.1 + 5.1) - 0.5) * 0.35;
+	vec4 s = texture(surface_tex, UV + warp / map_size);
 	vec3 base = s.rgb;
 	float kind = s.a;
-	vec2 p = wpos.xz;
 	float dist = length(wpos - (INV_VIEW_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz);
 	float near = 1.0 - smoothstep(detail_fade * 0.3, detail_fade, dist);
 
