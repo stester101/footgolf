@@ -180,27 +180,11 @@ func _check_generated_hole(h: HoleDefinition, par: int, yards: int) -> Dictionar
 	return {"relief": hi - lo, "max_fw": max_fw, "max_gr": max_gr}
 
 
-## Greedy bot (aim at pin; Goals on the green or when close, else Caps at 90 % of the distance).
-## There is no max-score cap, so the bot must actually hole out every hole.
+## Greedy bot (TestHelpers.bot_round: aim at pin, Goals on the green / when close, else Caps; escapes
+## blocked lies). There is no max-score cap, so the bot must actually hole out every hole.
 func _bot_round(defs: Array, label: String) -> void:
 	var s := TestHelpers.make_session(defs)
-	var guard := 4000
-	while not s.is_round_complete() and guard > 0:
-		guard -= 1
-		match s.state:
-			ShotTypes.State.HOLE_INTRO:
-				s.begin_play()
-			ShotTypes.State.AIMING:
-				var d := s.distance_to_pin_m()
-				s.aim_at_pin()
-				if s.current_lie() == Surface.Type.GREEN or d <= 25.0:
-					TestHelpers.shoot(s, ShotTypes.Mode.GOALS, 0, maxi(1, int(Units.m_to_feet(d))))
-				else:
-					TestHelpers.shoot(s, ShotTypes.Mode.CAPS, int(Units.m_to_yards(minf(d, 200.0)) * 0.9), 0)
-			ShotTypes.State.SHOT_RESULT:
-				s.acknowledge_result()
-			ShotTypes.State.HOLE_COMPLETE:
-				s.next_hole()
+	TestHelpers.bot_round(s, 4000)
 	assert_true(s.is_round_complete(), "%s round completes" % label)
 	var parts: Array[String] = []
 	for hs in s.round_state.holes:
