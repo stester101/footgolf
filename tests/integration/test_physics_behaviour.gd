@@ -50,6 +50,34 @@ func test_surfaces_change_ground_behaviour() -> void:
 	assert_lt(landings[Surface.Type.ROUGH], landings[Surface.Type.FAIRWAY], "rough reduces rollout")
 
 
+func test_short_grass_landing_makes_diminishing_golf_ball_skips() -> void:
+	var cfg := PhysicsConfig.new()
+	var sim := TestHelpers.flat_sim(Surface.Type.FAIRWAY)
+	var speed := ShotCalculator.solve_caps_speed(Units.caps_to_carry_m(120), cfg)
+	sim.launch(Vector3(0, cfg.ball_radius, 0),
+		ShotCalculator.launch_velocity(Vector3(0, 0, 1), speed, cfg.launch_angle_deg), true)
+	var peaks: Array[float] = []
+	var hop_height := 0.0
+	var previous_bounces := 0
+	while sim.is_moving():
+		sim.step()
+		if sim.bounces > previous_bounces:
+			if previous_bounces > 0:
+				peaks.append(hop_height)
+			hop_height = 0.0
+			previous_bounces = sim.bounces
+		elif sim.bounces > 0 and sim.phase == BallSim.Phase.AIR:
+			hop_height = maxf(hop_height, sim.pos.y - cfg.ball_radius)
+	note("120-cap fairway hops %s; carry %.2f m, total %.2f m" % [peaks, sim.carry_m, sim.pos.z])
+	assert_true(peaks.size() >= 2, "at least two diminishing skips")
+	if peaks.size() < 2:
+		return
+	assert_gt(peaks[0], 0.25, "first bounce is visible")
+	assert_lt(peaks[0], 1.0, "first bounce stays low")
+	assert_lt(peaks[1], peaks[0] * 0.3, "next skip dies quickly")
+	assert_near(sim.carry_m, Units.caps_to_carry_m(120), 0.3, "first contact remains calibrated")
+
+
 func test_uphill_vs_downhill() -> void:
 	var cfg := PhysicsConfig.new()
 	var h := HoleDefinition.new()

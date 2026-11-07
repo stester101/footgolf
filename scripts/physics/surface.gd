@@ -35,16 +35,16 @@ static func from_name(n: String) -> int:
 ## roll_drag   : speed-proportional rolling deceleration, 1/s (a = roll_decel + roll_drag * v)
 ## restitution : normal coefficient of restitution at low impact speed
 ## retention   : fraction of tangential speed kept per bounce (crudely models spin/turf grab)
-## caps_min/max: Caps launch-lie factor range applied to the neutral carry target
+## caps_min/max: legacy data keys for the flight launch-lie factor, independent of stat source
 ## The neutral reference surface for Goals calibration is FAIRWAY.
 static func default_params() -> Dictionary:
 	return {
-		Type.TEE: _p(0.90, 0.22, 0.32, 0.32, 1.0, 1.0),
-		Type.FAIRWAY: _p(0.90, 0.22, 0.32, 0.32, 1.0, 1.0),
-		Type.FRINGE: _p(0.80, 0.18, 0.30, 0.28, 0.97, 1.0),
-		Type.GREEN: _p(0.80, 0.17, 0.26, 0.22, 1.0, 1.0),
-		Type.ROUGH: _p(2.20, 0.60, 0.18, 0.20, 0.80, 0.92),
-		Type.BUNKER: _p(5.50, 1.50, 0.05, 0.06, 0.60, 0.80),
+		Type.TEE: _p(0.90, 0.22, 0.38, 0.37, 1.0, 1.0),
+		Type.FAIRWAY: _p(0.90, 0.22, 0.38, 0.37, 1.0, 1.0),
+		Type.FRINGE: _p(0.80, 0.18, 0.35, 0.36, 0.97, 1.0),
+		Type.GREEN: _p(0.80, 0.17, 0.30, 0.30, 1.0, 1.0),
+		Type.ROUGH: _p(2.20, 0.60, 0.18, 0.20, 0.90, 0.97),
+		Type.BUNKER: _p(5.50, 1.50, 0.05, 0.06, 0.82, 0.93),
 		Type.WATER: _p(50.0, 5.0, 0.0, 0.0, 0.3, 0.5),
 		Type.OOB: _p(2.20, 0.60, 0.18, 0.20, 0.8, 0.9),
 	}
@@ -68,16 +68,16 @@ static func effect_hint(t: int, params: Dictionary) -> String:
 		return ""
 	var cmin: float = p["caps_min"]
 	var cmax: float = p["caps_max"]
-	var caps_txt := "Caps neutral"
+	var flight_txt := "Flight neutral"
 	if cmax < 0.999 or cmin < 0.999:
-		caps_txt = "Caps carry ~-%d to -%d%%" % [int(round((1.0 - cmax) * 100.0)), int(round((1.0 - cmin) * 100.0))]
+		flight_txt = "Flight distance ~-%d to -%d%%" % [int(round((1.0 - cmax) * 100.0)), int(round((1.0 - cmin) * 100.0))]
 	var ref: Dictionary = params[Type.FAIRWAY]
 	var ratio: float = float(p["roll_decel"]) / maxf(0.01, float(ref["roll_decel"]))
-	var goals_txt := "Goals roll normal"
+	var roll_txt := "Roll normal"
 	if ratio > 3.0:
-		goals_txt = "Goals roll heavily slowed"
+		roll_txt = "Roll heavily slowed"
 	elif ratio > 1.3:
-		goals_txt = "Goals roll slowed"
+		roll_txt = "Roll slowed"
 	elif ratio < 0.85:
-		goals_txt = "Goals roll faster"
-	return "%s · %s" % [caps_txt, goals_txt]
+		roll_txt = "Roll faster"
+	return "%s · %s" % [flight_txt, roll_txt]

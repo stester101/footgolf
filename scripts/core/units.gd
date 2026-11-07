@@ -55,11 +55,15 @@ static func horizontal_distance(a: Vector3, b: Vector3) -> float:
 	return sqrt(dx * dx + dz * dz)
 
 
-## Player-selected display unit for distances (Settings / HUD toggle): false = yards, true = feet.
+## Display unit for the current shot. GameUI resets it from the ball's lie after each shot.
 static var show_feet := false
 
 
-## Distance in the player's chosen unit (yards or feet). Use for all live HUD distances.
+static func default_feet_for_lie(lie: int) -> bool:
+	return lie == Surface.Type.GREEN
+
+
+## Distance in the current shot's unit (yards or feet). Use for all live HUD distances.
 static func fmt_len(m: float) -> String:
 	if show_feet:
 		return "%d ft" % int(round(m_to_feet(m)))

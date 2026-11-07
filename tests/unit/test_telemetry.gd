@@ -48,6 +48,7 @@ func test_shot_record_fields() -> void:
 	assert_eq(d["shot_no"], 2)
 	assert_eq(d["footballer_name"], "Test, \"Player\"")
 	assert_eq(d["mode"], "CAPS")
+	assert_eq(d["style"], "FLIGHT")
 	assert_eq(d["stat"], 100)
 	assert_near(float(d["spin"]), -0.5, 1e-9)
 	assert_near(float(d["carry_yd"]), 100.0, 0.01, "carry in yards")
@@ -59,6 +60,16 @@ func test_shot_record_fields() -> void:
 	r.holed = true
 	var h := TelemetryLog.shot_record(ctx, r, null, Vector3(0, 0, 150), 2, 0)
 	assert_near(float(h["pin_after_m"]), 0.0, 1e-9, "holed = 0 after")
+
+
+func test_mulligan_log_keeps_audit_but_exports_only_played_shots() -> void:
+	var a := {"type": "shot", "round_id": "r1", "hole_id": "h1", "shot_id": 1, "stat": 10}
+	var undone := {"type": "mulligan", "round_id": "r1", "hole_id": "h1", "shot_id": 1}
+	var retake := {"type": "shot", "round_id": "r1", "hole_id": "h1", "shot_id": 1, "stat": 20}
+	var kept := TelemetryLog.played_shots([a, undone, retake])
+	assert_eq(kept.size(), 1)
+	assert_eq(kept[0]["stat"], 20)
+	assert_true(TelemetryLog.shots_csv([a, undone, retake]).contains(",20,"))
 
 
 func test_hole_and_round_records() -> void:
@@ -121,7 +132,7 @@ func test_csv_escaping_and_columns() -> void:
 	assert_eq(lines.size(), 2, "header + 1 row")
 	assert_eq(lines[0], ",".join(PackedStringArray(TelemetryLog.SHOT_COLUMNS)))
 	assert_true(lines[1].contains("\"Test, \"\"Player\"\"\""), "name escaped")
-	assert_true(lines[1].contains(",CAPS,100,100,12,"), "mode/stat/caps/goals as integers")
+	assert_true(lines[1].contains(",CAPS,FLIGHT,100,100,12,"), "mode/style/stat/caps/goals recorded")
 	assert_true(lines[1].contains(",3,0.02,100,"), "end position flattened")
 
 

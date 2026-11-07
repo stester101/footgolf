@@ -39,3 +39,9 @@ func test_horizontal_distance_ignores_height() -> void:
 func test_holeout_radius_conversion() -> void:
 	assert_near(Units.feet_to_m(5.0), 1.524, 1e-9)
 	assert_near(Units.feet_to_m(10.0), 3.048, 1e-9)
+
+
+func test_shot_unit_default_follows_lie() -> void:
+	assert_eq(Units.default_feet_for_lie(Surface.Type.GREEN), true)
+	for lie in [Surface.Type.TEE, Surface.Type.FAIRWAY, Surface.Type.ROUGH, Surface.Type.FRINGE, Surface.Type.BUNKER]:
+		assert_eq(Units.default_feet_for_lie(lie), false)

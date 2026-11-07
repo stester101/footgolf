@@ -11,7 +11,7 @@ const EXPORT_FALLBACK := "user://export"
 const CLIPBOARD_MAX_SHOTS := 500
 
 const SHOT_COLUMNS := ["round_id", "time", "course_id", "hole_id", "hole_index", "shot_no", "shot_id",
-	"footballer_id", "footballer_name", "nationality", "mode", "stat", "caps", "goals", "spin",
+	"footballer_id", "footballer_name", "nationality", "mode", "style", "stat", "caps", "goals", "spin",
 	"trajectory", "launch_angle_deg", "launch_speed_mps", "aim_bearing_deg", "wind_speed_mps", "wind_bearing_deg",
 	"start_lie", "final_lie", "start_x", "start_y", "start_z", "end_x", "end_y", "end_z",
 	"carry_m", "carry_yd", "roll_m", "total_m", "total_yd", "max_height_m", "bounces", "collisions",
@@ -39,6 +39,7 @@ func attach(session: GameSession, course_id: String, course_name: String = "") -
 		"round_obj": -1, "round_id": "", "started_ms": 0, "round_logged": false}
 	session.hole_started.connect(_on_hole_started.bind(session, ctx))
 	session.shot_resolved.connect(_on_shot_resolved.bind(session, ctx))
+	session.shot_mulliganed.connect(_on_shot_mulliganed.bind(session, ctx))
 	session.hole_completed.connect(_on_hole_completed.bind(session, ctx))
 	session.round_completed.connect(_on_round_completed.bind(session, ctx))
 
@@ -64,6 +65,13 @@ func _on_shot_resolved(r: ShotResult, session: GameSession, ctx: Dictionary) -> 
 	var shot_no := hs.shots.find(r) + 1 if hs != null else 0
 	var cup := session.hole.cup_position() if session.hole != null else r.final_pos
 	append(String(ctx["round_id"]), shot_record(ctx, r, session.last_request, cup, shot_no, session.round_state.current_index))
+
+
+func _on_shot_mulliganed(r: ShotResult, session: GameSession, ctx: Dictionary) -> void:
+	_ensure_round(session, ctx)
+	append(String(ctx["round_id"]), {"type": "mulligan", "v": FORMAT_VERSION,
+		"round_id": ctx["round_id"], "time": _now_iso(), "shot_id": r.shot_id,
+		"hole_id": r.hole_id, "mulligans_used": session.round_state.mulligans_used})
 
 
 func _on_hole_completed(hs: HoleState, session: GameSession, ctx: Dictionary) -> void:
@@ -121,7 +129,8 @@ static func round_start_record(ctx: Dictionary, rs: RoundState) -> Dictionary:
 		pars.append((h as HoleState).par)
 	return {"type": "round_start", "v": FORMAT_VERSION, "round_id": ctx.get("round_id", ""), "time": _now_iso(),
 		"course_id": ctx.get("course_id", ""), "course_name": ctx.get("course_name", ""),
-		"round_seed": rs.round_seed, "holes": Array(rs.hole_ids), "pars": pars}
+		"round_seed": rs.round_seed, "holes": Array(rs.hole_ids), "pars": pars,
+		"mulligans_allowed": rs.mulligans_allowed}
 
 
 static func shot_record(ctx: Dictionary, r: ShotResult, req: Object, cup: Vector3, shot_no: int, hole_index: int) -> Dictionary:
@@ -132,7 +141,7 @@ static func shot_record(ctx: Dictionary, r: ShotResult, req: Object, cup: Vector
 		"course_id": ctx.get("course_id", ""), "hole_id": r.hole_id, "hole_index": hole_index,
 		"shot_no": shot_no, "shot_id": r.shot_id,
 		"footballer_id": r.footballer_id, "footballer_name": r.footballer_name, "nationality": r.nationality,
-		"mode": r.mode_name(), "stat": r.stat_value, "caps": r.caps, "goals": r.goals,
+		"mode": r.mode_name(), "style": ShotTypes.style_name(r.style), "stat": r.stat_value, "caps": r.caps, "goals": r.goals,
 		"spin": _r(r.spin), "trajectory": traj,
 		"launch_angle_deg": _r(r.launch_angle_deg, 2), "launch_speed_mps": _r(r.launch_speed_mps),
 		"aim_bearing_deg": _r(r.aim_bearing_deg, 2),
@@ -168,6 +177,7 @@ static func round_record(ctx: Dictionary, rs: RoundState, duration_s: float = 0.
 		"round_seed": rs.round_seed, "holes": rs.holes.size(), "holes_completed": rs.holes_completed(),
 		"strokes": strokes, "penalties": rs.total_penalties(), "score": rs.total_score(),
 		"par_played": rs.total_par_played(), "to_par": rs.relative_to_par(), "shots": shots,
+		"mulligans_used": rs.mulligans_used,
 		"duration_s": _r(duration_s, 1)}
 
 
@@ -286,7 +296,25 @@ static func to_csv(rows: Array, columns: Array) -> String:
 
 
 static func shots_csv(records: Array) -> String:
-	return to_csv(of_type(records, "shot"), SHOT_COLUMNS)
+	return to_csv(played_shots(records), SHOT_COLUMNS)
+
+
+## The append-only log retains discarded shots as an audit trail; exports and records
+## only include shots that were not followed by a matching mulligan event.
+static func played_shots(records: Array) -> Array:
+	var kept: Array = []
+	for record in records:
+		var d: Dictionary = record
+		if d.get("type", "") == "shot":
+			kept.append(d)
+		elif d.get("type", "") == "mulligan":
+			for i in range(kept.size() - 1, -1, -1):
+				if kept[i].get("round_id") == d.get("round_id") \
+						and kept[i].get("shot_id") == d.get("shot_id") \
+						and kept[i].get("hole_id") == d.get("hole_id"):
+					kept.remove_at(i)
+					break
+	return kept
 
 
 static func holes_csv(records: Array) -> String:
@@ -303,7 +331,7 @@ static func _fmt_rel(r: int) -> String:
 
 ## Human-readable summary (rounds with their holes, aggregate shot stats), then the shots CSV.
 static func summary_text(records: Array, include_csv: bool = true) -> String:
-	var shots := of_type(records, "shot")
+	var shots := played_shots(records)
 	var rounds := of_type(records, "round_start")
 	var ends := {}
 	for d in of_type(records, "round"):

@@ -21,6 +21,29 @@ func clear() -> void:
 	_im.clear_surfaces()
 
 
+## One camera-facing arrow: a narrow shaft and a single triangular head.
+func draw_arrow(start: Vector3, finish: Vector3, cam_pos: Vector3, width: float, color: Color) -> void:
+	_im.clear_surfaces()
+	var v := finish - start
+	if v.length() < 1e-4:
+		return
+	var forward := v.normalized()
+	var side := forward.cross(cam_pos - start).normalized()
+	if side.length() < 1e-5:
+		side = forward.cross(Vector3.UP).normalized()
+	var head := minf(v.length() * 0.26, width * 2.7)
+	var neck := finish - forward * head
+	var half := side * width * 0.5
+	var wing := side * width * 1.2
+	_im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	for vertex in [start - half, neck - half, start + half,
+			start + half, neck - half, neck + half,
+			neck - wing, finish, neck + wing]:
+		_im.surface_set_color(color)
+		_im.surface_add_vertex(vertex)
+	_im.surface_end()
+
+
 ## Flat ribbon through points (each point gets a horizontal half-width offset).
 func draw_ribbon(points: PackedVector3Array, width: float, color: Color, fade: bool = false) -> void:
 	_im.clear_surfaces()

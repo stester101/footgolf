@@ -45,6 +45,90 @@ func test_shot_commit_cannot_run_twice() -> void:
 	TestHelpers.cleanup_repo(s.repo)
 
 
+func test_once_per_mode_session_reuses_only_other_mode() -> void:
+	var s := TestHelpers.make_session()
+	s.start_round(TestHelpers.load_holes(), 12345, FootballerPool.ReuseRule.ONCE_PER_MODE)
+	s.begin_play()
+	var id := TestHelpers.add_player(s.repo, 0, 0)
+	assert_true(s.select_footballer(id))
+	assert_true(s.take_shot())
+	s.skip_motion()
+	s.acknowledge_result()
+	assert_false(s.pool.is_available(id, ShotTypes.Mode.CAPS))
+	assert_false(s.select_footballer(id), "CAPS already consumed")
+	s.set_mode(ShotTypes.Mode.GOALS)
+	assert_true(s.select_footballer(id), "same footballer is available for GOALS")
+	assert_true(s.take_shot())
+	s.skip_motion()
+	s.acknowledge_result()
+	assert_eq(s.current_hole_state().strokes, 2)
+	assert_eq(s.pool.used_count(), 2)
+	assert_false(s.pool.is_available(id, ShotTypes.Mode.GOALS))
+	s.start_round(TestHelpers.load_holes(), 6789)
+	assert_eq(s.pool.reuse_rule, FootballerPool.ReuseRule.ONCE_PER_ROUND, "new round uses default rule")
+	TestHelpers.cleanup_repo(s.repo)
+
+
+func test_stat_source_and_shot_style_are_independent() -> void:
+	var s := TestHelpers.make_session()
+	var flat := HoleDefinition.make_flat(Surface.Type.FAIRWAY)
+	flat.id = "neutral_shot"
+	s.start_round([flat], 12345)
+	s.begin_play()
+	s.wind_custom = true
+	s.wind_custom_speed = 0.0
+	for source in [ShotTypes.Mode.CAPS, ShotTypes.Mode.GOALS]:
+		for motion in [ShotTypes.Style.FLIGHT, ShotTypes.Style.ROLL]:
+			s.dev_reset_ball()
+			s.set_mode(source)
+			s.set_style(motion)
+			var id := TestHelpers.add_player(s.repo, 80, 40)
+			assert_true(s.select_footballer(id))
+			assert_true(s.take_shot())
+			s.skip_motion()
+			var r := s.last_result
+			assert_eq(r.mode, source)
+			assert_eq(r.style, motion)
+			var target := Units.caps_to_carry_m(80) if source == ShotTypes.Mode.CAPS else Units.goals_to_roll_m(40)
+			assert_near(r.base_distance_m, target, 0.001, "source always determines yard/foot distance")
+			if motion == ShotTypes.Style.FLIGHT:
+				assert_true(r.had_contact, "flight makes first contact")
+				assert_near(r.carry_m, target, 0.4, "flight calibrates carry regardless of source")
+			else:
+				assert_eq(r.carry_m, 0.0, "roll has no airborne carry")
+				assert_near(r.total_m, target, 1.0, "roll calibrates travel regardless of source")
+			s.acknowledge_result()
+			if s.state == ShotTypes.State.HOLE_COMPLETE:
+				s.next_hole()
+				s.begin_play()
+	TestHelpers.cleanup_repo(s.repo)
+
+
+func test_rough_lie_reduces_goals_flight_carry_slightly() -> void:
+	var s := TestHelpers.make_session()
+	var flat := HoleDefinition.make_flat(Surface.Type.FAIRWAY)
+	flat.id = "neutral_lie"
+	s.start_round([flat], 12345)
+	s.begin_play()
+	s.wind_custom = true
+	s.wind_custom_speed = 0.0
+	s.dev_set_lie_override(Surface.Type.ROUGH)
+	s.set_mode(ShotTypes.Mode.GOALS)
+	s.set_style(ShotTypes.Style.FLIGHT)
+	var id := TestHelpers.add_player(s.repo, 0, 100)
+	assert_true(s.select_footballer(id))
+	assert_true(s.take_shot())
+	s.skip_motion()
+	var r := s.last_result
+	assert_eq(r.mode, ShotTypes.Mode.GOALS)
+	assert_eq(r.style, ShotTypes.Style.FLIGHT)
+	assert_gt(r.lie_factor, 0.89)
+	assert_lt(r.lie_factor, 0.98)
+	assert_near(r.carry_m, r.target_distance_m, 0.3, "calibrated flight includes lie factor")
+	assert_lt(r.carry_m, Units.goals_to_roll_m(100), "rough costs distance even with GOALS")
+	TestHelpers.cleanup_repo(s.repo)
+
+
 func test_invalid_shot_consumes_nothing() -> void:
 	var s := TestHelpers.make_session()
 	assert_false(s.take_shot(), "no footballer selected")
@@ -195,6 +279,52 @@ func test_dev_undo_restores_everything() -> void:
 	assert_eq(s.current_hole_state().strokes, 0)
 	assert_true(s.pool.is_available(id))
 	assert_eq(s.history.size(), 0)
+	TestHelpers.cleanup_repo(s.repo)
+
+
+func test_mulligan_is_round_locked_and_restores_the_entire_shot() -> void:
+	var s := TestHelpers.make_session()
+	s.start_round(TestHelpers.load_holes(), 12345, FootballerPool.ReuseRule.ONCE_PER_ROUND, 1)
+	s.begin_play()
+	var start := s.ball_pos
+	var id := TestHelpers.add_player(s.repo, 120, 4)
+	assert_true(s.select_footballer(id))
+	assert_false(s.can_mulligan(), "cannot use one before shooting")
+	assert_true(s.take_shot())
+	assert_false(s.use_mulligan(), "cannot cancel a shot in motion")
+	s.skip_motion()
+	assert_true(s.can_mulligan())
+	assert_true(s.use_mulligan())
+	assert_eq(s.state, ShotTypes.State.AIMING)
+	assert_eq(s.ball_pos, start)
+	assert_eq(s.current_hole_state().strokes, 0)
+	assert_eq(s.history.size(), 0)
+	assert_true(s.pool.is_available(id), "footballer returned")
+	assert_eq(s.round_state.mulligans_remaining(), 0)
+	assert_false(s.use_mulligan(), "cannot spend the allowance twice")
+	assert_true(s.take_shot())
+	s.skip_motion()
+	assert_false(s.can_mulligan(), "exhausted allowance")
+	s.acknowledge_result()
+	assert_false(s.can_mulligan(), "result dismissed")
+	s.start_round(TestHelpers.load_holes(), 12345)
+	assert_eq(s.round_state.mulligans_allowed, 0, "next round defaults to off")
+	TestHelpers.cleanup_repo(s.repo)
+
+
+func test_unlimited_mulligans_can_retake_multiple_shots() -> void:
+	var s := TestHelpers.make_session()
+	s.start_round(TestHelpers.load_holes(), 12345, FootballerPool.ReuseRule.ONCE_PER_ROUND, -1)
+	s.begin_play()
+	var id := TestHelpers.add_player(s.repo, 0, 0)
+	assert_true(s.select_footballer(id))
+	for i in 3:
+		assert_true(s.take_shot())
+		s.skip_motion()
+		assert_true(s.use_mulligan())
+		assert_eq(s.round_state.mulligans_remaining(), -1)
+		assert_eq(s.current_hole_state().strokes, 0)
+	assert_eq(s.round_state.mulligans_used, 3)
 	TestHelpers.cleanup_repo(s.repo)
 
 

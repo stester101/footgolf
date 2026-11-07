@@ -6,7 +6,7 @@ extends Node3D
 signal exit_to_menu
 
 const AIM_DEG_PER_PX := 0.22
-const AIM_GUIDE_LEN := 28.0
+const AIM_GUIDE_LEN := 5.0
 
 var session: GameSession
 var world_env: WorldEnvironment
@@ -14,7 +14,6 @@ var sun: DirectionalLight3D
 var course: CourseView
 var ball_mesh: MeshInstance3D
 var aim_line: LineDrawer
-var aim_arc: LineDrawer
 var trail_line: LineDrawer
 var measure_line: LineDrawer
 var rig: CameraRig
@@ -29,6 +28,7 @@ var _last_aim := -1.0
 var _last_ball := Vector3.INF
 var open_dev_on_start := false
 var course_id := "starter"
+var mulligans := 0
 var _marker: MeshInstance3D
 var _marker_pos := Vector3.INF
 var _shown_cup_r := -1.0
@@ -60,8 +60,6 @@ func _ready() -> void:
 	add_child(ball_mesh)
 	aim_line = LineDrawer.new(Color.WHITE)
 	add_child(aim_line)
-	aim_arc = LineDrawer.new(Color.WHITE)
-	add_child(aim_arc)
 	trail_line = LineDrawer.new(Color.WHITE)
 	add_child(trail_line)
 	measure_line = LineDrawer.new(Color.WHITE)
@@ -106,7 +104,7 @@ func _ready() -> void:
 	session.hole_completed.connect(func(_hs: HoleState) -> void: _start_preload())
 	DisplayServer.screen_set_keep_on(true)
 	App.telemetry.attach(session, course_id, String(App.course_info(course_id).get("name", course_id)))
-	session.start_round(App.load_holes(course_id))
+	session.start_round(App.load_holes(course_id), -1, FootballerPool.ReuseRule.ONCE_PER_ROUND, mulligans)
 	if open_dev_on_start:
 		toggle_dev_panel()
 
@@ -233,7 +231,8 @@ func _on_shot_started() -> void:
 	_set_overhead(false)
 	measure_line.clear()
 	ui.set_measure("")
-	rig.snap()
+	if session.current_request != null and session.current_request.style == ShotTypes.Style.FLIGHT:
+		rig.snap()
 
 
 func _set_overhead(on: bool) -> void:
@@ -282,7 +281,8 @@ func _process(delta: float) -> void:
 	var bpos := session.ball_render_pos()
 	var moving := session.is_ball_moving()
 	var aim := session.aim_dir()
-	rig.update_rig(delta, bpos, aim, moving)
+	rig.update_rig(delta, bpos, aim, moving,
+		moving and session.sim != null and session.sim.phase == BallSim.Phase.ROLL)
 	var cam_pos := rig.cam.global_position
 	var dist := cam_pos.distance_to(bpos)
 	var vis_r := clampf(dist * 0.011, 0.045, 2.2) if rig.mode == CameraRig.Mode.BEHIND else clampf(rig.cam.size * 0.006, 0.4, 4.0)
@@ -307,52 +307,19 @@ func _process(delta: float) -> void:
 func _update_aim_guide(bpos: Vector3) -> void:
 	var show := session.state == ShotTypes.State.AIMING
 	aim_line.visible = show
-	aim_arc.visible = show and session.mode == ShotTypes.Mode.CAPS
 	if not show:
-		_last_aim = -1.0
 		return
 	var over := rig.mode == CameraRig.Mode.OVERHEAD
 	var k := clampf(rig.cam.size / 70.0, 1.0, 8.0) if over else 1.0
-	var key := session.aim_bearing_deg + k * 1000.0 + session.mode * 100000.0 + session.trajectory * 1000000.0
-	if is_equal_approx(_last_aim, key) and _last_ball.is_equal_approx(bpos):
-		return
-	_last_aim = key
-	_last_ball = bpos
 	var d := session.aim_dir()
-	var length := AIM_GUIDE_LEN * k * (1.6 if over else 1.0)
-	var segs: Array = []
-	var s := 1.2 * k
-	var h := session.hole
-	var caps := session.mode == ShotTypes.Mode.CAPS
-	var tan_a := tan(deg_to_rad(session.launch_angle_for(session.trajectory)))
-	while s < length:
-		var a := bpos + d * s
-		var b := bpos + d * (s + 1.1 * k)
-		a.y = h.contact_height(a.x, a.z) + 0.05
-		b.y = h.contact_height(b.x, b.z) + 0.05
-		segs.append([a, b])
-		s += 2.2 * k
-	aim_line.draw_dashes(segs, 0.55 * k, Color(UiKit.C_TEXT, 0.9) if over else Color(UiKit.C_TEXT, 0.75))
-	# Caps: 3D arc of the initial flight for the chosen trajectory, AIM_GUIDE_LEN of path long.
-	# Its shape is independent of the footballer, so no stats are revealed.
-	aim_arc.visible = caps
-	if caps:
-		var pts := PackedVector3Array()
-		var pos := bpos
-		var slope := tan_a
-		var step := length / 40.0
-		var travelled := 0.0
-		pts.append(pos)
-		while travelled < length:
-			var x := Units.horizontal_distance(pos, bpos)
-			slope = tan_a * (1.0 - x / (2.0 * length))
-			var dir := (d + Vector3.UP * slope).normalized()
-			pos += dir * step
-			travelled += step
-			pos.y = maxf(pos.y, h.contact_height(pos.x, pos.z) + 0.05)
-			pts.append(pos)
-		aim_arc.draw_trail(pts, rig.cam.global_position, 0.0035 * (2.0 if over else 1.0), Color(UiKit.C_TEXT, 0.95))
-		_last_aim = -1.0  # camera-facing ribbon: refresh while the camera moves
+	var start := bpos + Vector3.UP * (0.06 * k)
+	var finish := bpos + d * AIM_GUIDE_LEN * k
+	if session.style == ShotTypes.Style.FLIGHT:
+		finish.y = start.y + minf(AIM_GUIDE_LEN * tan(deg_to_rad(session.launch_angle_for(session.trajectory))), 5.0) * k
+	else:
+		finish.y = session.hole.contact_height(finish.x, finish.z) + 0.08 * k
+	aim_line.draw_arrow(start, finish, rig.cam.global_position, 0.35 * k,
+		Color(UiKit.C_TEXT, 0.92))
 
 
 func _update_trail(bpos: Vector3, moving: bool) -> void:
@@ -371,6 +338,7 @@ func _update_trail(bpos: Vector3, moving: bool) -> void:
 
 var _touches: Dictionary = {}  # index -> position
 var _pinch_dist := 0.0
+var _mouse_drag_active := false
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -384,6 +352,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			rig.overhead_zoom(1.15, mb.position)
 		elif mb.pressed and mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			rig.overhead_zoom(1.0 / 1.15, mb.position)
+	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		_mouse_drag_active = (event as InputEventMouseButton).pressed
+	elif event is InputEventMouseMotion and _mouse_drag_active and _touches.is_empty() \
+			and not overhead and session.state == ShotTypes.State.AIMING:
+		session.set_aim(session.aim_bearing_deg - (event as InputEventMouseMotion).relative.x * AIM_DEG_PER_PX)
 	elif event is InputEventMagnifyGesture and overhead:
 		var mg := event as InputEventMagnifyGesture
 		rig.overhead_zoom(mg.factor, mg.position)

@@ -7,11 +7,11 @@ except the stat conversions and the neutral-baseline definitions.
 - Fixed step `dt = 1/240 s`, independent of frame rate (`GameSession.advance` accumulates real time).
 - **Air:** gravity 9.81 m/s² + quadratic drag `a = -k|v−w|(v−w)`, `k = 0.0011 1/m`, `w` = wind velocity.
   RK2 midpoint integration. Ground contact found by linear interpolation inside the step.
-- **Bounce:** normal restitution `e/(1+|vn|/8)` per surface, tangential retention per surface
-  (crudely represents spin/turf). Below 0.9 m/s normal speed the ball starts rolling.
+- **Bounce:** normal restitution `e/(1+|vn|/16)` per surface, tangential retention per surface. Short grass permits quick, diminishing hops; rough and sand absorb impacts. Below 0.65 m/s normal rebound speed the ball starts rolling.
 - **Roll:** constrained to terrain; slope acceleration `5/7·g` along the surface; rolling resistance
   `a = roll_decel + roll_drag·v`; analytic stop inside a step; static friction holds the ball when
   slope acceleration ≤ `roll_decel`.
+- Rough and sand catch a ball below 0.15 m/s instead of allowing a long hillside creep.
 - **Rest:** speed < 0.02 m/s for 0.3 s. Hard timeout 60 s. Non-finite state → `ERROR`, ball restored.
 - **Trees:** trunk cylinder (restitution 0.4) and canopy ellipsoid (damping 5/s) proxies.
 - **Cup:** radius 0.054 m; rolling capture ≤ 1.6 m/s, landing capture ≤ 7 m/s.
@@ -19,18 +19,18 @@ except the stat conversions and the neutral-baseline definitions.
   (visual-only, documented) so it remains visible on a phone.
 
 ## Spin (owner-approved, docs/DECISIONS.md)
-- Strike point s in [-1 backspin, +1 topspin], 0.05 steps, Caps only.
+- Strike point s in [-1 backspin, +1 topspin], 0.05 steps, flight shots only.
 - Magnus lift `a = -s · 0.0016 · |v_rel|² ` perpendicular to the flight path in the vertical plane.
 - Landing grip: tangential retention `+= s · 0.26` on the first bounce, halving each bounce
   (may go slightly negative on greens: backspin draws back).
-- The solver is keyed by spin, so neutral first-contact carry stays exact (tested at s = ±0.5, ±1).
-- Observed (120 caps, flat): fairway rollout back 0.5 m / none 4.9 m / top 15.8 m; green back −0.3 m /
-  none 2.2 m / top 9.7 m; apex back 27.1 m / none 25.8 m / top 24.8 m.
+- The flight solver is keyed by spin, so neutral first-contact carry stays exact (tested at s = ±0.5, ±1).
+- Observed (120 caps, flat): fairway rollout back 2.7 m / none 8.8 m / top 19.1 m; green back 0.5 m /
+  none 4.3 m / top 10.2 m; apex back 27.1 m / none 25.8 m / top 24.8 m.
 
 ## Neutral baselines
-- Caps: `carry_m = caps × 0.9144`, measured as horizontal distance to **first ground contact**,
-  launch angle 42° (engineering default), flat FAIRWAY plane, zero wind, no obstacles.
-- Goals: `roll_m = goals × 0.3048`, initial rolling speed on the flat FAIRWAY plane until rest.
+- Caps supplies `caps × 0.9144 m`; Goals supplies `goals × 0.3048 m` independently of shot style.
+- Flight calibrates that distance to **first ground contact** at the chosen angle on flat FAIRWAY,
+  zero wind and no obstacles. Roll calibrates that distance to total ground travel on flat FAIRWAY.
 - `ShotCalculator` solves launch speed with a log-space secant/bisection over **the same BallSim**
   (`measure_neutral_carry` / `measure_neutral_roll`), to relative tolerance 1e-5. Results cached by
   `PhysicsConfig.signature()`.
@@ -61,16 +61,16 @@ Tolerance required: Caps max(0.25 yd, 0.5%), Goals max(0.10 ft, 1%). The develop
 - 150 caps, 5 m/s wind: tail 141.0 m, calm 137.2 m, head 132.8 m; crosswind deflection 2.2 m.
 - 30-goal roll: green 10.9 m, fairway 9.14 m, rough 3.6 m, bunker 1.4 m.
 - 40 goals on a 3% slope: uphill 10.9 m, flat 12.2 m, downhill 13.9 m.
-- 120-cap rollout after landing: fairway ~4.9 m, green ~2.3 m, rough ~1.1 m, bunker ~0.1 m.
+- 120-cap flight rollout after landing: fairway ~8.8 m, green ~4.3 m, rough ~1.7 m, bunker ~0.1 m.
 
 ## Surface defaults (`Surface.default_params`)
 | Surface | roll_decel | roll_drag | restitution | retention | Caps lie factor |
 |---|---:|---:|---:|---:|---|
-| Tee / Fairway (reference) | 0.90 | 0.22 | 0.32 | 0.32 | 1.00 |
-| Fringe | 0.80 | 0.18 | 0.30 | 0.28 | 0.97–1.00 |
-| Green | 0.80 | 0.17 | 0.26 | 0.22 | 1.00 |
-| Rough | 2.20 | 0.60 | 0.18 | 0.20 | 0.80–0.92 |
-| Bunker | 5.50 | 1.50 | 0.05 | 0.06 | 0.60–0.80 |
+| Tee / Fairway (reference) | 0.90 | 0.22 | 0.38 | 0.37 | 1.00 |
+| Fringe | 0.80 | 0.18 | 0.35 | 0.36 | 0.97–1.00 |
+| Green | 0.80 | 0.17 | 0.30 | 0.30 | 1.00 |
+| Rough | 2.20 | 0.60 | 0.18 | 0.20 | 0.90–0.97 |
+| Bunker | 5.50 | 1.50 | 0.05 | 0.06 | 0.82–0.93 |
 
 Lie factors with a range use a per-shot seeded RNG (seed recorded in `ShotResult`, reused by Replay).
 The player sees only the approximate range text, never a predicted landing point.

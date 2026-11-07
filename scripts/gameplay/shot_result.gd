@@ -8,6 +8,7 @@ var footballer_id := ""
 var footballer_name := ""
 var nationality := ""
 var mode: int = ShotTypes.Mode.CAPS
+var style: int = ShotTypes.Style.FLIGHT
 var stat_value := 0
 var caps := 0
 var goals := 0
@@ -69,9 +70,8 @@ func stat_label() -> String:
 
 
 func base_label() -> String:
-	if mode == ShotTypes.Mode.CAPS:
-		return "%d yd carry" % stat_value
-	return "%d ft ground" % stat_value
+	return "%d %s %s" % [stat_value, "yd" if mode == ShotTypes.Mode.CAPS else "ft",
+		"carry" if style == ShotTypes.Style.FLIGHT else "roll"]
 
 
 func collision_summary() -> String:
@@ -94,15 +94,15 @@ static func _v(v: Vector3) -> String:
 func diagnostic_text() -> String:
 	var lines: Array[String] = []
 	lines.append("Shot ID %d / seed %d%s" % [shot_id, seed, " [DEV REPLAY]" if developer_replay else ""])
-	lines.append("Mode %s / footballer %s (%s)" % [mode_name(), footballer_id, footballer_name])
+	lines.append("Mode %s / shot %s / footballer %s (%s)" % [mode_name(), ShotTypes.style_name(style), footballer_id, footballer_name])
 	lines.append("Input: %d caps, %d goals -> used %s" % [caps, goals, stat_label()])
-	if mode == ShotTypes.Mode.CAPS:
-		lines.append("Neutral target: %.2f yd (%.3f m) first-contact carry" % [Units.m_to_yards(base_distance_m), base_distance_m])
-	else:
-		lines.append("Neutral target: %.2f ft (%.4f m) ground travel" % [Units.m_to_feet(base_distance_m), base_distance_m])
+	lines.append("Neutral target: %.2f %s (%.3f m) %s" % [
+		Units.m_to_yards(base_distance_m) if mode == ShotTypes.Mode.CAPS else Units.m_to_feet(base_distance_m),
+		"yd" if mode == ShotTypes.Mode.CAPS else "ft", base_distance_m,
+		"first-contact carry" if style == ShotTypes.Style.FLIGHT else "ground travel"])
 	lines.append("Lie factor %.4f -> solved target %.3f m" % [lie_factor, target_distance_m])
 	lines.append("Aim bearing %.1f deg · spin %s · trajectory %s" % [aim_bearing_deg, spin_label(spin), ShotTypes.trajectory_name(trajectory)])
-	lines.append("Launch angle %.1f deg, speed %.3f m/s" % [launch_angle_deg if mode == ShotTypes.Mode.CAPS else 0.0, launch_speed_mps])
+	lines.append("Launch angle %.1f deg, speed %.3f m/s" % [launch_angle_deg, launch_speed_mps])
 	lines.append("Wind %.2f m/s (%.1f mph) toward %.0f deg" % [wind_speed_mps, wind_speed_mps * Units.MPS_TO_MPH, wind_bearing_deg])
 	lines.append("Lie: start %s -> final %s" % [Surface.name_of(start_lie), Surface.name_of(final_lie)])
 	lines.append("Carry %.2f yd / roll %.2f ft / total %.2f yd" % [Units.m_to_yards(carry_m), Units.m_to_feet(roll_m), Units.m_to_yards(total_m)])
@@ -122,7 +122,7 @@ func diagnostic_text() -> String:
 func to_dict() -> Dictionary:
 	return {
 		"shot_id": shot_id, "hole_id": hole_id, "footballer_id": footballer_id, "name": footballer_name,
-		"mode": mode_name(), "stat": stat_value, "base_m": base_distance_m, "lie_factor": lie_factor,
+		"mode": mode_name(), "style": ShotTypes.style_name(style), "stat": stat_value, "base_m": base_distance_m, "lie_factor": lie_factor,
 		"carry_m": carry_m, "roll_m": roll_m, "total_m": total_m, "hazard": hazard, "penalty": penalty,
 		"holed": holed, "remaining_m": remaining_m, "seed": seed, "speed_mps": launch_speed_mps,
 		"time_s": time_in_motion_s, "spin": spin, "trajectory": ShotTypes.trajectory_name(trajectory), "launch_angle_deg": launch_angle_deg, "start_lie": Surface.name_of(start_lie), "final_lie": Surface.name_of(final_lie),

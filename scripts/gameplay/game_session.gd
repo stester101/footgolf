@@ -8,6 +8,7 @@ extends RefCounted
 signal state_changed(state: int)
 signal shot_started(request: ShotRequest)
 signal shot_resolved(result: ShotResult)
+signal shot_mulliganed(result: ShotResult)
 signal hole_started(index: int)
 signal hole_completed(hole_state: HoleState)
 signal round_completed
@@ -28,9 +29,10 @@ var ball_pos := Vector3.ZERO
 var last_safe_pos := Vector3.ZERO
 var aim_bearing_deg := 0.0
 var mode: int = ShotTypes.Mode.CAPS
-## Strike-point spin for Caps shots: -1 full backspin .. +1 full topspin (0.05 steps).
+var style: int = ShotTypes.Style.FLIGHT
+## Strike-point spin for flight shots: -1 full backspin .. +1 full topspin (0.05 steps).
 var spin := 0.0
-## Caps launch trajectory for the next shot (resets to STANDARD after every shot).
+## Flight trajectory for the next shot (resets to STANDARD after every shot).
 var trajectory: int = ShotTypes.Trajectory.STANDARD
 var selected_id := ""
 var holeout_radius_ft := ScoringService.DEFAULT_HOLEOUT_FT
@@ -61,10 +63,15 @@ func _init(p_cfg: PhysicsConfig, p_repo: FootballerRepository) -> void:
 
 # ------------------------------------------------------------------ round / hole flow
 
-func start_round(defs: Array, round_seed: int = -1) -> void:
+func start_round(defs: Array, round_seed: int = -1,
+		pool_rule: int = FootballerPool.ReuseRule.ONCE_PER_ROUND,
+		mulligans: int = 0) -> void:
 	hole_defs = defs
 	pool.reset()
+	if not pool.set_reuse_rule(pool_rule):
+		pool.set_reuse_rule(FootballerPool.ReuseRule.ONCE_PER_ROUND)
 	round_state = RoundState.new()
+	round_state.mulligans_allowed = clampi(mulligans, -1, 99)
 	round_state.round_seed = round_seed if round_seed >= 0 else int(Time.get_unix_time_from_system()) & 0x7fffffff
 	for d in defs:
 		var hd: HoleDefinition = d
@@ -90,10 +97,11 @@ func start_hole(index: int) -> void:
 	ball_pos = hole.tee_position(cfg.ball_radius)
 	last_safe_pos = ball_pos
 	aim_at_pin()
+	style = ShotTypes.Style.FLIGHT
 	undo_stack.clear()
 	sim = null
 	_hole_start_pool = pool.snapshot()
-	if selected_id != "" and not pool.is_available(selected_id):
+	if selected_id != "" and not pool.is_available(selected_id, mode):
 		selected_id = ""
 	_set_state(ShotTypes.State.HOLE_INTRO)
 	hole_started.emit(index)
@@ -130,7 +138,20 @@ func set_mode(m: int) -> void:
 	if m != ShotTypes.Mode.CAPS and m != ShotTypes.Mode.GOALS:
 		return
 	mode = m
+	if selected_id != "" and not pool.is_available(selected_id, mode):
+		selected_id = ""
 	selection_changed.emit()
+
+
+func set_style(s: int) -> void:
+	if not ShotTypes.STYLE_NAMES.has(s):
+		return
+	style = s
+	selection_changed.emit()
+
+
+func suggested_style() -> int:
+	return ShotTypes.Style.ROLL if current_lie() == Surface.Type.GREEN or distance_to_pin_m() <= 20.0 else ShotTypes.Style.FLIGHT
 
 
 ## Owner rule (docs/DECISIONS.md): Caps or Goals may be played from any lie, green included.
@@ -157,7 +178,7 @@ func set_spin(value: float) -> void:
 
 
 func select_footballer(id: String) -> bool:
-	if not repo.has(id) or not pool.is_available(id):
+	if not repo.has(id) or not pool.is_available(id, mode):
 		return false
 	selected_id = id
 	selection_changed.emit()
@@ -213,10 +234,12 @@ func can_take_shot() -> String:
 		return "Choose a footballer"
 	if not repo.has(selected_id):
 		return "Footballer no longer exists"
-	if not pool.is_available(selected_id):
+	if not pool.is_available(selected_id, mode):
 		return "Footballer already used this match"
 	if mode != ShotTypes.Mode.CAPS and mode != ShotTypes.Mode.GOALS:
 		return "Choose Caps or Goals"
+	if not ShotTypes.STYLE_NAMES.has(style):
+		return "Choose Flight or Roll"
 	return ""
 
 
@@ -233,9 +256,10 @@ func take_shot() -> bool:
 	req.hole_id = hole.id
 	req.footballer_id = fb.id
 	req.mode = mode
+	req.style = style
 	req.aim_bearing_deg = aim_bearing_deg
-	req.spin = spin if mode == ShotTypes.Mode.CAPS else 0.0
-	req.trajectory = trajectory if mode == ShotTypes.Mode.CAPS else ShotTypes.Trajectory.STANDARD
+	req.spin = spin if style == ShotTypes.Style.FLIGHT else 0.0
+	req.trajectory = trajectory if style == ShotTypes.Style.FLIGHT else ShotTypes.Trajectory.STANDARD
 	req.start_pos = ball_pos
 	req.launch_lie = current_lie()
 	req.wind_speed_mps = wind_speed()
@@ -249,7 +273,7 @@ func take_shot() -> bool:
 		return false
 	# ---- commit (single, synchronous; no await between validation and commit)
 	undo_stack.push_back(_snapshot())
-	if not pool.consume(fb.id):
+	if not pool.consume(fb.id, mode):
 		undo_stack.pop_back()
 		return false
 	var hs := current_hole_state()
@@ -270,8 +294,10 @@ func _plan_shot(req: ShotRequest, caps: int, goals: int) -> Dictionary:
 	rng.seed = req.seed
 	var lie_p := cfg.surface(req.launch_lie)
 	var plan := {"caps": caps, "goals": goals, "lie_factor": 1.0}
-	if req.mode == ShotTypes.Mode.CAPS:
-		var base := Units.caps_to_carry_m(caps)
+	var base := Units.caps_to_carry_m(caps) if req.mode == ShotTypes.Mode.CAPS else Units.goals_to_roll_m(goals)
+	plan["stat"] = caps if req.mode == ShotTypes.Mode.CAPS else goals
+	plan["base_m"] = base
+	if req.style == ShotTypes.Style.FLIGHT:
 		var cmin: float = lie_p["caps_min"]
 		var cmax: float = lie_p["caps_max"]
 		var factor := 1.0 if is_equal_approx(cmin, cmax) else lerpf(cmin, cmax, rng.randf())
@@ -280,8 +306,6 @@ func _plan_shot(req: ShotRequest, caps: int, goals: int) -> Dictionary:
 		var target := base * factor
 		var ang := launch_angle_for(req.trajectory)
 		var speed := ShotCalculator.solve_caps_speed(target, cfg, req.spin, ang)
-		plan["stat"] = caps
-		plan["base_m"] = base
 		plan["lie_factor"] = factor
 		plan["target_m"] = target
 		plan["speed"] = speed
@@ -290,18 +314,15 @@ func _plan_shot(req: ShotRequest, caps: int, goals: int) -> Dictionary:
 		plan["airborne"] = true
 		plan["calib_err_pct"] = 0.0 if target <= 0.0 else (ShotCalculator.measure_neutral_carry(speed, cfg, ShotCalculator.quantise_spin(req.spin), ang) - target) / target * 100.0
 	else:
-		var base2 := Units.goals_to_roll_m(goals)
-		var speed2 := ShotCalculator.solve_goals_speed(base2, cfg)
+		var speed2 := ShotCalculator.solve_goals_speed(base, cfg)
 		var n := hole.normal_at(req.start_pos.x, req.start_pos.z)
 		var d := Units.bearing_to_dir(req.aim_bearing_deg)
 		d = (d - n * d.dot(n)).normalized()
-		plan["stat"] = goals
-		plan["base_m"] = base2
-		plan["target_m"] = base2
+		plan["target_m"] = base
 		plan["speed"] = speed2
 		plan["velocity"] = d * speed2
 		plan["airborne"] = false
-		plan["calib_err_pct"] = 0.0 if base2 <= 0.0 else (ShotCalculator.measure_neutral_roll(speed2, cfg) - base2) / base2 * 100.0
+		plan["calib_err_pct"] = 0.0 if base <= 0.0 else (ShotCalculator.measure_neutral_roll(speed2, cfg) - base) / base * 100.0
 	var v: Vector3 = plan["velocity"]
 	if not (is_finite(v.x) and is_finite(v.y) and is_finite(v.z)):
 		return {}
@@ -361,6 +382,7 @@ func _resolve() -> void:
 	r.footballer_name = fb.name
 	r.nationality = fb.nationality
 	r.mode = req.mode
+	r.style = req.style
 	r.caps = int(_plan["caps"])
 	r.goals = int(_plan["goals"])
 	r.stat_value = int(_plan["stat"])
@@ -368,7 +390,7 @@ func _resolve() -> void:
 	r.lie_factor = _plan["lie_factor"]
 	r.target_distance_m = _plan["target_m"]
 	r.launch_speed_mps = _plan["speed"]
-	r.launch_angle_deg = float(_plan.get("angle", 0.0)) if req.mode == ShotTypes.Mode.CAPS else 0.0
+	r.launch_angle_deg = float(_plan.get("angle", 0.0)) if req.style == ShotTypes.Style.FLIGHT else 0.0
 	r.trajectory = req.trajectory
 	r.aim_bearing_deg = req.aim_bearing_deg
 	r.spin = ShotCalculator.quantise_spin(req.spin)
@@ -387,7 +409,7 @@ func _resolve() -> void:
 	r.time_in_motion_s = sim.time
 	r.timed_out = sim.timed_out
 	r.end_reason = sim.end_reason
-	if req.mode == ShotTypes.Mode.CAPS:
+	if req.style == ShotTypes.Style.FLIGHT:
 		r.carry_m = sim.carry_m if sim.first_contact else 0.0
 	var final := sim.pos
 	var penalty := 0
@@ -405,12 +427,12 @@ func _resolve() -> void:
 		final = req.start_pos
 	var end_for_distance := sim.hazard_pos if r.hazard != "" else final
 	r.total_m = Units.horizontal_distance(req.start_pos, end_for_distance)
-	if req.mode == ShotTypes.Mode.CAPS:
+	if req.style == ShotTypes.Style.FLIGHT:
 		r.roll_m = Units.horizontal_distance(sim.first_contact_pos, end_for_distance) if sim.first_contact else 0.0
 	else:
 		r.roll_m = r.total_m
 	if r.target_distance_m > 0.0:
-		var measured := r.carry_m if req.mode == ShotTypes.Mode.CAPS else r.total_m
+		var measured := r.carry_m if req.style == ShotTypes.Style.FLIGHT else r.total_m
 		r.actual_vs_target_pct = (measured - r.base_distance_m) / maxf(1e-6, r.base_distance_m) * 100.0
 	var in_cup := sim.phase == BallSim.Phase.HOLED
 	var at_rest := sim.phase == BallSim.Phase.REST
@@ -442,13 +464,14 @@ func acknowledge_result() -> void:
 	if state != ShotTypes.State.SHOT_RESULT:
 		return
 	var hs := current_hole_state()
-	if selected_id != "" and not pool.is_available(selected_id):
+	if selected_id != "" and not pool.is_available(selected_id, mode):
 		selected_id = ""
 	if hs.complete:
 		_set_state(ShotTypes.State.HOLE_COMPLETE)
 		hole_completed.emit(hs)
 	else:
 		aim_at_pin()
+		style = suggested_style()
 		_set_state(ShotTypes.State.AIMING)
 		selection_changed.emit()
 
@@ -489,6 +512,7 @@ func _snapshot() -> Dictionary:
 		"history_size": history.size(),
 		"aim": aim_bearing_deg,
 		"mode": mode,
+		"style": style,
 		"spin": spin,
 		"trajectory": trajectory,
 		"selected": selected_id,
@@ -499,14 +523,44 @@ func can_undo() -> bool:
 	return not undo_stack.is_empty() and not is_ball_moving()
 
 
+## A mulligan can only replace the last completed shot before its result is dismissed.
+## The round setup determines the allowance; there is no mid-round setting change.
+func can_mulligan() -> bool:
+	return state == ShotTypes.State.SHOT_RESULT and can_undo() \
+			and int(undo_stack.back().get("hole_index", -1)) == round_state.current_index \
+			and (round_state.mulligans_allowed < 0 or round_state.mulligans_remaining() > 0)
+
+
+func use_mulligan() -> bool:
+	if not can_mulligan():
+		return false
+	var undone := last_result
+	if not _restore_last_shot():
+		return false
+	round_state.mulligans_used += 1
+	shot_mulliganed.emit(undone)
+	message.emit("Mulligan taken · %s left" % ("unlimited" if round_state.mulligans_allowed < 0 else str(round_state.mulligans_remaining())))
+	return true
+
+
 ## Developer Undo (NOT a mulligan): restores ball, strokes, penalties, footballer availability
 ## and hole completion state of the most recent shot.
 func dev_undo() -> bool:
 	if not can_undo():
 		return false
-	var s: Dictionary = undo_stack.pop_back()
+	if not _restore_last_shot():
+		return false
+	message.emit("DEV: last shot undone")
+	return true
+
+
+func _restore_last_shot() -> bool:
+	if undo_stack.is_empty():
+		return false
+	var s: Dictionary = undo_stack.back()
 	if int(s["hole_index"]) != round_state.current_index:
 		return false
+	undo_stack.pop_back()
 	round_state.holes[round_state.current_index] = (s["hole_state"] as HoleState).copy()
 	pool.restore(s["pool"])
 	shot_counter = int(s["shot_counter"])
@@ -515,15 +569,17 @@ func dev_undo() -> bool:
 	last_safe_pos = s["last_safe_pos"]
 	aim_bearing_deg = s["aim"]
 	mode = s["mode"]
+	style = int(s.get("style", ShotTypes.Style.FLIGHT))
 	spin = s.get("spin", 0.0)
 	trajectory = int(s.get("trajectory", ShotTypes.Trajectory.STANDARD))
 	selected_id = s["selected"]
 	last_result = null
+	last_request = null
+	sim = null
 	state_version += 1
 	_set_state(ShotTypes.State.AIMING)
 	ball_placed.emit()
 	selection_changed.emit()
-	message.emit("DEV: last shot undone")
 	return true
 
 
@@ -550,7 +606,7 @@ func dev_replay() -> bool:
 	if plan.is_empty():
 		return false
 	undo_stack.push_back(_snapshot())
-	pool.consume(fb.id)
+	pool.consume(fb.id, req.mode)
 	var hs := current_hole_state()
 	hs.strokes += 1
 	hs.used_footballer_ids.append(fb.id)
@@ -610,9 +666,9 @@ func dev_select_hole(index: int) -> void:
 	if is_ball_moving() or index < 0 or index >= hole_defs.size():
 		return
 	var hs: HoleState = round_state.holes[index]
-	for id in hs.used_footballer_ids:
-		pool.used_footballer_ids.erase(id)
-	pool.changed.emit()
+	for shot in hs.shots:
+		var result: ShotResult = shot
+		pool.release(result.footballer_id, result.mode)
 	_reset_hole_state(index)
 	start_hole(index)
 

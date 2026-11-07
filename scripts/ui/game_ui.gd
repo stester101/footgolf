@@ -44,6 +44,8 @@ var _lie_label: Label
 var _lie_hint: Label
 var _caps_btn: Button
 var _goals_btn: Button
+var _flight_btn: Button
+var _roll_btn: Button
 var _player_btn: Button
 var _player_flag: TextureRect
 var _player_name: Label
@@ -60,6 +62,14 @@ var _shot_icon: LineIcon
 var _result_card: PanelContainer
 var _result_box: VBoxContainer
 var _reveal: Tween
+var _result_distance_labels: Array[Dictionary] = []
+var _result_base_label: Label
+var _result_base_m := 0.0
+var _result_base_mode := ShotTypes.Mode.CAPS
+var _result_base_style := ShotTypes.Style.FLIGHT
+var _unit_round_id := -1
+var _unit_hole_id := ""
+var _unit_aim_shot_id := -1
 # map controls
 var _map_controls: VBoxContainer
 var _map_hint: Label
@@ -228,12 +238,12 @@ func _build_scoreboard() -> PanelContainer:
 
 func _toggle_units() -> void:
 	Units.show_feet = not Units.show_feet
-	App.settings.distance_feet = Units.show_feet
-	App.settings.save()
 	_update_unit_btn()
 	if _target_dist_m >= 0.0:
 		_target_value.text = Units.fmt_len(_target_dist_m)
 		markers.target_dist_text = Units.fmt_len(_target_dist_m)
+	_refresh_result_distances()
+	refresh()
 	toast("Distances in %s" % ("feet" if Units.show_feet else "yards"), 1.5)
 
 
@@ -259,7 +269,7 @@ func _build_utility_row() -> HBoxContainer:
 	wind.add_child(wr)
 	wind.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left.add_child(wind)
-	# yards / feet switch (any time); persisted in settings
+	# yards / feet switch (any time); override lasts for this shot only
 	_unit_btn = UiKit.button("", func() -> void: _toggle_units(), 64, 22)
 	_unit_btn.custom_minimum_size.x = 120
 	_unit_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -314,15 +324,23 @@ func _build_shot_controls() -> VBoxContainer:
 	lie.add_child(lv)
 	lie_row.add_child(lie)
 	v.add_child(lie_row)
-	# 2. adjacent CAPS / AERIAL and GOALS / GROUND in a low strip
+	# 2. Distance source and ball movement are separate choices in one compact strip.
 	var strip := _plate(4, 4)
 	var sr := UiKit.hbox(0)
 	strip.add_child(sr)
 	var group := ButtonGroup.new()
-	_caps_btn = _mode_btn("CAPS / AERIAL", group, "mode_caps", func() -> void: session.set_mode(ShotTypes.Mode.CAPS))
-	_goals_btn = _mode_btn("GOALS / GROUND", group, "mode_goals", func() -> void: session.set_mode(ShotTypes.Mode.GOALS))
+	_caps_btn = _mode_btn("CAPS", group, "mode_caps", func() -> void: session.set_mode(ShotTypes.Mode.CAPS))
+	_goals_btn = _mode_btn("GOALS", group, "mode_goals", func() -> void: session.set_mode(ShotTypes.Mode.GOALS))
+	var style_group := ButtonGroup.new()
+	_flight_btn = _mode_btn("FLIGHT", style_group, "style_flight", func() -> void: session.set_style(ShotTypes.Style.FLIGHT))
+	_roll_btn = _mode_btn("ROLL", style_group, "style_roll", func() -> void: session.set_style(ShotTypes.Style.ROLL))
 	sr.add_child(_caps_btn)
 	sr.add_child(_goals_btn)
+	var divider := VSeparator.new()
+	divider.custom_minimum_size.x = 8
+	sr.add_child(divider)
+	sr.add_child(_flight_btn)
+	sr.add_child(_roll_btn)
 	v.add_child(strip)
 	# 3. separate footballer row: flag, name, country, swap icon
 	_player_btn = Button.new()
@@ -384,7 +402,7 @@ func _build_shot_controls() -> VBoxContainer:
 	_spin_label.add_theme_font_override("font", UiKit.font_semi())
 	sl.add_child(_spin_label)
 	_spin_box.add_child(sl)
-	# trajectory (Caps only): tap to cycle Punch / Low / Standard / High; resets after each shot
+	# Flight trajectory: tap to cycle Punch / Low / Standard / High; resets after each shot
 	_traj_btn = Button.new()
 	_traj_btn.custom_minimum_size = Vector2(132, 84)
 	_traj_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -565,6 +583,7 @@ func _process(delta: float) -> void:
 func refresh() -> void:
 	if session == null or session.hole == null:
 		return
+	_sync_shot_units()
 	var hs := session.current_hole_state()
 	var h := session.hole
 	# --- scoreboard (live fields)
@@ -587,6 +606,8 @@ func refresh() -> void:
 	# --- mode strip
 	_caps_btn.set_pressed_no_signal(session.mode == ShotTypes.Mode.CAPS)
 	_goals_btn.set_pressed_no_signal(session.mode == ShotTypes.Mode.GOALS)
+	_flight_btn.set_pressed_no_signal(session.style == ShotTypes.Style.FLIGHT)
+	_roll_btn.set_pressed_no_signal(session.style == ShotTypes.Style.ROLL)
 	# --- player row (names always; stats only in TEST MODE; reveal rules unchanged)
 	var fb := session.repo.get_by_id(session.selected_id) if session.selected_id != "" else null
 	if fb == null:
@@ -601,9 +622,9 @@ func refresh() -> void:
 		var line2 := fb.nationality
 		if App.settings.show_stats:
 			if session.mode == ShotTypes.Mode.CAPS:
-				line2 += "  •  %s = %d yd carry" % [UiKit.plural(fb.caps, "cap"), fb.caps]
+				line2 += "  •  %s = %d yd" % [UiKit.plural(fb.caps, "cap"), fb.caps]
 			else:
-				line2 += "  •  %s = %d ft roll" % [UiKit.plural(fb.goals, "goal"), fb.goals]
+				line2 += "  •  %s = %d ft" % [UiKit.plural(fb.goals, "goal"), fb.goals]
 		_player_sub.text = line2
 	# --- shot state
 	var moving := session.is_ball_moving()
@@ -619,8 +640,7 @@ func refresh() -> void:
 	_map_controls.visible = overhead
 	_right_shot.visible = not overhead
 	_right_map.visible = overhead
-	var caps_mode := session.mode == ShotTypes.Mode.CAPS
-	_spin_box.visible = caps_mode and not moving
+	_spin_box.visible = session.style == ShotTypes.Style.FLIGHT and not moving
 	_skip_btn.visible = moving
 	_spin.set_spin(session.spin)
 	var traj := ShotTypes.trajectory_name(session.trajectory)
@@ -640,9 +660,45 @@ func refresh() -> void:
 	_shot_icon.visible = not moving
 	_caps_btn.disabled = moving
 	_goals_btn.disabled = moving
+	_flight_btn.disabled = moving
+	_roll_btn.disabled = moving
 	_player_btn.disabled = moving
 	_map_hint.text = "Tap to measure  •  Drag to pan  •  Pinch to zoom"
 	markers.visible = not (show_result and not overhead)
+
+
+func _sync_shot_units() -> void:
+	# Keep a manual choice through the shot and its result. Reset when the next shot
+	# becomes aimable, or when a new hole's intro starts.
+	if session.state != ShotTypes.State.AIMING and session.state != ShotTypes.State.HOLE_INTRO:
+		return
+	var round_id := session.round_state.get_instance_id()
+	if _unit_round_id == round_id and _unit_hole_id == session.hole.id and _unit_aim_shot_id == session.shot_counter:
+		return
+	_unit_round_id = round_id
+	_unit_hole_id = session.hole.id
+	_unit_aim_shot_id = session.shot_counter
+	Units.show_feet = Units.default_feet_for_lie(session.current_lie())
+	_update_unit_btn()
+	if _target_dist_m >= 0.0:
+		_target_value.text = Units.fmt_len(_target_dist_m)
+		markers.target_dist_text = Units.fmt_len(_target_dist_m)
+
+
+func _distance_stat_cell(caption: String, distance_m: float) -> VBoxContainer:
+	var cell := _stat_cell(caption, Units.fmt_len(distance_m))
+	_result_distance_labels.append({"label": cell.get_child(0), "metres": distance_m})
+	return cell
+
+
+func _refresh_result_distances() -> void:
+	if _result_base_label != null and is_instance_valid(_result_base_label):
+		var motion := "carry" if _result_base_style == ShotTypes.Style.FLIGHT else "ground travel"
+		_result_base_label.text = "= %s neutral %s" % [Units.fmt_len(_result_base_m), motion]
+	for entry in _result_distance_labels:
+		var label: Label = entry["label"]
+		if is_instance_valid(label):
+			label.text = Units.fmt_len(float(entry["metres"]))
 
 
 func _on_take_shot() -> void:
@@ -747,6 +803,8 @@ func _on_shot_resolved(r: ShotResult) -> void:
 	if _reveal != null and _reveal.is_valid():
 		_reveal.kill()
 	UiKit.clear(_result_box)
+	_result_distance_labels.clear()
+	_result_base_label = null
 	var head := UiKit.hbox(12)
 	var fb := session.repo.get_by_id(r.footballer_id)
 	var flag := TextureRect.new()
@@ -766,27 +824,32 @@ func _on_shot_resolved(r: ShotResult) -> void:
 	var unit := "CAPS" if r.mode == ShotTypes.Mode.CAPS else "GOALS"
 	var big := UiKit.label("0 %s" % unit, 46, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
 	_result_box.add_child(big)
-	var sub := UiKit.label("= %s neutral %s" % [("%d yd" % r.stat_value) if r.mode == ShotTypes.Mode.CAPS else ("%d ft" % r.stat_value), "carry" if r.mode == ShotTypes.Mode.CAPS else "ground travel"], 20, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	var sub := UiKit.label("", 20, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	_result_base_label = sub
+	_result_base_m = r.base_distance_m
+	_result_base_mode = r.mode
+	_result_base_style = r.style
+	_refresh_result_distances()
 	_result_box.add_child(sub)
 	var grid := UiKit.hbox(6)
-	if r.mode == ShotTypes.Mode.CAPS:
-		grid.add_child(_stat_cell("CARRY", Units.fmt_len(r.carry_m)))
-		grid.add_child(_stat_cell("ROLL", Units.fmt_len(r.roll_m)))
-		grid.add_child(_stat_cell("TOTAL", Units.fmt_len(r.total_m)))
+	if r.style == ShotTypes.Style.FLIGHT:
+		grid.add_child(_distance_stat_cell("CARRY", r.carry_m))
+		grid.add_child(_distance_stat_cell("ROLL", r.roll_m))
+		grid.add_child(_distance_stat_cell("TOTAL", r.total_m))
 	else:
-		grid.add_child(_stat_cell("TRAVEL", Units.fmt_len(r.total_m)))
+		grid.add_child(_distance_stat_cell("TRAVEL", r.total_m))
 		grid.add_child(_stat_cell("LIE", Surface.name_of(r.final_lie)))
 	if not r.holed:
-		grid.add_child(_stat_cell("TO PIN", Units.fmt_len(r.remaining_m)))
+		grid.add_child(_distance_stat_cell("TO PIN", r.remaining_m))
 	_result_box.add_child(grid)
 	var extra: Array[String] = []
 	if r.lie_factor < 0.999:
 		extra.append("%s lie cost %d%%" % [Surface.name_of(r.start_lie), int(round((1.0 - r.lie_factor) * 100.0))])
 	if not r.collisions.is_empty():
 		extra.append("Hit a tree")
-	if r.wind_speed_mps > 0.1 and r.mode == ShotTypes.Mode.CAPS:
+	if r.wind_speed_mps > 0.1 and r.style == ShotTypes.Style.FLIGHT:
 		extra.append("Wind %d mph" % int(round(r.wind_speed_mps * Units.MPS_TO_MPH)))
-	if r.mode == ShotTypes.Mode.CAPS:
+	if r.style == ShotTypes.Style.FLIGHT:
 		if absf(r.spin) >= 0.025:
 			extra.append(ShotResult.spin_label(r.spin).capitalize())
 		extra.append("Now on the %s" % Surface.name_of(r.final_lie).to_lower())
@@ -810,6 +873,11 @@ func _on_shot_resolved(r: ShotResult) -> void:
 	details.visible = false
 	var row := UiKit.hbox()
 	row.add_child(UiKit.button("Details", func() -> void: details.visible = not details.visible, 70, 21))
+	if session.can_mulligan():
+		var left := session.round_state.mulligans_remaining()
+		var retry := UiKit.button("Mulligan%s" % ("" if left < 0 else " · %d" % left),
+			func() -> void: session.use_mulligan(), 80, 23)
+		row.add_child(retry)
 	var cont := UiKit.primary(UiKit.button("Continue", func() -> void: session.acknowledge_result(), 80, 30))
 	UiKit.expand(cont)
 	row.add_child(cont)
@@ -935,7 +1003,7 @@ func _on_round_completed() -> void:
 	v.add_child(UiKit.text("%d footballers used" % session.pool.used_count(), 22, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UiKit.primary(UiKit.button("Play again", func() -> void:
 		_remove_overlay(root)
-		session.start_round(session.hole_defs), 88, 30)))
+		session.start_round(session.hole_defs, -1, session.pool.reuse_rule, session.round_state.mulligans_allowed), 88, 30)))
 	v.add_child(UiKit.button("Main menu", func() -> void: main_menu_requested.emit(), 76, 26))
 	push_overlay(root)
 
@@ -1148,13 +1216,14 @@ func _history_row(r: ShotResult) -> Control:
 	nm.clip_text = true
 	mid.add_child(nm)
 	var mode_txt := "CAPS" if r.mode == ShotTypes.Mode.CAPS else "GOALS"
-	mid.add_child(_tag("%s  •  %d" % [mode_txt, r.stat_value], 16, UiKit.C_MUTED))
+	mid.add_child(_tag("%s  •  %d  •  %s" % [mode_txt, r.stat_value, ShotTypes.style_name(r.style)], 16, UiKit.C_MUTED))
 	row.add_child(mid)
 	var dv := UiKit.vbox(2)
 	dv.alignment = BoxContainer.ALIGNMENT_CENTER
 	dv.custom_minimum_size.x = 150
 	dv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var dist := ("%d yd" % int(round(Units.m_to_yards(r.carry_m)))) if r.mode == ShotTypes.Mode.CAPS else ("%.1f ft" % Units.m_to_feet(r.total_m))
+	var measured := r.carry_m if r.style == ShotTypes.Style.FLIGHT else r.total_m
+	var dist := ("%d yd" % int(round(Units.m_to_yards(measured)))) if r.mode == ShotTypes.Mode.CAPS else ("%.1f ft" % Units.m_to_feet(measured))
 	dv.add_child(_num(dist, 28, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_RIGHT))
 	if r.holed:
 		dv.add_child(_status_tag("HOLED", UiKit.C_ACCENT))
@@ -1200,7 +1269,7 @@ func show_pause() -> void:
 		_remove_overlay(root)
 		confirm("Restart the round?", "Your score and used footballers for this round will be lost.", "Restart", func() -> void:
 			close_all_overlays()
-			session.start_round(session.hole_defs)), 80, 26))
+			session.start_round(session.hole_defs, -1, session.pool.reuse_rule, session.round_state.mulligans_allowed)), 80, 26))
 	# developer tools stay reachable from the secondary menu
 	var dev := UiKit.button("Developer panel", func() -> void:
 		_remove_overlay(root)

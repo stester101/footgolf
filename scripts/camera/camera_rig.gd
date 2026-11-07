@@ -28,6 +28,8 @@ func set_hole(h: HoleDefinition) -> void:
 
 
 func set_mode(m: int) -> void:
+	if mode == m:
+		return
 	mode = m
 	_initialised = false
 	if mode == Mode.OVERHEAD:
@@ -124,12 +126,15 @@ func _clamp_overhead() -> void:
 
 
 ## Called every frame by the round controller.
-func update_rig(delta: float, ball: Vector3, aim: Vector3, moving: bool) -> void:
+func update_rig(delta: float, ball: Vector3, aim: Vector3, moving: bool, rolling: bool = false) -> void:
 	if mode == Mode.OVERHEAD:
 		return
 	var desired_pos: Vector3
 	var desired_look: Vector3
-	if moving:
+	if moving and rolling:
+		desired_pos = ball - _chase_dir * 5.5 + Vector3.UP * 2.4
+		desired_look = ball + _chase_dir * 3.5
+	elif moving:
 		var agl := 0.0
 		if hole != null:
 			agl = maxf(0.0, ball.y - hole.terrain_height(ball.x, ball.z))
@@ -147,8 +152,8 @@ func update_rig(delta: float, ball: Vector3, aim: Vector3, moving: bool) -> void
 		_look = desired_look
 		_initialised = true
 	else:
-		var kp := 1.0 - exp(-(3.0 if moving else 10.0) * delta)
-		var kl := 1.0 - exp(-(6.0 if moving else 14.0) * delta)
+		var kp := 1.0 - exp(-(10.0 if rolling or not moving else 3.0) * delta)
+		var kl := 1.0 - exp(-(14.0 if rolling or not moving else 6.0) * delta)
 		_pos = _pos.lerp(desired_pos, kp)
 		_look = _look.lerp(desired_look, kl)
 	if (_look - _pos).length() > 0.01:

@@ -28,10 +28,10 @@ func show_menu() -> void:
 	_menu = MainMenu.new()
 	_canvas.add_child(_menu)
 	_menu.setup()
-	_menu.play_requested.connect(func(course_id: String, dev: bool) -> void: start_round(course_id, dev))
+	_menu.play_requested.connect(func(course_id: String, dev: bool, mulligans: int) -> void: start_round(course_id, dev, mulligans))
 
 
-func start_round(course_id: String, dev: bool = false) -> void:
+func start_round(course_id: String, dev: bool = false, mulligans: int = 0) -> void:
 	if _menu != null:
 		_menu.queue_free()
 		_menu = null
@@ -39,6 +39,7 @@ func start_round(course_id: String, dev: bool = false) -> void:
 	_round = ROUND_SCENE.instantiate()
 	_round.open_dev_on_start = dev
 	_round.course_id = "all" if dev else course_id
+	_round.mulligans = mulligans
 	App.settings.last_course = course_id
 	App.settings.save()
 	_round.exit_to_menu.connect(show_menu)

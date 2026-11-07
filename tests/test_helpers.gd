@@ -74,6 +74,7 @@ static func add_player(repo: FootballerRepository, caps: int, goals: int) -> Str
 static func shoot(s: GameSession, mode: int, caps: int, goals: int, bearing: float = -999.0) -> ShotResult:
 	var id := add_player(s.repo, caps, goals)
 	s.set_mode(mode)
+	s.set_style(ShotTypes.Style.FLIGHT if mode == ShotTypes.Mode.CAPS else ShotTypes.Style.ROLL)
 	if bearing > -900.0:
 		s.set_aim(bearing)
 	if not s.select_footballer(id):

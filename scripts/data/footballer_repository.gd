@@ -231,7 +231,7 @@ func _passes(fb: Footballer, o: Dictionary, pool: FootballerPool, use_nations: b
 	var q := fold(String(o.get("q", "")).strip_edges())
 	if q != "" and not fb.folded().contains(q):
 		return false
-	if bool(o.get("available_only", false)) and pool != null and pool.is_used(fb.id):
+	if bool(o.get("available_only", false)) and pool != null and pool.is_used(fb.id, int(o.get("mode", -1))):
 		return false
 	var eras: Dictionary = o.get("eras", {})
 	if not eras.is_empty():

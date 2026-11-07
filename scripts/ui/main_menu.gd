@@ -2,7 +2,7 @@ class_name MainMenu
 extends Control
 ## Main menu: course select, Developer Test, Settings, How to play, version/build info.
 
-signal play_requested(course_id: String, dev: bool)
+signal play_requested(course_id: String, dev: bool, mulligans: int)
 
 var _settings_box: VBoxContainer
 var _main_box: VBoxContainer
@@ -34,8 +34,8 @@ func setup() -> void:
 	var ttl := UiKit.text("Football Golf", 54, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
 	ttl.add_theme_font_override("font", UiKit.font_semi())
 	v.add_child(ttl)
-	v.add_child(UiKit.text("Pick a footballer. Caps fly, goals roll.", 26, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UiKit.text("1 cap = 1 yard carry · 1 goal = 1 foot ground", 22, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UiKit.text("Pick a footballer. Choose your shot.", 26, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UiKit.text("1 cap = 1 yard · 1 goal = 1 foot", 22, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	_main_box = UiKit.vbox(16)
 	_main_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(_main_box)
@@ -53,14 +53,14 @@ func setup() -> void:
 	var current: Control = null
 	for c in App.courses():
 		var cid: String = c["id"]
-		var cb := UiKit.button("%s\n%s · par %d" % [c["name"], c["blurb"], App.course_par(cid)], func() -> void: play_requested.emit(cid, false), 96, 28)
+		var cb := UiKit.button("%s\n%s · par %d" % [c["name"], c["blurb"], App.course_par(cid)], func() -> void: _show_round_setup(cid), 96, 28)
 		if cid == App.settings.last_course:
 			UiKit.primary(cb)
 			current = cb
 		list.add_child(cb)
 	if current != null:
 		sc.ensure_control_visible.call_deferred(current)
-	var dev := UiKit.button("Developer Test", func() -> void: play_requested.emit("all", true), 70, 24)
+	var dev := UiKit.button("Developer Test", func() -> void: play_requested.emit("all", true, 0), 70, 24)
 	dev.add_theme_color_override("font_color", UiKit.C_DEV)
 	_main_box.add_child(dev)
 	var row := UiKit.hbox(12)
@@ -77,6 +77,31 @@ func setup() -> void:
 	if not App.settings.tutorial_seen and not OS.get_cmdline_user_args().has("--smoke-test"):
 		show_tutorial.call_deferred()
 	v.add_child(UiKit.text("Offline prototype · %s\n%s" % [App.dataset_label(), App.build_label()], 18, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+
+
+func _show_round_setup(course_id: String) -> void:
+	var root := UiKit.overlay(0.68)
+	add_child(root)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_child(center)
+	var panel := UiKit.panel()
+	panel.custom_minimum_size = Vector2(560, 0)
+	center.add_child(panel)
+	var v := UiKit.vbox(18)
+	panel.add_child(v)
+	v.add_child(UiKit.text("ROUND SETUP", 36, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UiKit.text(String(App.course_info(course_id).get("name", course_id)), 26, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UiKit.label("Mulligans", 25))
+	var choices := OptionButton.new()
+	choices.custom_minimum_size.y = 78
+	for entry in [["Off", 0], ["1 mulligan", 1], ["3 mulligans", 3], ["5 mulligans", 5], ["Unlimited", -1]]:
+		choices.add_item(String(entry[0]), int(entry[1]))
+	v.add_child(choices)
+	v.add_child(UiKit.text("Redo the last shot from its result screen. The choice stays fixed for this round.", 20, UiKit.C_MUTED))
+	v.add_child(UiKit.primary(UiKit.button("Start round", func() -> void:
+		play_requested.emit(course_id, false, choices.get_selected_id()), 86, 30)))
+	v.add_child(UiKit.button("Back", func() -> void: root.queue_free(), 72, 25))
 
 
 func _show_settings() -> void:

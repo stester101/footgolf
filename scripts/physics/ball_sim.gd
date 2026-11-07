@@ -20,7 +20,7 @@ var wind := Vector3.ZERO
 var stop_at_first_contact := false
 ## Developer override: force this surface for every ground contact (except water/OOB). -1 = off.
 var surface_override := -1
-## Current spin (-1 back .. +1 top); decays on each bounce. Only Caps shots use it.
+## Current spin (-1 back .. +1 top); decays on each bounce for flight shots.
 var spin := 0.0
 
 var pos := Vector3.ZERO
@@ -256,6 +256,13 @@ func _step_roll() -> void:
 	var holds := g_t.length() <= decel * cfg.static_factor
 	vel = vel - n * vel.dot(n)
 	var speed := vel.length()
+	# Deep grass and sand catch a very slow ball even on the steep terrain used
+	# by some courses; otherwise it can creep for over a minute on a hillside.
+	if (surf == Surface.Type.ROUGH or surf == Surface.Type.BUNKER) and speed < 0.15:
+		vel = Vector3.ZERO
+		phase = Phase.REST
+		end_reason = "grip"
+		return
 	var p_new := pos
 	if speed < 1e-6:
 		if holds:

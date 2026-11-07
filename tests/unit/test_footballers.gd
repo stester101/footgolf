@@ -100,6 +100,33 @@ func test_pool_consume_once() -> void:
 	assert_false(p.is_available("a"))
 
 
+func test_shared_pool_once_per_mode_roundtrip_and_release() -> void:
+	var p := FootballerPool.new()
+	assert_true(p.set_reuse_rule(FootballerPool.ReuseRule.ONCE_PER_MODE))
+	assert_false(p.consume("a"), "mode must be explicit")
+	assert_true(p.consume("a", ShotTypes.Mode.CAPS))
+	assert_false(p.is_available("a", ShotTypes.Mode.CAPS))
+	assert_true(p.is_available("a", ShotTypes.Mode.GOALS))
+	assert_false(p.set_reuse_rule(FootballerPool.ReuseRule.ONCE_PER_ROUND), "cannot change a live pool")
+	var snap := p.snapshot()
+	assert_true(p.consume("a", ShotTypes.Mode.GOALS))
+	assert_eq(p.used_count(), 2)
+	assert_eq(p.used_ids_in_order(), ["a", "a"])
+	p.restore(snap)
+	assert_eq(p.used_count(), 1)
+	assert_true(p.is_available("a", ShotTypes.Mode.GOALS))
+	assert_true(p.release("a", ShotTypes.Mode.CAPS))
+	assert_true(p.is_available("a", ShotTypes.Mode.CAPS))
+	assert_eq(p.used_count(), 0)
+
+
+func test_pool_old_snapshot_compatible() -> void:
+	var p := FootballerPool.new()
+	p.restore({"used": {"a": 1}, "order": 1})
+	assert_false(p.is_available("a"))
+	assert_eq(p.used_ids_in_order(), ["a"])
+
+
 func test_search_limit_and_accent_folding() -> void:
 	var repo := TestHelpers.make_repo()
 	assert_eq(repo.search("", "", 5).size(), 5, "limit respected")

@@ -6,6 +6,13 @@ var hole_ids: Array[String] = []
 var current_index := 0
 var holes: Array = []  # Array[HoleState], one per hole id
 var round_seed := 0
+## -1 means unlimited; otherwise the count selected before this round.
+var mulligans_allowed := 0
+var mulligans_used := 0
+
+
+func mulligans_remaining() -> int:
+	return -1 if mulligans_allowed < 0 else maxi(0, mulligans_allowed - mulligans_used)
 
 
 ## Index of the hole GameSession.next_hole() will start from the current one (same rule: next

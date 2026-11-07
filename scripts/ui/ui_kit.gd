@@ -4,16 +4,16 @@ extends RefCounted
 
 ## Design tokens (UI handover). 1 logical unit = 2 px on the 720 px-wide canvas.
 const U := 2
-const C_SURFACE := Color("#232723")      # scoreboard, plates, rows, scorecard
-const C_RAISED := Color("#2D322D")       # buttons sitting on a surface (derived, slightly lighter)
-const C_BG := Color("#181B18")           # full-screen menus without a game behind them
-const C_TEXT := Color("#F1EFE7")         # primary text / action fill
-const C_MUTED := Color("#A5AAA1")        # secondary text, inactive
-const C_ACCENT := Color("#A9BCA2")       # selected underline, small indicators, holed
-const C_SELECTED := Color("#626B5E")     # current scorecard row, selected list items
-const C_DIVIDER := Color("#62675F")      # quiet separators
-const C_ACTION_TEXT := Color("#232723")  # text on ivory buttons
-const C_WARN := Color("#D8C9A8")         # penalties / hazards (muted sand; no gold, no neon)
+const C_SURFACE := Color("#14271F")      # deep green score plates over the live course
+const C_RAISED := Color("#1D392B")       # raised controls
+const C_BG := Color("#0D1B15")           # menu backdrop
+const C_TEXT := Color("#F4F1DF")         # warm chalk
+const C_MUTED := Color("#B2C2B3")        # secondary text
+const C_ACCENT := Color("#90CE78")       # turf green: selections and primary action
+const C_SELECTED := Color("#315C40")     # current row / selected list item
+const C_DIVIDER := Color("#426450")      # separators
+const C_ACTION_TEXT := Color("#11251A")  # text on primary action
+const C_WARN := Color("#E9BC70")         # hazard / scoring highlight
 const C_DEV := Color("#B7B2C6")          # developer-only labels
 const RADIUS := 6                        # 3 logical units
 # legacy names used across the UI
@@ -136,11 +136,11 @@ static func button(text: String, cb: Callable, min_h: int = 72, size: int = 26) 
 
 
 ## Ivory action button (dark text). The colour argument is kept for old call sites and ignored.
-static func primary(b: Button, _color: Color = C_TEXT) -> Button:
-	b.add_theme_stylebox_override("normal", box(C_TEXT, RADIUS, 16))
-	b.add_theme_stylebox_override("hover", box(C_TEXT.lightened(0.08), RADIUS, 16))
-	b.add_theme_stylebox_override("pressed", box(C_TEXT.darkened(0.12), RADIUS, 16))
-	b.add_theme_stylebox_override("hover_pressed", box(C_TEXT.darkened(0.12), RADIUS, 16))
+static func primary(b: Button, _color: Color = C_ACCENT) -> Button:
+	b.add_theme_stylebox_override("normal", box(C_ACCENT, RADIUS, 16))
+	b.add_theme_stylebox_override("hover", box(C_ACCENT.lightened(0.08), RADIUS, 16))
+	b.add_theme_stylebox_override("pressed", box(C_ACCENT.darkened(0.12), RADIUS, 16))
+	b.add_theme_stylebox_override("hover_pressed", box(C_ACCENT.darkened(0.12), RADIUS, 16))
 	b.add_theme_stylebox_override("disabled", box(C_RAISED.darkened(0.15), RADIUS, 16))
 	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
 		b.add_theme_color_override(c, C_ACTION_TEXT)

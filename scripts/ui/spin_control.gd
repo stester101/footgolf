@@ -8,6 +8,7 @@ signal spin_changed(value: float)
 var spin := 0.0
 var _dragging := false
 var _last_tap_ms := 0
+var _touch_index := -1
 
 
 func _init() -> void:
@@ -26,7 +27,20 @@ func _radius() -> float:
 
 
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if touch.pressed and _touch_index < 0:
+			_touch_index = touch.index
+			_dragging = true
+			_apply_pos(touch.position)
+		elif not touch.pressed and touch.index == _touch_index:
+			_touch_index = -1
+			_dragging = false
+		accept_event()
+	elif event is InputEventScreenDrag and _touch_index == (event as InputEventScreenDrag).index:
+		_apply_pos((event as InputEventScreenDrag).position)
+		accept_event()
+	elif event is InputEventMouseButton and _touch_index < 0 and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 		var mb := event as InputEventMouseButton
 		if mb.pressed:
 			var now := Time.get_ticks_msec()
@@ -42,7 +56,7 @@ func _gui_input(event: InputEvent) -> void:
 		else:
 			_dragging = false
 		accept_event()
-	elif event is InputEventMouseMotion and _dragging:
+	elif event is InputEventMouseMotion and _dragging and _touch_index < 0:
 		_apply_pos((event as InputEventMouseMotion).position)
 		accept_event()
 

@@ -10,8 +10,8 @@ var launch_angle_deg := 42.0
 ## Quadratic air drag: a = -drag_k * |v_rel| * v_rel  (v_rel = ball velocity - wind velocity).
 var drag_k := 0.0011
 ## Impact-speed softening of restitution: e_eff = e / (1 + |vn| / bounce_soft)
-var bounce_soft := 8.0
-var min_bounce_speed := 0.9
+var bounce_soft := 16.0
+var min_bounce_speed := 0.65
 var rest_speed := 0.02
 var rest_time := 0.3
 var static_factor := 1.0
@@ -24,7 +24,7 @@ var cup_radius := DEFAULT_CUP_DIAMETER_IN * 0.0254 * 0.5
 var cup_capture_speed := 1.6
 var cup_landing_capture_speed := 7.0
 var canopy_damping := 5.0
-## Strike-point spin (Caps only), s in [-1 backspin .. +1 topspin]:
+## Strike-point spin (flight only), s in [-1 backspin .. +1 topspin]:
 ## Magnus lift a = -s * spin_lift_k * |v_rel|^2 (perpendicular to flight, upward for backspin);
 ## landing grip: retention += s * spin_retention on the first bounce (halving each bounce).
 var spin_lift_k := 0.0016

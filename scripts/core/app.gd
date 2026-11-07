@@ -6,6 +6,7 @@ const HOLE_DIR := "res://data/holes/"
 
 var settings := SettingsStore.new()
 var repo := FootballerRepository.new()
+var profiles := PlayerProfileStore.new()
 ## On-device shot/hole/round log (user://telemetry); exported from Settings.
 var telemetry := TelemetryLog.new()
 var dev_mode := false
@@ -14,6 +15,7 @@ var build_info := {}
 
 func _ready() -> void:
 	settings.load_settings()
+	profiles.load_profiles()
 	load_dataset()
 	if FileAccess.file_exists("res://build_info.json"):
 		var f := FileAccess.open("res://build_info.json", FileAccess.READ)

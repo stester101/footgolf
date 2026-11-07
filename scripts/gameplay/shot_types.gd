@@ -3,8 +3,11 @@ extends RefCounted
 ## Shot modes, game states, completion reasons.
 
 enum Mode { CAPS, GOALS }
+## Distance source and how the ball moves are independent choices.
+enum Style { FLIGHT, ROLL }
+const STYLE_NAMES := {Style.FLIGHT: "FLIGHT", Style.ROLL: "ROLL"}
 
-## Caps launch trajectory (owner-approved, docs/DECISIONS.md). Carry stays exact for every
+## Flight launch trajectory (owner-approved, docs/DECISIONS.md). Carry stays exact for every
 ## option: the solver uses the chosen angle. STANDARD uses PhysicsConfig.launch_angle_deg.
 enum Trajectory { PUNCH, LOW, STANDARD, HIGH }
 const TRAJECTORY_NAMES := {Trajectory.PUNCH: "PUNCH", Trajectory.LOW: "LOW", Trajectory.STANDARD: "STANDARD", Trajectory.HIGH: "HIGH"}
@@ -30,6 +33,10 @@ const COMPLETION_MAX_SCORE := "MAX_SCORE"
 
 static func mode_name(m: int) -> String:
 	return MODE_NAMES.get(m, "?")
+
+
+static func style_name(s: int) -> String:
+	return STYLE_NAMES.get(s, "?")
 
 
 static func trajectory_name(t: int) -> String:

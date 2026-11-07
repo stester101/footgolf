@@ -77,6 +77,8 @@ func setup(s: GameSession) -> void:
 	_search.custom_minimum_size = Vector2(0, 60)
 	_search.clear_button_enabled = true
 	_search.text = String(_saved.get("q", ""))
+	# Run after the focus click positions the caret, so typing replaces the query.
+	_search.focus_entered.connect(func() -> void: _search.call_deferred("select_all"))
 	_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_debounce = Timer.new()
 	_debounce.one_shot = true
@@ -233,6 +235,7 @@ func _options(limit: int) -> Dictionary:
 			eras[i] = true
 	return {
 		"q": _search.text, "nations": nations, "eras": eras,
+		"mode": session.mode,
 		"available_only": _avail_btn.button_pressed,
 		"caps_band": _caps_opt.selected if _caps_opt != null else 0,
 		"goals_band": _goals_opt.selected if _goals_opt != null else 0,
@@ -274,6 +277,7 @@ func _update_filter_labels(o: Dictionary = {}) -> void:
 func _rebuild() -> void:
 	_limit = PAGE
 	var o := _options(-1)
+	# Keep the live LineEdit text while sorts and filters rebuild the result list.
 	_saved["q"] = o["q"]
 	_saved["limit"] = PAGE
 	_saved["scroll"] = 0
@@ -308,7 +312,7 @@ func _render() -> void:
 		if header != "" and header != last_header:
 			last_header = header
 			_list.add_child(UiKit.label(header, 20, UiKit.C_ACCENT.lightened(0.25)))
-		var used := session.pool.is_used(fb.id)
+		var used := session.pool.is_used(fb.id, session.mode)
 		var b := UiKit.player_button(fb, show_stats, used, fb.id == session.selected_id, func() -> void: _on_pick(fb.id))
 		# Let drags reach the ScrollContainer (touch scrolling); a press only picks if the list didn't scroll.
 		b.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -327,7 +331,7 @@ func _render() -> void:
 		_list.add_child(more)
 	var avail := 0
 	for fb in results:
-		if not session.pool.is_used(fb.id):
+		if not session.pool.is_used(fb.id, session.mode):
 			avail += 1
 	_summary.text = "%d match · %d available · %d used" % [total, avail, session.pool.used_count()]
 	_clear_btn.visible = _active_filter_count(o) > 0

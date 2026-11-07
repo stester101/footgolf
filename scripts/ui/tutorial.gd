@@ -6,8 +6,8 @@ signal finished
 
 const PAGES := [
 	["Pick a footballer, not a club", "Every shot is a real international footballer. Choose CAPS or GOALS, then pick a player. Each player can be used only once per round — across all three holes."],
-	["CAPS fly", "CAPS hit the ball in the air: 1 senior cap = 1 yard of carry (on a flat fairway with no wind). Wind, slopes, rough, bunkers and trees change what really happens."],
-	["GOALS roll", "GOALS roll the ball along the ground: 1 international goal = 1 foot. Perfect for putting — but a 0-goal defender won't move the ball at all, and still costs a stroke."],
+	["Choose distance", "CAPS give 1 yard per cap. GOALS give 1 foot per goal. Either can be played as a flight or a roll."],
+	["Choose flight or roll", "A flight's distance is measured to its first landing; a roll's distance is measured when it stops. Wind and lies affect flight. Greens and slopes change the roll."],
 	["Aim and shoot", "Drag the course left or right to aim (full 360°). Use MAP for a top-down view: pinch to zoom, tap to measure. Then press TAKE SHOT."],
 	["Scoring", "Stroke play: fewest shots wins. Water or out of bounds costs +1. Stop within 5 ft of the hole and it's holed. There is no maximum score: keep going until you hole out."],
 ]

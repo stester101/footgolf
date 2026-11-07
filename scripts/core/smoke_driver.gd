@@ -87,6 +87,9 @@ func _run() -> void:
 			course_name = a.substr(15)
 	if not _press(course_name):
 		return _fail("no course button '%s'" % course_name)
+	await _frames(2)
+	if not _press("Start round"):
+		return _fail("no Start round button")
 	await _frames(10)
 	var round_node: Node = get_tree().root.find_child("Round", true, false)
 	if round_node == null:
@@ -117,6 +120,8 @@ func _run() -> void:
 					d = minf(d * 0.5, 60.0)
 				if not _press_id("mode_goals" if want_goals else "mode_caps"):
 					return _fail("mode button missing")
+				if not _press_id("style_roll" if want_goals else "style_flight"):
+					return _fail("style button missing")
 				if not want_goals and session.round_state.current_index == 1 and session.current_hole_state().strokes == 0:
 					var t0_traj := session.trajectory
 					if not _press_id("trajectory"):
@@ -148,7 +153,7 @@ func _run() -> void:
 					var need := Units.m_to_feet(d) if want_goals else Units.m_to_yards(d)
 					var best: Footballer = null
 					for fb in session.repo.all_sorted():
-						if not session.pool.is_available(fb.id):
+						if not session.pool.is_available(fb.id, session.mode):
 							continue
 						var stat := float(fb.goals if want_goals else fb.caps)
 						if best == null or absf(stat - need) < absf(float(best.goals if want_goals else best.caps) - need):

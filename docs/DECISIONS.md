@@ -1,5 +1,19 @@
 # Product decisions log
 
+## 2026-11-07 — Independent distance source and shot style, mulligans, golf-ball bounce
+- Caps gives yards and Goals gives feet. Either can be played as a flight or a roll from any lie.
+  Flight uses first-contact carry calibration and offers trajectory and spin; roll uses ground-travel
+  calibration. The game suggests roll from a green or within 20 m, and players can override it.
+- The aiming aid is one short arrow at the start of the chosen path. The result and shot history
+  record both the distance source and shot style.
+- Before a round, mulligans can be off, 1, 3, 5 or unlimited. A mulligan may replace the just-finished
+  shot from its result screen, restoring the score, ball, footballer pool and shot history. The round
+  allowance is locked. Telemetry logs a mulligan event; played-shot exports exclude undone shots.
+- Fairway and green landings now have quicker, diminishing skips. Deep grass and sand stop very slow
+  hillside creeping. Neutral first-contact and ground-distance calibration remain unchanged.
+- Rough reduces flight distance by 3–10%; bunker by 7–18%, for either stat source. Ground shots
+  respond to their rolling surface and slope instead of this launch factor.
+
 Changes to locked rules in `docs/SPECIFICATION.md`, made explicitly by the product owner.
 
 ## 2026-11-07 — Pre-shot spin (topspin/backspin) added
