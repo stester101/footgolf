@@ -1,0 +1,28 @@
+# Godot caches / generated
+.godot/
+.import/
+*.tmp
+*.translation
+/android/build/
+
+# Builds
+builds/
+*.apk
+*.aab
+*.idsig
+
+# Logs
+*.log
+logs/
+
+# Signing material — never commit
+*.keystore
+*.jks
+export_credentials.cfg
+.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

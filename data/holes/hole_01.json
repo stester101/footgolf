@@ -1,0 +1,281 @@
+{
+ "id": "hole_01",
+ "name": "The Opener",
+ "par": 3,
+ "yards": 150,
+ "tee": [
+  0,
+  0
+ ],
+ "pin": [
+  2.0,
+  137.0
+ ],
+ "tee_boxes": [
+  {
+   "center": [
+    0,
+    0
+   ],
+   "size": [
+    8,
+    10
+   ]
+  }
+ ],
+ "fairway": [
+  {
+   "points": [
+    [
+     0,
+     18
+    ],
+    [
+     0,
+     70
+    ],
+    [
+     1.5,
+     120
+    ]
+   ],
+   "width": 22
+  }
+ ],
+ "greens": [
+  {
+   "center": [
+    1.5,
+    136
+   ],
+   "radii": [
+    13,
+    11
+   ],
+   "rot_deg": 8,
+   "tilt": [
+    -0.01,
+    0.016
+   ]
+  }
+ ],
+ "bunkers": [
+  {
+   "center": [
+    -14,
+    126
+   ],
+   "radii": [
+    6,
+    3.8
+   ],
+   "rot_deg": 25,
+   "depth": 0.7
+  },
+  {
+   "center": [
+    16,
+    139
+   ],
+   "radii": [
+    3.8,
+    7.5
+   ],
+   "rot_deg": -10,
+   "depth": 0.7
+  },
+  {
+   "center": [
+    3,
+    151
+   ],
+   "radii": [
+    7,
+    2.8
+   ],
+   "depth": 0.55
+  }
+ ],
+ "water": [],
+ "boundary": [
+  [
+   -52,
+   -22
+  ],
+  [
+   52,
+   -22
+  ],
+  [
+   56,
+   172
+  ],
+  [
+   -56,
+   172
+  ]
+ ],
+ "bounds": [
+  -90,
+  -45,
+  90,
+  210
+ ],
+ "terrain": {
+  "base": 4.0,
+  "plane": [
+   0,
+   -0.022
+  ],
+  "bumps": [
+   {
+    "center": [
+     -26,
+     60
+    ],
+    "radius": 22,
+    "height": 1.6
+   },
+   {
+    "center": [
+     28,
+     92
+    ],
+    "radius": 20,
+    "height": 2.2
+   },
+   {
+    "center": [
+     -22,
+     152
+    ],
+    "radius": 16,
+    "height": 1.3
+   },
+   {
+    "center": [
+     12,
+     32
+    ],
+    "radius": 14,
+    "height": -0.6
+   },
+   {
+    "center": [
+     30,
+     140
+    ],
+    "radius": 12,
+    "height": 1.4
+   },
+   {
+    "center": [
+     -34,
+     10
+    ],
+    "radius": 18,
+    "height": 1.8
+   }
+  ]
+ },
+ "tree_lines": [
+  {
+   "from": [
+    -40,
+    -12
+   ],
+   "to": [
+    -42,
+    168
+   ],
+   "spacing": 10,
+   "jitter": 3,
+   "seed": 11
+  },
+  {
+   "from": [
+    42,
+    -12
+   ],
+   "to": [
+    45,
+    168
+   ],
+   "spacing": 10,
+   "jitter": 3,
+   "seed": 12
+  },
+  {
+   "from": [
+    -50,
+    182
+   ],
+   "to": [
+    50,
+    182
+   ],
+   "spacing": 9,
+   "jitter": 3,
+   "seed": 13
+  },
+  {
+   "from": [
+    -60,
+    -8
+   ],
+   "to": [
+    -62,
+    190
+   ],
+   "spacing": 12,
+   "jitter": 4,
+   "seed": 14
+  },
+  {
+   "from": [
+    62,
+    -8
+   ],
+   "to": [
+    64,
+    190
+   ],
+   "spacing": 12,
+   "jitter": 4,
+   "seed": 15
+  }
+ ],
+ "trees": [
+  {
+   "pos": [
+    -24,
+    96
+   ],
+   "height": 12
+  },
+  {
+   "pos": [
+    26,
+    58
+   ],
+   "height": 13
+  }
+ ],
+ "wind": {
+  "speed": 1.5,
+  "bearing": 60
+ },
+ "relief_points": [
+  [
+   0,
+   100
+  ],
+  [
+   0,
+   40
+  ]
+ ],
+ "camera": {
+  "overhead_padding": 1.15
+ }
+}

@@ -1,0 +1,426 @@
+{
+  "version": 1,
+  "description": "Synthetic/fictional V0.1 test footballers. Names and stats are invented test data and must never be presented as real players' verified records.",
+  "footballers": [
+    {
+      "id": "fb-001",
+      "name": "Teodor Brask",
+      "country_code": "DEN",
+      "nationality": "Denmark",
+      "senior_international_caps": 142,
+      "senior_international_goals": 18,
+      "birth_year": 1988,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-002",
+      "name": "Ilan Okonkwo-Vale",
+      "country_code": "NGA",
+      "nationality": "Nigeria",
+      "senior_international_caps": 61,
+      "senior_international_goals": 22,
+      "birth_year": 1993,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-003",
+      "name": "Marek Szolny",
+      "country_code": "POL",
+      "nationality": "Poland",
+      "senior_international_caps": 104,
+      "senior_international_goals": 9,
+      "birth_year": 1985,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-004",
+      "name": "Caio Ferrabraz",
+      "country_code": "BRA",
+      "nationality": "Brazil",
+      "senior_international_caps": 88,
+      "senior_international_goals": 41,
+      "birth_year": 1991,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-005",
+      "name": "Duncan Feary",
+      "country_code": "SCO",
+      "nationality": "Scotland",
+      "senior_international_caps": 34,
+      "senior_international_goals": 3,
+      "birth_year": 1990,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-006",
+      "name": "Rui Calhandra",
+      "country_code": "POR",
+      "nationality": "Portugal",
+      "senior_international_caps": 175,
+      "senior_international_goals": 64,
+      "birth_year": 1984,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-007",
+      "name": "Benedek Arvai",
+      "country_code": "HUN",
+      "nationality": "Hungary",
+      "senior_international_caps": 57,
+      "senior_international_goals": 0,
+      "birth_year": 1992,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-008",
+      "name": "Jules Montarmé",
+      "country_code": "FRA",
+      "nationality": "France",
+      "senior_international_caps": 126,
+      "senior_international_goals": 30,
+      "birth_year": 1987,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-009",
+      "name": "Kofi Asamoah-Lind",
+      "country_code": "GHA",
+      "nationality": "Ghana",
+      "senior_international_caps": 22,
+      "senior_international_goals": 5,
+      "birth_year": 1997,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-010",
+      "name": "Harlan Spurway",
+      "country_code": "ENG",
+      "nationality": "England",
+      "senior_international_caps": 48,
+      "senior_international_goals": 12,
+      "birth_year": 1994,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-011",
+      "name": "Matías Quilodrán",
+      "country_code": "CHI",
+      "nationality": "Chile",
+      "senior_international_caps": 150,
+      "senior_international_goals": 27,
+      "birth_year": 1986,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-012",
+      "name": "Yusuke Hanabira",
+      "country_code": "JPN",
+      "nationality": "Japan",
+      "senior_international_caps": 95,
+      "senior_international_goals": 35,
+      "birth_year": 1989,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-013",
+      "name": "Oskar Vindheim",
+      "country_code": "NOR",
+      "nationality": "Norway",
+      "senior_international_caps": 8,
+      "senior_international_goals": 1,
+      "birth_year": 1999,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-014",
+      "name": "Emre Tazegül",
+      "country_code": "TUR",
+      "nationality": "Turkey",
+      "senior_international_caps": 63,
+      "senior_international_goals": 15,
+      "birth_year": 1990,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-015",
+      "name": "Pieter Vanstraelen",
+      "country_code": "BEL",
+      "nationality": "Belgium",
+      "senior_international_caps": 118,
+      "senior_international_goals": 2,
+      "birth_year": 1986,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-016",
+      "name": "Santiago Arrocena",
+      "country_code": "URU",
+      "nationality": "Uruguay",
+      "senior_international_caps": 200,
+      "senior_international_goals": 50,
+      "birth_year": 1983,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-017",
+      "name": "Lukas Brenndörfer",
+      "country_code": "AUT",
+      "nationality": "Austria",
+      "senior_international_caps": 15,
+      "senior_international_goals": 0,
+      "birth_year": 1996,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-018",
+      "name": "Dmitri Kolchanov",
+      "country_code": "RUS",
+      "nationality": "Russia",
+      "senior_international_caps": 75,
+      "senior_international_goals": 7,
+      "birth_year": 1988,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-019",
+      "name": "Gethin Rhydderch",
+      "country_code": "WAL",
+      "nationality": "Wales",
+      "senior_international_caps": 133,
+      "senior_international_goals": 30,
+      "birth_year": 1987,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-020",
+      "name": "Samir Benhaddou",
+      "country_code": "MAR",
+      "nationality": "Morocco",
+      "senior_international_caps": 42,
+      "senior_international_goals": 9,
+      "birth_year": 1995,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-021",
+      "name": "Andrés Valdepeñas",
+      "country_code": "ESP",
+      "nationality": "Spain",
+      "senior_international_caps": 161,
+      "senior_international_goals": 77,
+      "birth_year": 1985,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-022",
+      "name": "Callum Ostrander",
+      "country_code": "USA",
+      "nationality": "United States",
+      "senior_international_caps": 3,
+      "senior_international_goals": 0,
+      "birth_year": 2000,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-023",
+      "name": "Niko Haapalainen",
+      "country_code": "FIN",
+      "nationality": "Finland",
+      "senior_international_caps": 29,
+      "senior_international_goals": 1,
+      "birth_year": 1993,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-024",
+      "name": "Tomasz Wierzbicki",
+      "country_code": "POL",
+      "nationality": "Poland",
+      "senior_international_caps": 1,
+      "senior_international_goals": 0,
+      "birth_year": 2001,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-025",
+      "name": "Ricardo Mondragón",
+      "country_code": "MEX",
+      "nationality": "Mexico",
+      "senior_international_caps": 188,
+      "senior_international_goals": 90,
+      "birth_year": 1982,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-026",
+      "name": "Hamid Rostampour",
+      "country_code": "IRN",
+      "nationality": "Iran",
+      "senior_international_caps": 72,
+      "senior_international_goals": 20,
+      "birth_year": 1991,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-027",
+      "name": "Lars Ekdahl",
+      "country_code": "SWE",
+      "nationality": "Sweden",
+      "senior_international_caps": 110,
+      "senior_international_goals": 5,
+      "birth_year": 1986,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-028",
+      "name": "Viktor Strazdiņš",
+      "country_code": "LVA",
+      "nationality": "Latvia",
+      "senior_international_caps": 214,
+      "senior_international_goals": 12,
+      "birth_year": 1980,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-029",
+      "name": "Aidan Kilbride",
+      "country_code": "IRL",
+      "nationality": "Ireland",
+      "senior_international_caps": 54,
+      "senior_international_goals": 7,
+      "birth_year": 1992,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-030",
+      "name": "Joran Kestrel",
+      "country_code": "NED",
+      "nationality": "Netherlands",
+      "senior_international_caps": 66,
+      "senior_international_goals": 18,
+      "birth_year": 1990,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-031",
+      "name": "Joran Kestrel",
+      "country_code": "NED",
+      "nationality": "Netherlands",
+      "senior_international_caps": 12,
+      "senior_international_goals": 4,
+      "birth_year": 1998,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-032",
+      "name": "Moussa Diakhaté",
+      "country_code": "SEN",
+      "nationality": "Senegal",
+      "senior_international_caps": 81,
+      "senior_international_goals": 27,
+      "birth_year": 1989,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-033",
+      "name": "Bruno Castellari",
+      "country_code": "ITA",
+      "nationality": "Italy",
+      "senior_international_caps": 99,
+      "senior_international_goals": 0,
+      "birth_year": 1987,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-034",
+      "name": "Enzo Pirovano",
+      "country_code": "ARG",
+      "nationality": "Argentina",
+      "senior_international_caps": 44,
+      "senior_international_goals": 11,
+      "birth_year": 1994,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-035",
+      "name": "Goran Bilić",
+      "country_code": "CRO",
+      "nationality": "Croatia",
+      "senior_international_caps": 137,
+      "senior_international_goals": 45,
+      "birth_year": 1985,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-036",
+      "name": "Kim Seo-jun",
+      "country_code": "KOR",
+      "nationality": "South Korea",
+      "senior_international_caps": 120,
+      "senior_international_goals": 33,
+      "birth_year": 1988,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-037",
+      "name": "Felipe Arenal",
+      "country_code": "COL",
+      "nationality": "Colombia",
+      "senior_international_caps": 18,
+      "senior_international_goals": 2,
+      "birth_year": 1997,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-038",
+      "name": "Stefan Rautenbach",
+      "country_code": "GER",
+      "nationality": "Germany",
+      "senior_international_caps": 92,
+      "senior_international_goals": 28,
+      "birth_year": 1989,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-039",
+      "name": "Callum Ostrander",
+      "country_code": "SCO",
+      "nationality": "Scotland",
+      "senior_international_caps": 27,
+      "senior_international_goals": 6,
+      "birth_year": 1995,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-040",
+      "name": "Aurelio Benvenuto",
+      "country_code": "ITA",
+      "nationality": "Italy",
+      "senior_international_caps": 260,
+      "senior_international_goals": 120,
+      "birth_year": 1979,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-041",
+      "name": "Test Longshot",
+      "country_code": "XXX",
+      "nationality": "Test Nation",
+      "senior_international_caps": 400,
+      "senior_international_goals": 200,
+      "birth_year": 1990,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    },
+    {
+      "id": "fb-042",
+      "name": "Test Tap-in",
+      "country_code": "XXX",
+      "nationality": "Test Nation",
+      "senior_international_caps": 2,
+      "senior_international_goals": 3,
+      "birth_year": 1990,
+      "notes": "SYNTHETIC TEST PLAYER - fictional, not a real footballer record"
+    }
+  ]
+}
