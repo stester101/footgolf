@@ -54,23 +54,11 @@ func test_shot_record_fields() -> void:
 	assert_near(float(d["pin_before_m"]), 150.0, 0.001, "distance to pin before")
 	assert_near(float(d["pin_after_m"]), 50.0, 0.001, "distance to pin after")
 	assert_eq(d["start_lie"], "Tee")
-	assert_eq(d["trajectory"], null, "missing trajectory field reads as null")
+	assert_eq(d["trajectory"], "STANDARD", "trajectory recorded by name")
 	assert_eq((d["end_pos"] as Array).size(), 3)
 	r.holed = true
 	var h := TelemetryLog.shot_record(ctx, r, null, Vector3(0, 0, 150), 2, 0)
 	assert_near(float(h["pin_after_m"]), 0.0, 1e-9, "holed = 0 after")
-
-
-func test_optional_trajectory_read_defensively() -> void:
-	var gs := GDScript.new()
-	gs.source_code = "extends RefCounted\nvar trajectory := \"high\"\n"
-	assert_eq(gs.reload(), OK)
-	var req = gs.new()
-	assert_eq(TelemetryLog.opt(req, "trajectory"), "high")
-	assert_eq(TelemetryLog.opt(ShotRequest.new(), "trajectory", "none"), "none")
-	assert_eq(TelemetryLog.opt(null, "trajectory", 3), 3)
-	var d := TelemetryLog.shot_record({}, _sample_result(), req, Vector3.ZERO, 1, 0)
-	assert_eq(d["trajectory"], "high", "request trajectory recorded")
 
 
 func test_hole_and_round_records() -> void:

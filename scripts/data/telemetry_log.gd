@@ -127,7 +127,7 @@ static func round_start_record(ctx: Dictionary, rs: RoundState) -> Dictionary:
 static func shot_record(ctx: Dictionary, r: ShotResult, req: Object, cup: Vector3, shot_no: int, hole_index: int) -> Dictionary:
 	var before := Units.horizontal_distance(r.start_pos, cup)
 	var after := 0.0 if r.holed else r.remaining_m
-	var traj = opt(r, "trajectory", opt(req, "trajectory", null))
+	var traj := ShotTypes.trajectory_name(r.trajectory)
 	return {"type": "shot", "v": FORMAT_VERSION, "round_id": ctx.get("round_id", ""), "time": _now_iso(),
 		"course_id": ctx.get("course_id", ""), "hole_id": r.hole_id, "hole_index": hole_index,
 		"shot_no": shot_no, "shot_id": r.shot_id,
