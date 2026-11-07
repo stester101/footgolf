@@ -27,7 +27,7 @@ void fragment() {
 	vec4 a = texture(noise_tex, p / 26.0 + vec2(t * 0.010, t * 0.006));
 	vec4 b = texture(noise_tex, p / 9.5 + vec2(-t * 0.018, t * 0.014));
 	vec4 c = texture(noise_tex, p / 3.3 + vec2(t * 0.031, -t * 0.027));
-	vec2 slope = ((a.rg - 0.5) * 0.30 + (b.gr - 0.5) * 0.22 + (c.br - 0.5) * 0.16) * ripple;
+	vec2 slope = ((a.rg - 0.5) * 0.24 + (b.gr - 0.5) * 0.16 + (c.br - 0.5) * 0.10) * ripple;
 	vec3 cam = (INV_VIEW_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 	vec3 v = normalize(cam - wpos);
 	// ripples flatten out with distance (and grazing angles) to avoid noisy sparkle
@@ -44,7 +44,7 @@ void fragment() {
 	float shallow = smoothstep(0.55, 1.0, shore);
 	vec3 body = mix(deep_color, shallow_color, shallow);
 	ALBEDO = body * (1.0 - fres);
-	EMISSION = sky * fres * 0.85;
+	EMISSION = sky * fres * 0.7;
 	SPECULAR = 0.0;
 	ROUGHNESS = 1.0;
 	ALPHA = clamp(mix(0.86, 1.0, fres) * (1.0 - smoothstep(0.94, 1.0, shore) * 0.45), 0.0, 1.0);

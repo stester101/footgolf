@@ -7,14 +7,14 @@ extends RefCounted
 
 ## sRGB base colours (the turf shader adds stripes, clumps, grain and tint variation on top).
 const COLORS := {
-	Surface.Type.TEE: Color(0.40, 0.62, 0.22),
-	Surface.Type.FAIRWAY: Color(0.38, 0.60, 0.20),
-	Surface.Type.FRINGE: Color(0.36, 0.58, 0.21),
-	Surface.Type.GREEN: Color(0.42, 0.66, 0.25),
-	Surface.Type.ROUGH: Color(0.29, 0.46, 0.15),
+	Surface.Type.TEE: Color(0.35, 0.55, 0.20),
+	Surface.Type.FAIRWAY: Color(0.34, 0.54, 0.19),
+	Surface.Type.FRINGE: Color(0.31, 0.50, 0.19),
+	Surface.Type.GREEN: Color(0.37, 0.60, 0.22),
+	Surface.Type.ROUGH: Color(0.25, 0.40, 0.14),
 	Surface.Type.BUNKER: Color(0.88, 0.80, 0.62),
 	Surface.Type.WATER: Color(0.22, 0.24, 0.14),
-	Surface.Type.OOB: Color(0.25, 0.41, 0.14),
+	Surface.Type.OOB: Color(0.23, 0.37, 0.13),
 }
 ## Surface "kind" weights for the turf shader: R = mown fairway/tee/fringe, G = putting green,
 ## B = rough/long grass, A = sand. Stored in a second map texture.

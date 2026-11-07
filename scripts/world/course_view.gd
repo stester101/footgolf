@@ -243,7 +243,7 @@ func _step_trees(deadline: int) -> bool:
 		var cy: float = t["canopy_y"]
 		var yaw := rng.randf() * TAU
 		var conif := int(t["kind"]) != 0
-		var bark := Color(0.36, 0.27, 0.20) if not conif else Color(0.40, 0.25, 0.17)
+		var bark := Color(0.17, 0.12, 0.085) if not conif else Color(0.20, 0.11, 0.07)
 		bark = bark * rng.randf_range(0.8, 1.1)
 		bark.a = 1.0
 		_push("trunk_c" if conif else "trunk_d", Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3(tr, th + 0.15, tr)), Vector3(x, base_y - 0.15, z)), bark)

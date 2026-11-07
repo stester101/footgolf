@@ -31,6 +31,12 @@ void fragment() {
 	c *= mix(0.55, 1.18, smoothstep(0.25, 0.8, leaves));
 	c *= mix(0.6, 1.0, up);
 	c = mix(c, c * vec3(1.18, 1.14, 0.78), smoothstep(0.55, 0.9, n.r) * 0.45 * up);
+	vec3 cam = (INV_VIEW_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+	if (dot(cam - wpos, wn) < 0.0) {
+		// underside of skirts / inner crown: shaded, and keep the sky ambient from tinting it blue
+		c *= 0.4;
+		NORMAL = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+	}
 	ALBEDO = c;
 	ROUGHNESS = 0.92;
 	BACKLIGHT = c * 0.55;

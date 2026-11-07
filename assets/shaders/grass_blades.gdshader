@@ -28,8 +28,9 @@ void fragment() {
 	float rough_w;
 	float sand_w;
 	vec3 g = turf_albedo(root.xz, cam - root, rough_w, sand_w);
-	vec3 c = g * COLOR.rgb * mix(0.62, 1.18, hfrac);
+	vec3 c = g * COLOR.rgb * mix(0.78, 1.15, hfrac);
 	c = mix(c, c * vec3(1.15, 1.1, 0.75), smoothstep(0.75, 1.0, hfrac) * 0.35);
+	NORMAL = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
 	ALBEDO = c;
 	ROUGHNESS = 0.8;
 	SPECULAR = 0.3;

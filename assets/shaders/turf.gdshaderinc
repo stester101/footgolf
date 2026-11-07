@@ -49,7 +49,7 @@ vec3 turf_albedo(vec2 p, vec3 to_cam, out float rough_w, out float sand_w) {
 	vec3 c = base;
 	// broad soil-moisture / wear patches, weaker on the manicured green
 	float patches = big.r * 0.6 + mid.g * 0.4;
-	c *= mix(1.0, mix(0.80, 1.14, patches), 1.0 - green * 0.6);
+	c *= mix(1.0, mix(0.70, 1.20, smoothstep(0.2, 0.8, patches)), 1.0 - green * 0.6);
 	// dry (warm) vs lush (cool) tint drift
 	c = mix(c, c * vec3(1.14, 1.05, 0.70), smoothstep(0.45, 0.85, big.g) * 0.5 * (1.0 - green));
 	c = mix(c, c * vec3(0.86, 0.98, 1.05), smoothstep(0.5, 0.9, mid.b) * 0.35);
@@ -57,23 +57,23 @@ vec3 turf_albedo(vec2 p, vec3 to_cam, out float rough_w, out float sand_w) {
 	// mowing stripes: alternate mow direction, brightness depends on viewing direction
 	vec2 along = vec2(-stripe_dir.y, stripe_dir.x);
 	float view_along = dot(to_cam.xz, along) / max(length(to_cam), 0.001);
-	float sheen = 0.45 + 0.55 * abs(view_along);
+	float sheen = 0.5 + 0.5 * abs(view_along);
 	float sgn = view_along >= 0.0 ? 1.0 : -1.0;
 	float fw_band = turf_band(dot(p, stripe_dir) / stripe_width + (wq.b - 0.5) * 0.04);
-	c *= 1.0 + mown * fw_band * sgn * 0.085 * sheen;
+	c *= 1.0 + mown * fw_band * sgn * 0.30 * sheen;
 	float g_band = turf_band(dot(p, stripe_dir) / green_stripe_width);
 	float g_cross = turf_band(dot(p, along) / green_stripe_width);
-	c *= 1.0 + green * (g_band * sgn * 0.05 * sheen + g_cross * 0.018);
+	c *= 1.0 + green * (g_band * sgn * 0.16 * sheen + g_cross * 0.05);
 
 	// rough: clumps, darker hollows and a few seed heads
 	float clump = mid.a * 0.5 + fine.a * 0.3 + fine.b * 0.2;
-	c *= mix(1.0, mix(0.66, 1.14, clump), rough);
+	c *= mix(1.0, mix(0.5, 1.2, smoothstep(0.15, 0.85, clump)), rough);
 	c = mix(c, c * vec3(1.22, 1.12, 0.72), smoothstep(0.72, 0.9, fine.r) * 0.35 * rough);
 
 	// close-up blade grain (mip-filtered -> fades out cleanly with distance)
 	float grain = micro.b * 0.65 + micro.a * 0.35;
-	float grain_amt = mix(0.16, 0.08, green) + rough * 0.10;
-	c *= mix(1.0 - grain_amt, 1.0 + grain_amt * 0.7, grain);
+	float grain_amt = mix(0.24, 0.10, green) + rough * 0.12;
+	c *= mix(1.0 - grain_amt, 1.0 + grain_amt * 0.7, smoothstep(0.2, 0.8, grain));
 
 	// sand: fine grain, faint rake ripples and a darker lip where turf meets sand
 	float lip = smoothstep(0.05, 0.4, kind.a) * (1.0 - smoothstep(0.55, 0.95, kind.a));
