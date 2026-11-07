@@ -260,33 +260,47 @@ func test_spin_recorded_and_replayed() -> void:
 	TestHelpers.cleanup_repo(s.repo)
 
 
-func test_no_caps_on_the_green_and_spin_resets() -> void:
+func test_caps_allowed_on_the_green_and_spin_resets() -> void:
 	var s := TestHelpers.make_session()
 	var cup := s.hole.cup_position()
 	assert_eq(s.dev_place_ball(cup.x, cup.z - 5.0), "")
 	assert_eq(s.current_lie(), Surface.Type.GREEN)
 	s.set_mode(ShotTypes.Mode.CAPS)
-	assert_eq(s.mode, ShotTypes.Mode.GOALS, "caps refused on the green")
-	var id := TestHelpers.add_player(s.repo, 30, 3)
+	assert_eq(s.mode, ShotTypes.Mode.CAPS, "caps allowed on the green")
+	var id := TestHelpers.add_player(s.repo, 3, 3)
 	s.select_footballer(id)
-	s.mode = ShotTypes.Mode.CAPS  # bypass set_mode: take_shot must still refuse
-	assert_true(s.can_take_shot() != "", "take_shot validates the green rule")
-	assert_false(s.take_shot())
-	assert_eq(s.current_hole_state().strokes, 0, "refused shot costs nothing")
-	assert_true(s.pool.is_available(id))
-	# ball lands on the green after a caps shot -> mode auto-switches to Goals
-	var s2 := TestHelpers.make_session()
-	var c2 := s2.hole.cup_position()
-	s2.dev_place_ball(c2.x, c2.z - 30.0)
-	s2.set_mode(ShotTypes.Mode.CAPS)
-	s2.set_spin(0.5)
-	var r := TestHelpers.shoot(s2, ShotTypes.Mode.CAPS, 33, 0)
-	assert_eq(s2.spin, 0.0, "spin reset after the shot")
-	if s2.current_lie() == Surface.Type.GREEN:
-		assert_eq(s2.mode, ShotTypes.Mode.GOALS, "auto-switched to Goals on the green")
-	assert_true(r != null)
+	assert_eq(s.can_take_shot(), "")
+	s.set_spin(0.5)
+	s.set_trajectory(ShotTypes.Trajectory.HIGH)
+	assert_true(s.take_shot())
+	s.skip_motion()
+	assert_eq(s.current_hole_state().strokes, 1)
+	assert_eq(s.last_result.trajectory, ShotTypes.Trajectory.HIGH)
+	assert_eq(s.spin, 0.0, "spin reset after the shot")
+	assert_eq(s.trajectory, ShotTypes.Trajectory.STANDARD, "trajectory reset after the shot")
 	TestHelpers.cleanup_repo(s.repo)
-	TestHelpers.cleanup_repo(s2.repo)
+
+
+func test_trajectory_keeps_neutral_carry_and_changes_flight() -> void:
+	var cfg := PhysicsConfig.new()
+	var apex := {}
+	for t in [ShotTypes.Trajectory.PUNCH, ShotTypes.Trajectory.LOW, ShotTypes.Trajectory.STANDARD, ShotTypes.Trajectory.HIGH]:
+		var ang := ShotTypes.trajectory_angle(t, cfg.launch_angle_deg)
+		for yd in [5, 60, 150, 230]:
+			var target := Units.caps_to_carry_m(yd)
+			var v := ShotCalculator.solve_caps_speed(target, cfg, 0.0, ang)
+			var carry := ShotCalculator.measure_neutral_carry(v, cfg, 0.0, ang)
+			assert_near(Units.m_to_yards(carry), float(yd), maxf(0.25, yd * 0.005), "%s %d yd exact" % [ShotTypes.trajectory_name(t), yd])
+		var sim := TestHelpers.flat_sim(Surface.Type.FAIRWAY)
+		var v2 := ShotCalculator.solve_caps_speed(Units.caps_to_carry_m(120), cfg, 0.0, ang)
+		sim.launch(Vector3(0, cfg.ball_radius, 0), ShotCalculator.launch_velocity(Vector3(0, 0, 1), v2, ang), true)
+		sim.run_until_done()
+		apex[t] = sim.max_height
+		note("%s %.0f deg: 120-cap apex %.1f m, speed %.1f m/s, total %.1f m" % [ShotTypes.trajectory_name(t), ang, sim.max_height, v2, sim.pos.z])
+	assert_lt(float(apex[ShotTypes.Trajectory.PUNCH]), float(apex[ShotTypes.Trajectory.LOW]))
+	assert_lt(float(apex[ShotTypes.Trajectory.LOW]), float(apex[ShotTypes.Trajectory.STANDARD]))
+	assert_lt(float(apex[ShotTypes.Trajectory.STANDARD]), float(apex[ShotTypes.Trajectory.HIGH]))
+	assert_lt(float(apex[ShotTypes.Trajectory.PUNCH]), 8.0, "punch stays under a canopy")
 
 
 func test_bigger_cup_default_and_setting() -> void:

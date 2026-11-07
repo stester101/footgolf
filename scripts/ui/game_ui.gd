@@ -50,6 +50,7 @@ var _player_sub: Label
 var _spin_box: HBoxContainer
 var _spin: SpinControl
 var _spin_label: Label
+var _traj_btn: Button
 var _skip_btn: Button
 var _shot_btn: Button
 var _shot_label: Label
@@ -355,6 +356,24 @@ func _build_shot_controls() -> VBoxContainer:
 	_spin_label.add_theme_font_override("font", UiKit.font_semi())
 	sl.add_child(_spin_label)
 	_spin_box.add_child(sl)
+	# trajectory (Caps only): tap to cycle Punch / Low / Standard / High; resets after each shot
+	_traj_btn = Button.new()
+	_traj_btn.custom_minimum_size = Vector2(132, 84)
+	_traj_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_traj_btn.focus_mode = Control.FOCUS_ALL
+	_traj_btn.set_meta("ui_id", "trajectory")
+	_traj_btn.set("accessibility_name", "Trajectory")
+	_traj_btn.tooltip_text = "Trajectory: tap to cycle Punch, Low, Standard, High"
+	for st in ["normal", "hover"]:
+		_traj_btn.add_theme_stylebox_override(st, _flat_style(UiKit.C_SURFACE))
+	_traj_btn.add_theme_stylebox_override("pressed", _flat_style(UiKit.C_SELECTED))
+	_traj_btn.add_theme_font_size_override("font_size", 19)
+	_traj_btn.add_theme_font_override("font", UiKit.font_semi())
+	_traj_btn.add_theme_color_override("font_color", UiKit.C_TEXT)
+	_traj_btn.add_theme_color_override("font_hover_color", UiKit.C_TEXT)
+	_traj_btn.add_theme_color_override("font_pressed_color", UiKit.C_TEXT)
+	_traj_btn.pressed.connect(func() -> void: session.cycle_trajectory())
+	_spin_box.add_child(_traj_btn)
 	br.add_child(_spin_box)
 	_skip_btn = UiKit.button("Skip", func() -> void: session.skip_motion(), 96, 24)
 	_skip_btn.custom_minimum_size.x = 150
@@ -373,7 +392,7 @@ func _build_shot_controls() -> VBoxContainer:
 	sc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sh := UiKit.hbox(12)
 	sh.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_shot_label = UiKit.label("Take shot", 32, UiKit.C_ACTION_TEXT)
+	_shot_label = UiKit.label("Take shot", 29, UiKit.C_ACTION_TEXT)
 	_shot_label.add_theme_font_override("font", UiKit.font_semi())
 	sh.add_child(_shot_label)
 	_shot_icon = LineIcon.make("arrow_right", 34, UiKit.C_ACTION_TEXT)
@@ -529,12 +548,9 @@ func refresh() -> void:
 	_round_sub.text = "%d STR%s" % [hs.raw_total(), pen]
 	# --- lie / shot label
 	var lie := session.current_lie()
-	var on_green := lie == Surface.Type.GREEN
 	var lie_txt := "%s  •  SHOT %d" % [Surface.name_of(lie).to_upper(), hs.raw_total() + 1]
 	if session.lie_override >= 0:
 		lie_txt += "  •  DEV LIE"
-	if on_green:
-		lie_txt += "  •  GOALS ONLY"
 	_lie_label.text = lie_txt
 	var hint := Surface.effect_hint(lie, session.cfg.surfaces)
 	var neutral := hint.contains("neutral") and hint.contains("normal")
@@ -579,6 +595,8 @@ func refresh() -> void:
 	_spin_box.visible = caps_mode and not moving
 	_skip_btn.visible = moving
 	_spin.set_spin(session.spin)
+	var traj := ShotTypes.trajectory_name(session.trajectory)
+	_traj_btn.text = "%s\n%d°" % [traj, int(round(session.launch_angle_for(session.trajectory)))]
 	_spin_label.text = "NO SPIN" if absf(session.spin) < 0.025 else "%s %d%%" % ["TOP" if session.spin > 0.0 else "BACK", int(round(absf(session.spin) * 100.0))]
 	# Always tappable while aiming: with no footballer chosen it opens the picker instead.
 	_shot_btn.disabled = not (aiming and _overlays.is_empty())
@@ -592,7 +610,7 @@ func refresh() -> void:
 	_shot_label.add_theme_color_override("font_color", shot_col)
 	_shot_icon.set_color(shot_col)
 	_shot_icon.visible = not moving
-	_caps_btn.disabled = moving or on_green
+	_caps_btn.disabled = moving
 	_goals_btn.disabled = moving
 	_player_btn.disabled = moving
 	_map_hint.text = "Tap to measure  •  Drag to pan  •  Pinch to zoom"

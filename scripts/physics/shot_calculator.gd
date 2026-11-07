@@ -33,12 +33,13 @@ static func launch_velocity(aim_dir: Vector3, speed: float, angle_deg: float) ->
 
 
 ## Neutral first-contact carry for a given launch speed (metres).
-static func measure_neutral_carry(speed: float, cfg: PhysicsConfig, spin: float = 0.0) -> float:
+## angle_deg < 0 means the standard cfg.launch_angle_deg.
+static func measure_neutral_carry(speed: float, cfg: PhysicsConfig, spin: float = 0.0, angle_deg: float = -1.0) -> float:
 	if speed <= 0.0:
 		return 0.0
 	var sim := BallSim.new(_reference_plane(), cfg)
 	sim.stop_at_first_contact = true
-	sim.launch(Vector3(0.0, cfg.ball_radius, 0.0), launch_velocity(Vector3(0, 0, 1), speed, cfg.launch_angle_deg), true, spin)
+	sim.launch(Vector3(0.0, cfg.ball_radius, 0.0), launch_velocity(Vector3(0, 0, 1), speed, angle_deg if angle_deg > 0.0 else cfg.launch_angle_deg), true, spin)
 	sim.run_until_done(120.0)
 	return sim.carry_m
 
@@ -58,16 +59,17 @@ static func quantise_spin(spin: float) -> float:
 	return snappedf(clampf(spin, -1.0, 1.0), 0.05)
 
 
-static func solve_caps_speed(carry_m: float, cfg: PhysicsConfig, spin: float = 0.0) -> float:
+static func solve_caps_speed(carry_m: float, cfg: PhysicsConfig, spin: float = 0.0, angle_deg: float = -1.0) -> float:
 	spin = quantise_spin(spin)
+	var ang := angle_deg if angle_deg > 0.0 else cfg.launch_angle_deg
 	if carry_m <= 0.0:
 		return 0.0
-	var key := "%s#%.6f#%.2f" % [cfg.signature(), carry_m, spin]
+	var key := "%s#%.6f#%.2f#%.2f" % [cfg.signature(), carry_m, spin, ang]
 	if _caps_cache.has(key):
 		return _caps_cache[key]
-	var th := deg_to_rad(cfg.launch_angle_deg)
+	var th := deg_to_rad(ang)
 	var guess := sqrt(carry_m * cfg.gravity / maxf(0.05, sin(2.0 * th)))
-	var v := _solve(guess, carry_m, func(s: float) -> float: return measure_neutral_carry(s, cfg, spin))
+	var v := _solve(guess, carry_m, func(s: float) -> float: return measure_neutral_carry(s, cfg, spin, ang))
 	_caps_cache[key] = v
 	return v
 

@@ -21,7 +21,8 @@ Owner-approved deviations from the spec are logged in `docs/DECISIONS.md`.
   Bearing 0° = +Z, 90° = +X.
 
 ## Locked gameplay invariants (never change silently)
-- 1 cap = 1 yd neutral FIRST-CONTACT carry (fixed auto launch angle). 1 goal = 1 ft neutral ground travel.
+- 1 cap = 1 yd neutral FIRST-CONTACT carry at the chosen trajectory (Punch 12°/Low 24°/Standard 42°/High 56°;
+  owner-approved, carry exact for every trajectory via the solver). 1 goal = 1 ft neutral ground travel.
 - Pre-shot SPIN (owner-approved change, see docs/DECISIONS.md): vertical only (top/back, no sidespin),
   Caps shots only, never changes neutral carry (solver includes spin). No other loft/power/club controls.
 - Neutral = flat FAIRWAY plane, zero wind, no obstacles. Tolerances: Caps max(0.25 yd, 0.5%),
@@ -32,7 +33,8 @@ Owner-approved deviations from the spec are logged in `docs/DECISIONS.md`.
 - Footballer usable once per match (all 3 holes); new round resets pool, keeps DB edits.
 - Water/OOB: +1 penalty, deterministic safe relief. Max score par+5 ends hole.
 - Hole-out only when AT REST within radius (default 5 ft, 0–10); at 0 ft physical cup entry only.
-- Cup default is 12 in diameter (owner-approved); no Caps shots from the GREEN (Goals only); spin resets each shot.
+- Cup default is 12 in diameter (owner-approved); Caps or Goals allowed from ANY lie incl. the green (owner-approved,
+  replaces the old Goals-only green rule); spin and trajectory reset to none/Standard after each shot.
 - Picker never sorts/filters by stats outside TEST MODE.
 - Developer Undo ≠ mulligan (keep names separate).
 

@@ -40,3 +40,15 @@ Changes to locked rules in `docs/SPECIFICATION.md`, made explicitly by the produ
 - Courses are data (`data/courses.json`): Starter Links (holes 1-3), Pinewood Ridge (holes 4-9, hilly forest
   mountainside, par 24) and Full 9. Future themed courses are added the same way.
 - Pinewood Ridge holes are authored with `tools/data/gen_forest_holes.py`; the JSON is the source of truth.
+
+## 2026-11-07 — No maximum score; editable pars
+- There is no maximum score per hole: a hole ends only when holed (overrides "max score par+5").
+  Each hole's par can be edited in Settings → "Edit hole pars…" (2–8, stored in settings `par_overrides`).
+
+## 2026-11-07 — Caps or Goals from any lie; Caps trajectory options
+- Replaces "No chips from the green": Caps or Goals may be played from any lie, including the green.
+- Caps shots have a trajectory choice: Punch 12°, Low 24°, Standard (PhysicsConfig.launch_angle_deg, 42°),
+  High 56°. The neutral first-contact carry stays exactly 1 cap = 1 yd for every trajectory (the launch
+  speed is solved with the same BallSim at the chosen angle). Low/Punch shots stay under tree canopies and
+  run out further; High stops quicker. Trajectory resets to Standard after each shot, like spin.
+  Recorded in ShotRequest/ShotResult (`trajectory`, `launch_angle_deg`).

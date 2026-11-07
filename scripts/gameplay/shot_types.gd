@@ -4,6 +4,12 @@ extends RefCounted
 
 enum Mode { CAPS, GOALS }
 
+## Caps launch trajectory (owner-approved, docs/DECISIONS.md). Carry stays exact for every
+## option: the solver uses the chosen angle. STANDARD uses PhysicsConfig.launch_angle_deg.
+enum Trajectory { PUNCH, LOW, STANDARD, HIGH }
+const TRAJECTORY_NAMES := {Trajectory.PUNCH: "PUNCH", Trajectory.LOW: "LOW", Trajectory.STANDARD: "STANDARD", Trajectory.HIGH: "HIGH"}
+const TRAJECTORY_ANGLES := {Trajectory.PUNCH: 12.0, Trajectory.LOW: 24.0, Trajectory.HIGH: 56.0}
+
 enum State {
 	BOOT, MAIN_MENU, ROUND_SETUP, HOLE_INTRO, AIMING, SHOT_COMMITTED,
 	BALL_IN_MOTION, HAZARD_RESOLUTION, SHOT_RESULT, HOLE_COMPLETE, ROUND_COMPLETE,
@@ -24,6 +30,14 @@ const COMPLETION_MAX_SCORE := "MAX_SCORE"
 
 static func mode_name(m: int) -> String:
 	return MODE_NAMES.get(m, "?")
+
+
+static func trajectory_name(t: int) -> String:
+	return TRAJECTORY_NAMES.get(t, "STANDARD")
+
+
+static func trajectory_angle(t: int, standard_deg: float) -> float:
+	return float(TRAJECTORY_ANGLES.get(t, standard_deg))
 
 
 static func state_name(s: int) -> String:

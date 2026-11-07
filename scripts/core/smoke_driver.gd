@@ -117,6 +117,14 @@ func _run() -> void:
 					d = minf(d * 0.5, 60.0)
 				if not _press_id("mode_goals" if want_goals else "mode_caps"):
 					return _fail("mode button missing")
+				if not want_goals and session.round_state.current_index == 1 and session.current_hole_state().strokes == 0:
+					var t0_traj := session.trajectory
+					if not _press_id("trajectory"):
+						return _fail("trajectory button missing")
+					if session.trajectory == t0_traj:
+						return _fail("trajectory button did nothing")
+					await _frames(2)
+					await _shot("trajectory")
 				if not _press_id("player_row"):
 					return _fail("player row missing")
 				await _frames(2)
