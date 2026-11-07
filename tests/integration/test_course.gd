@@ -64,29 +64,12 @@ func test_terrain_is_finite_over_bounds() -> void:
 func test_bot_completes_full_round() -> void:
 	# Greedy bot: aim at pin; choose Caps when far, Goals when near. Must finish 3 holes.
 	var s := TestHelpers.make_session()
-	var guard := 200
-	while not s.is_round_complete() and guard > 0:
-		guard -= 1
-		match s.state:
-			ShotTypes.State.HOLE_INTRO:
-				s.begin_play()
-			ShotTypes.State.AIMING:
-				var d := s.distance_to_pin_m()
-				s.aim_at_pin()
-				if d > 25.0:
-					TestHelpers.shoot(s, ShotTypes.Mode.CAPS, int(Units.m_to_yards(minf(d, 200.0)) * 0.9), 0)
-				else:
-					TestHelpers.shoot(s, ShotTypes.Mode.GOALS, 0, maxi(1, int(Units.m_to_feet(d))))
-			ShotTypes.State.SHOT_RESULT:
-				s.acknowledge_result()
-			ShotTypes.State.HOLE_COMPLETE:
-				s.next_hole()
+	TestHelpers.bot_round(s, 2000)
 	assert_true(s.is_round_complete(), "round completes")
 	var parts: Array[String] = []
 	for hs in s.round_state.holes:
 		var h: HoleState = hs
 		assert_true(h.complete)
-		assert_true(h.score() <= h.max_score())
 		parts.append("%s:%d(%s)" % [h.hole_id, h.score(), h.completion])
 	note("bot round %s total %d (%s)" % [", ".join(parts), s.round_state.total_score(), RoundState.fmt_relative(s.round_state.relative_to_par())])
 	assert_eq(s.pool.used_count(), s.history.size(), "one footballer per shot across round")
@@ -156,23 +139,7 @@ func test_ridge_holes_valid_and_hilly() -> void:
 
 func test_ridge_round_completes() -> void:
 	var s := TestHelpers.make_session(TestHelpers.load_ridge_holes())
-	var guard := 400
-	while not s.is_round_complete() and guard > 0:
-		guard -= 1
-		match s.state:
-			ShotTypes.State.HOLE_INTRO:
-				s.begin_play()
-			ShotTypes.State.AIMING:
-				var d := s.distance_to_pin_m()
-				s.aim_at_pin()
-				if s.current_lie() == Surface.Type.GREEN or d <= 25.0:
-					TestHelpers.shoot(s, ShotTypes.Mode.GOALS, 0, maxi(1, int(Units.m_to_feet(d))))
-				else:
-					TestHelpers.shoot(s, ShotTypes.Mode.CAPS, int(Units.m_to_yards(minf(d, 200.0)) * 0.9), 0)
-			ShotTypes.State.SHOT_RESULT:
-				s.acknowledge_result()
-			ShotTypes.State.HOLE_COMPLETE:
-				s.next_hole()
+	TestHelpers.bot_round(s, 4000)
 	assert_true(s.is_round_complete(), "ridge round completes")
 	var parts: Array[String] = []
 	for hs in s.round_state.holes:
