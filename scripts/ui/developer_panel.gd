@@ -337,7 +337,7 @@ func _refresh_players() -> void:
 		return
 	_player_list.clear()
 	_player_ids.clear()
-	for fb in session.repo.search(_p_search.text if _p_search else ""):
+	for fb in session.repo.search(_p_search.text if _p_search else "", "", 300):
 		var used := " [USED]" if session.pool.is_used(fb.id) else ""
 		_player_list.add_item("%s (%s) — C %d / G %d%s" % [fb.name, fb.nationality, fb.caps, fb.goals, used])
 		_player_ids.append(fb.id)

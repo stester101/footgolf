@@ -69,21 +69,33 @@ func setup(s: GameSession) -> void:
 	_rebuild()
 
 
+const PAGE := 60
+var _limit := PAGE
+
+
 func _rebuild() -> void:
+	_limit = PAGE
+	_render()
+
+
+## Only the first _limit matches are built as buttons (the real database has thousands).
+func _render() -> void:
 	UiKit.clear(_list)
 	var nat := ""
 	if _nation.selected > 0:
 		nat = _nations[_nation.selected - 1]
-	var results := session.repo.search(_search.text, nat)
+	var all_matches := session.repo.search(_search.text, nat)
+	var total := all_matches.size()
 	var available := 0
-	for fb in results:
+	for i in mini(_limit, total):
+		var fb: Footballer = all_matches[i]
 		var used := session.pool.is_used(fb.id)
 		var txt := fb.display_label()
 		if show_stats:
-			txt = "%s (%s)   ·   %d caps  ·  %d goals" % [fb.name, fb.nationality, fb.caps, fb.goals]
+			txt += "   ·   %d caps · %d goals" % [fb.caps, fb.goals]
 		if used:
 			txt += "   · USED"
-		var b := UiKit.button(txt, func() -> void: _on_pick(fb.id), 68, 24)
+		var b := UiKit.button(txt, func() -> void: _on_pick(fb.id), 68, 23)
 		# Let drags reach the ScrollContainer (touch scrolling); a press only picks if the list didn't scroll.
 		b.mouse_filter = Control.MOUSE_FILTER_PASS
 		b.button_down.connect(func() -> void: _press_scroll = _sc.scroll_vertical)
@@ -95,9 +107,17 @@ func _rebuild() -> void:
 		_list.add_child(b)
 		if not used:
 			available += 1
-	if results.is_empty():
+	if total == 0:
 		_list.add_child(UiKit.text("No footballers match.", 24, UiKit.C_MUTED))
-	_list.add_child(UiKit.text("%d available of %d shown · %d used this match" % [available, results.size(), session.pool.used_count()], 20, UiKit.C_MUTED))
+	if total > _limit:
+		var more := UiKit.button("Show more (%d of %d shown)" % [_limit, total], func() -> void:
+			_limit += PAGE
+			var keep := _sc.scroll_vertical
+			_render()
+			_sc.set_deferred("scroll_vertical", keep), 64, 22)
+		more.mouse_filter = Control.MOUSE_FILTER_PASS
+		_list.add_child(more)
+	_list.add_child(UiKit.text("%d matches · %d used this match · type a name or pick a country to narrow" % [total, session.pool.used_count()], 19, UiKit.C_MUTED))
 
 
 func _on_pick(id: String) -> void:

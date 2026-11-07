@@ -98,3 +98,42 @@ func test_pool_consume_once() -> void:
 	assert_true(p.is_available("a"))
 	p.restore(snap)
 	assert_false(p.is_available("a"))
+
+
+func test_search_limit_and_accent_folding() -> void:
+	var repo := TestHelpers.make_repo()
+	assert_eq(repo.search("", "", 5).size(), 5, "limit respected")
+	assert_true(repo.search("valdepenas").size() >= 1, "accent-insensitive search finds Valdepeñas")
+	assert_true(repo.search("MONTARME").size() >= 1, "case/accent-insensitive search")
+	TestHelpers.cleanup_repo(repo)
+
+
+func test_edits_for_other_dataset_are_not_applied() -> void:
+	var repo := TestHelpers.make_repo()
+	var id := repo.all_sorted()[0].id
+	repo.update_record(id, {"senior_international_caps": 999})
+	# Pretend the stored edits belong to an older dataset snapshot.
+	var f := FileAccess.open(repo.save_path, FileAccess.READ)
+	var d: Dictionary = JSON.parse_string(f.get_as_text())
+	f = null
+	d["dataset"] = "old-snapshot"
+	var w := FileAccess.open(repo.save_path, FileAccess.WRITE)
+	w.store_string(JSON.stringify(d))
+	w = null
+	var repo2 := FootballerRepository.new()
+	repo2.save_path = repo.save_path
+	repo2.load_all()
+	assert_true(repo2.get_by_id(id).caps != 999, "stale edits not applied")
+	var backup := repo.save_path.get_basename() + "_backup_old-snapshot.json"
+	assert_true(FileAccess.file_exists(backup), "stale edits backed up")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(backup))
+	TestHelpers.cleanup_repo(repo)
+
+
+func test_provenance_round_trips() -> void:
+	var fb := Footballer.from_dict({"id": "wd-Q1", "name": "X", "senior_international_caps": 3,
+		"senior_international_goals": 1, "source": "wikidata", "wikidata": "Q1", "provisional": true})
+	var d := fb.to_dict()
+	assert_eq(d["wikidata"], "Q1")
+	assert_eq(d["source"], "wikidata")
+	assert_false(fb.display_label().contains("Q1"), "provenance never in label")

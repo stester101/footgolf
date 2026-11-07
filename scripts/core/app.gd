@@ -15,13 +15,27 @@ var build_info := {}
 
 func _ready() -> void:
 	settings.load_settings()
-	repo.load_all()
+	load_dataset()
 	if FileAccess.file_exists("res://build_info.json"):
 		var f := FileAccess.open("res://build_info.json", FileAccess.READ)
 		var d = JSON.parse_string(f.get_as_text())
 		if typeof(d) == TYPE_DICTIONARY:
 			build_info = d
 	print("[FootballGolf] v%s commit=%s footballers=%d" % [version(), build_info.get("commit", "local"), repo.count()])
+
+
+## Load the footballer dataset chosen in settings (falls back to synthetic test players if the
+## real snapshot is not bundled).
+func load_dataset() -> void:
+	var want_real := settings.dataset == "real" and FileAccess.file_exists(FootballerRepository.REAL_PATH)
+	repo.seed_path = FootballerRepository.REAL_PATH if want_real else FootballerRepository.SEED_PATH
+	repo.load_all()
+
+
+func dataset_label() -> String:
+	if repo.seed_path == FootballerRepository.REAL_PATH:
+		return "Real players (Wikidata snapshot, %d players)" % repo.count()
+	return "Synthetic test players (%d)" % repo.count()
 
 
 func load_holes() -> Array:

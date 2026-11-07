@@ -59,7 +59,7 @@ func setup() -> void:
 	_settings_box = UiKit.vbox(12)
 	_settings_box.visible = false
 	v.add_child(_settings_box)
-	v.add_child(UiKit.text("Offline prototype · synthetic test players\n%s" % App.build_label(), 18, Color(0.85, 0.9, 0.85), HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UiKit.text("Offline prototype · %s\n%s" % [App.dataset_label(), App.build_label()], 18, Color(0.85, 0.9, 0.85), HORIZONTAL_ALIGNMENT_CENTER))
 
 
 func _show_settings() -> void:
@@ -92,6 +92,17 @@ func _show_settings() -> void:
 		st.show_stats = on
 		st.save())
 	v.add_child(stats)
+	var ds := CheckButton.new()
+	ds.text = "Use real footballers (off = synthetic test set)"
+	ds.button_pressed = st.dataset == "real"
+	var ds_label := UiKit.text(App.dataset_label(), 20, UiKit.C_MUTED)
+	ds.toggled.connect(func(on: bool) -> void:
+		st.dataset = "real" if on else "test"
+		st.save()
+		App.load_dataset()
+		ds_label.text = App.dataset_label())
+	v.add_child(ds)
+	v.add_child(ds_label)
 	v.add_child(UiKit.text("Audio: none in V0.1 (silent).", 20, UiKit.C_MUTED))
 	v.add_child(UiKit.button("Reset footballer database to seed", func() -> void: App.repo.reset_to_seed(), 70, 22))
 	v.add_child(UiKit.button("Back", _hide_settings, 76, 26))

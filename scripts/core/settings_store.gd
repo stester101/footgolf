@@ -13,6 +13,8 @@ var sim_speed := 1.0
 var show_trail := true
 ## TEST MODE: show caps/goals in the picker before the shot (developer/testing aid; off = normal rules).
 var show_stats := true
+## "real" = bundled Wikidata snapshot, "test" = synthetic test players.
+var dataset := "real"
 var lie_override := -1
 var force_surface := false
 var physics := PhysicsConfig.new()
@@ -35,6 +37,7 @@ func load_settings() -> void:
 	sim_speed = clampf(float(d.get("sim_speed", 1.0)), 0.25, 8.0)
 	show_trail = bool(d.get("show_trail", true))
 	show_stats = bool(d.get("show_stats", true))
+	dataset = "test" if String(d.get("dataset", "real")) == "test" else "real"
 	lie_override = int(d.get("lie_override", -1))
 	if not Surface.PLAYABLE.has(lie_override):
 		lie_override = -1
@@ -57,6 +60,7 @@ func save() -> void:
 		"sim_speed": sim_speed,
 		"show_trail": show_trail,
 		"show_stats": show_stats,
+		"dataset": dataset,
 		"lie_override": lie_override,
 		"force_surface": force_surface,
 		"physics": physics.to_dict(),

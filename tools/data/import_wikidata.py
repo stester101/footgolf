@@ -56,7 +56,7 @@ def resolve_team(country):
         return country["team"], "pinned"
     q = f"""
 SELECT ?team ?teamLabel (COUNT(DISTINCT ?p) AS ?n) WHERE {{
-  ?team wdt:P31 wd:{NAT_TEAM} .
+  ?team wdt:P31/wdt:P279* wd:{NAT_TEAM} .
   {{ ?team wdt:P1532 wd:{country['country']} }} UNION {{ ?team wdt:P17 wd:{country['country']} }}
   ?p p:P54 ?st . ?st ps:P54 ?team ; pq:P1350 ?caps .
   ?p wdt:P21 wd:{MALE} .
@@ -76,7 +76,7 @@ def fetch_players(team_q):
 SELECT ?p ?pLabel ?birth ?team ?teamLabel ?caps ?goals ?start ?end WHERE {{
   ?p p:P54 ?st0 . ?st0 ps:P54 wd:{team_q} .
   ?p wdt:P21 wd:{MALE} .
-  ?p p:P54 ?st . ?st ps:P54 ?team . ?team wdt:P31 wd:{NAT_TEAM} .
+  ?p p:P54 ?st . ?st ps:P54 ?team . ?team wdt:P31/wdt:P279* wd:{NAT_TEAM} .
   OPTIONAL {{ ?st pq:P1350 ?caps }}
   OPTIONAL {{ ?st pq:P1351 ?goals }}
   OPTIONAL {{ ?st pq:P580 ?start }}

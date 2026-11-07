@@ -12,6 +12,10 @@ var goals := 0
 var birth_year := 0
 var career_years := ""
 var notes := ""
+## Internal provenance (source, wikidata id, retrieval date, provisional flag). Never shown pre-shot.
+var provenance: Dictionary = {}
+
+const PROVENANCE_KEYS := ["source", "wikidata", "team_qid", "retrieved", "provisional"]
 
 
 static func from_dict(d: Dictionary) -> Footballer:
@@ -25,6 +29,9 @@ static func from_dict(d: Dictionary) -> Footballer:
 	f.birth_year = int(d.get("birth_year", 0)) if d.get("birth_year") != null else 0
 	f.career_years = String(d.get("career_years", "")) if d.get("career_years") != null else ""
 	f.notes = String(d.get("notes", "")) if d.get("notes") != null else ""
+	for k in PROVENANCE_KEYS:
+		if d.has(k) and d[k] != null:
+			f.provenance[k] = d[k]
 	return f
 
 
@@ -43,6 +50,8 @@ func to_dict() -> Dictionary:
 		d["career_years"] = career_years
 	if notes != "":
 		d["notes"] = notes
+	for k in provenance.keys():
+		d[k] = provenance[k]
 	return d
 
 
