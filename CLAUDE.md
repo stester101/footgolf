@@ -16,8 +16,9 @@ Owner-approved deviations from the spec are logged in `docs/DECISIONS.md`.
 - `scripts/world/`, `scripts/camera/`, `scripts/ui/`, `scripts/round_controller.gd`, `scripts/main.gd`
   — presentation only; UI never decides score or consumption.
 - Autoload `App` (`scripts/core/app.gd`): repo, settings, hole loading. Logic classes must not use it.
-- Holes: `data/holes/hole_01..09.json`; courses in `data/courses.json` (Starter Links 1-3, Pinewood Ridge 4-9,
-  Full 9). Ridge holes come from `tools/data/gen_forest_holes.py`. Units: 1 world unit = 1 m, Y up, horizontal = X/Z.
+- Holes: `data/holes/hole_01..17.json`; courses in `data/courses.json` (Starter Links 1-3, Pinewood Ridge 4-9,
+  Coastal Links 10-13, Lakeside 14-17, Full 9 = 1-9, Grand Tour = all 17 / Developer Test). Holes 4-17 come
+  from `tools/data/gen_forest_holes.py` (themed specs; JSON is the source of truth). Units: 1 world unit = 1 m, Y up, horizontal = X/Z.
   Bearing 0° = +Z, 90° = +X.
 
 ## Locked gameplay invariants (never change silently)
@@ -30,7 +31,8 @@ Owner-approved deviations from the spec are logged in `docs/DECISIONS.md`.
 - Take Shot is the only way to shoot; commit is atomic: footballer consumed + 1 stroke exactly once,
   even for 0 distance. Failed validation consumes nothing.
 - Footballer usable once per match (all 3 holes); new round resets pool, keeps DB edits.
-- Water/OOB: +1 penalty, deterministic safe relief. Max score par+5 ends hole.
+- Water/OOB: +1 penalty, deterministic safe relief. OOB is only the outer 25 m band of the rendered terrain
+  (whole visible course in play, owner-approved, docs/DECISIONS.md). Max score par+5 ends hole.
 - Hole-out only when AT REST within radius (default 5 ft, 0–10); at 0 ft physical cup entry only.
 - Cup default is 12 in diameter (owner-approved); no Caps shots from the GREEN (Goals only); spin resets each shot.
 - Picker never sorts/filters by stats outside TEST MODE.

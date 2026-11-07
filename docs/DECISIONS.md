@@ -40,3 +40,25 @@ Changes to locked rules in `docs/SPECIFICATION.md`, made explicitly by the produ
 - Courses are data (`data/courses.json`): Starter Links (holes 1-3), Pinewood Ridge (holes 4-9, hilly forest
   mountainside, par 24) and Full 9. Future themed courses are added the same way.
 - Pinewood Ridge holes are authored with `tools/data/gen_forest_holes.py`; the JSON is the source of truth.
+
+## 2026-11-07 — Make all visible course playable (owner-approved)
+- Owner request: "Make all visible course playable". There are no per-hole OOB stake lines any more.
+  `HoleDefinition.play_area` = the rendered terrain `bounds` inset by 25 m (`oob_inset`, default
+  `OOB_INSET_M`); only that outer edge band of the map is OOB (+1 penalty, line-of-entry relief as before).
+  `HoleDefinition.boundary` is now that rectangle, so OOB stakes only mark the far map edge.
+- Legacy `"boundary"` polygons were removed from the hole JSON (and are ignored if present). Starter Links
+  terrain bounds were padded (features + 75 m) so the rough around every feature is visible and in play.
+- Trees, water (+1, relief), bunkers are unchanged. `HazardResolver` is unchanged: relief walks back
+  along the ball path to the first in-bounds dry spot, which now always exists inside the play area.
+- Overrides spec §6 hole 3 "OOB" feature and the old per-hole boundary polygons.
+
+## 2026-11-07 — More themed courses
+- Coastal Links (holes 10-13, par 16): open links, dune humps, deep pot bunkers (some in the fairway),
+  a burn on hole 13, few trees, strong wind (5.5-7 m/s).
+- Lakeside (holes 14-17, par 16): parkland, water carries off the tee / into greens, a long lake on
+  hole 17, mostly deciduous trees, gentle hills, light wind.
+- Both come from `tools/data/gen_forest_holes.py` (now theme-parametrised; Pinewood Ridge regenerates
+  identically). Lengths are nominal, in the existing ranges (par 3 165-170, par 4 350-405,
+  par 5 525-555 yd); the owner will revisit hole lengths later, so no length simulations were run.
+- Course list: Starter Links, Pinewood Ridge, Coastal Links, Lakeside, Full 9 (id `full9`, holes 1-9)
+  and Grand Tour (id `all`, all 17 holes; Developer Test plays it). The main-menu course list scrolls.
