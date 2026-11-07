@@ -83,6 +83,7 @@ func _ready() -> void:
 	ui = GameUI.new()
 	_canvas.add_child(ui)
 	ui.setup(session)
+	ui.markers.camera = rig.cam
 	ui.camera_toggle_requested.connect(_toggle_camera)
 	ui.aim_here_requested.connect(_aim_at_marker)
 	ui.overhead_zoom_requested.connect(func(f: float) -> void:
@@ -224,8 +225,8 @@ func _process(delta: float) -> void:
 	if not is_equal_approx(_shown_cup_r, session.cfg.cup_radius):
 		_shown_cup_r = session.cfg.cup_radius
 		course.set_cup_radius(_shown_cup_r)
-	if course.pin_label != null:
-		course.pin_label.text = Units.fmt_distance(Units.horizontal_distance(bpos, session.hole.cup_position()))
+	if course.pin_label != null and course.pin_label.visible:
+		course.pin_label.visible = false  # the HUD draws the pin distance label now (HudMarkers)
 	_update_aim_guide(bpos)
 	_update_trail(bpos, moving)
 
@@ -255,7 +256,7 @@ func _update_aim_guide(bpos: Vector3) -> void:
 		b.y = h.contact_height(b.x, b.z) + 0.05
 		segs.append([a, b])
 		s += 2.2 * k
-	aim_line.draw_dashes(segs, 0.55 * k, Color(1, 1, 0.5, 0.85) if over else Color(1, 1, 1, 0.75))
+	aim_line.draw_dashes(segs, 0.55 * k, Color(UiKit.C_TEXT, 0.9) if over else Color(UiKit.C_TEXT, 0.75))
 
 
 func _update_trail(bpos: Vector3, moving: bool) -> void:
@@ -359,11 +360,9 @@ func _set_marker(p: Vector3) -> void:
 	var d := Units.horizontal_distance(b, p)
 	var a := Vector3(b.x, session.hole.contact_height(b.x, b.z) + 0.3, b.z)
 	var c := Vector3(p.x, session.hole.contact_height(p.x, p.z) + 0.3, p.z)
-	measure_line.draw_ribbon(PackedVector3Array([a, c]), clampf(rig.cam.size * 0.004, 0.3, 2.0), Color(1.0, 0.8, 0.2, 0.9))
+	measure_line.draw_ribbon(PackedVector3Array([a, c]), clampf(rig.cam.size * 0.004, 0.3, 2.0), Color(UiKit.C_TEXT, 0.9))
 	var bearing := Units.dir_to_bearing(p - b)
-	ui.set_measure("%s · bearing %d° · %s" % [Units.fmt_yards(d), int(round(bearing)), Surface.name_of(session.hole.surface_at(p.x, p.z))])
-	_marker.visible = true
-	_marker.position = c
+	ui.set_target(Vector3(p.x, session.hole.contact_height(p.x, p.z), p.z), d, Surface.name_of(session.hole.surface_at(p.x, p.z)), bearing)
 	ui.set_marker_ready(true)
 
 

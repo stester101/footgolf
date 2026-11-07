@@ -2,20 +2,53 @@ class_name UiKit
 extends RefCounted
 ## Shared theme and widget helpers. Portrait base resolution 720x1280.
 
-const C_PANEL := Color(0.05, 0.09, 0.07, 0.82)
-const C_PANEL_SOLID := Color(0.06, 0.10, 0.08, 0.96)
-const C_ACCENT := Color(0.18, 0.66, 0.32)
-const C_ACCENT_DARK := Color(0.12, 0.45, 0.22)
-const C_WARN := Color(0.95, 0.68, 0.2)
-const C_TEXT := Color(0.96, 0.97, 0.95)
-const C_MUTED := Color(0.72, 0.78, 0.74)
-const C_DEV := Color(0.85, 0.45, 0.95)
+## Design tokens (UI handover). 1 logical unit = 2 px on the 720 px-wide canvas.
+const U := 2
+const C_SURFACE := Color("#232723")      # scoreboard, plates, rows, scorecard
+const C_RAISED := Color("#2D322D")       # buttons sitting on a surface (derived, slightly lighter)
+const C_BG := Color("#181B18")           # full-screen menus without a game behind them
+const C_TEXT := Color("#F1EFE7")         # primary text / action fill
+const C_MUTED := Color("#A5AAA1")        # secondary text, inactive
+const C_ACCENT := Color("#A9BCA2")       # selected underline, small indicators, holed
+const C_SELECTED := Color("#626B5E")     # current scorecard row, selected list items
+const C_DIVIDER := Color("#62675F")      # quiet separators
+const C_ACTION_TEXT := Color("#232723")  # text on ivory buttons
+const C_WARN := Color("#D8C9A8")         # penalties / hazards (muted sand; no gold, no neon)
+const C_DEV := Color("#B7B2C6")          # developer-only labels
+const RADIUS := 6                        # 3 logical units
+# legacy names used across the UI
+const C_PANEL := C_SURFACE
+const C_PANEL_SOLID := C_SURFACE
+const C_ACCENT_DARK := C_SELECTED
+
+static var _semi: FontVariation
+static var _num: FontVariation
 
 
-static func box(color: Color, radius: int = 18, pad: int = 14) -> StyleBoxFlat:
+## Medium/semibold emphasis (embolden over the bundled sans; no remote font).
+static func font_semi() -> FontVariation:
+	if _semi == null:
+		_semi = FontVariation.new()
+		_semi.base_font = ThemeDB.fallback_font
+		_semi.variation_embolden = 0.35
+		_semi.opentype_features = {"tnum": 1}
+	return _semi
+
+
+## Tabular digits for scores and distances (where the font provides them).
+static func font_num() -> FontVariation:
+	if _num == null:
+		_num = FontVariation.new()
+		_num.base_font = ThemeDB.fallback_font
+		_num.variation_embolden = 0.2
+		_num.opentype_features = {"tnum": 1}
+	return _num
+
+
+static func box(color: Color, radius: int = 6, pad: int = 14) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = color
-	sb.set_corner_radius_all(radius)
+	sb.set_corner_radius_all(mini(radius, 8))  # small, consistent corners: no pills
 	sb.content_margin_left = pad
 	sb.content_margin_right = pad
 	sb.content_margin_top = pad * 0.7
@@ -26,32 +59,50 @@ static func box(color: Color, radius: int = 18, pad: int = 14) -> StyleBoxFlat:
 static func make_theme() -> Theme:
 	var t := Theme.new()
 	t.default_font_size = 26
-	t.set_stylebox("panel", "PanelContainer", box(C_PANEL))
-	t.set_stylebox("panel", "Panel", box(C_PANEL_SOLID, 0, 0))
-	var btn_n := box(Color(0.16, 0.22, 0.19, 0.95), 14, 14)
-	var btn_h := box(Color(0.22, 0.30, 0.26, 0.95), 14, 14)
-	var btn_p := box(C_ACCENT_DARK, 14, 14)
-	var btn_d := box(Color(0.12, 0.14, 0.13, 0.7), 14, 14)
-	t.set_stylebox("normal", "Button", btn_n)
-	t.set_stylebox("hover", "Button", btn_h)
-	t.set_stylebox("pressed", "Button", btn_p)
-	t.set_stylebox("hover_pressed", "Button", btn_p)
-	t.set_stylebox("disabled", "Button", btn_d)
-	t.set_stylebox("focus", "Button", StyleBoxEmpty.new())
+	t.set_stylebox("panel", "PanelContainer", box(C_SURFACE))
+	t.set_stylebox("panel", "Panel", box(C_SURFACE, 0, 0))
+	t.set_stylebox("normal", "Button", box(C_RAISED, RADIUS, 14))
+	t.set_stylebox("hover", "Button", box(C_RAISED.lightened(0.06), RADIUS, 14))
+	t.set_stylebox("pressed", "Button", box(C_SELECTED, RADIUS, 14))
+	t.set_stylebox("hover_pressed", "Button", box(C_SELECTED, RADIUS, 14))
+	t.set_stylebox("disabled", "Button", box(C_RAISED.darkened(0.15), RADIUS, 14))
+	var focus := StyleBoxFlat.new()  # visible keyboard/D-pad focus: thin sage outline, no glow
+	focus.bg_color = Color(0, 0, 0, 0)
+	focus.set_border_width_all(2)
+	focus.border_color = C_ACCENT
+	focus.set_corner_radius_all(RADIUS)
+	t.set_stylebox("focus", "Button", focus)
 	t.set_color("font_color", "Button", C_TEXT)
-	t.set_color("font_pressed_color", "Button", Color.WHITE)
-	t.set_color("font_hover_color", "Button", Color.WHITE)
-	t.set_color("font_disabled_color", "Button", Color(0.5, 0.55, 0.52))
+	t.set_color("font_pressed_color", "Button", C_TEXT)
+	t.set_color("font_hover_color", "Button", C_TEXT)
+	t.set_color("font_focus_color", "Button", C_TEXT)
+	t.set_color("font_disabled_color", "Button", Color("#7C817A"))
 	t.set_color("font_color", "Label", C_TEXT)
 	t.set_color("font_outline_color", "Label", Color(0, 0, 0, 0.6))
-	t.set_stylebox("normal", "LineEdit", box(Color(0.12, 0.16, 0.14, 1.0), 10, 12))
-	t.set_stylebox("focus", "LineEdit", box(Color(0.14, 0.2, 0.17, 1.0), 10, 12))
-	t.set_stylebox("panel", "TabContainer", box(C_PANEL_SOLID, 10, 10))
+	var le := box(C_RAISED, RADIUS, 12)
+	le.set_border_width_all(1)
+	le.border_color = C_DIVIDER
+	t.set_stylebox("normal", "LineEdit", le)
+	var le_f := le.duplicate()
+	le_f.border_color = C_ACCENT
+	t.set_stylebox("focus", "LineEdit", le_f)
+	t.set_color("font_color", "LineEdit", C_TEXT)
+	t.set_color("font_placeholder_color", "LineEdit", C_MUTED)
+	t.set_color("caret_color", "LineEdit", C_ACCENT)
+	t.set_stylebox("panel", "TabContainer", box(C_SURFACE, RADIUS, 10))
 	t.set_font_size("font_size", "TabContainer", 24)
+	t.set_color("font_selected_color", "TabContainer", C_TEXT)
+	t.set_color("font_unselected_color", "TabContainer", C_MUTED)
 	t.set_constant("separation", "VBoxContainer", 10)
 	t.set_constant("separation", "HBoxContainer", 10)
 	t.set_constant("h_separation", "GridContainer", 18)
 	t.set_constant("v_separation", "GridContainer", 6)
+	# list popups (OptionButton) in the same matte style
+	t.set_stylebox("panel", "PopupMenu", box(C_SURFACE, RADIUS, 8))
+	t.set_stylebox("hover", "PopupMenu", box(C_SELECTED, 4, 6))
+	t.set_color("font_color", "PopupMenu", C_TEXT)
+	t.set_color("font_hover_color", "PopupMenu", C_TEXT)
+	t.set_font_size("font_size", "PopupMenu", 24)
 	return t
 
 
@@ -84,10 +135,23 @@ static func button(text: String, cb: Callable, min_h: int = 72, size: int = 26) 
 	return b
 
 
-static func primary(b: Button, color: Color = C_ACCENT) -> Button:
-	b.add_theme_stylebox_override("normal", box(color, 16, 16))
-	b.add_theme_stylebox_override("hover", box(color.lightened(0.1), 16, 16))
-	b.add_theme_stylebox_override("pressed", box(color.darkened(0.2), 16, 16))
+## Ivory action button (dark text). The colour argument is kept for old call sites and ignored.
+static func primary(b: Button, _color: Color = C_TEXT) -> Button:
+	b.add_theme_stylebox_override("normal", box(C_TEXT, RADIUS, 16))
+	b.add_theme_stylebox_override("hover", box(C_TEXT.lightened(0.08), RADIUS, 16))
+	b.add_theme_stylebox_override("pressed", box(C_TEXT.darkened(0.12), RADIUS, 16))
+	b.add_theme_stylebox_override("hover_pressed", box(C_TEXT.darkened(0.12), RADIUS, 16))
+	b.add_theme_stylebox_override("disabled", box(C_RAISED.darkened(0.15), RADIUS, 16))
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+		b.add_theme_color_override(c, C_ACTION_TEXT)
+	b.add_theme_color_override("font_disabled_color", C_MUTED)
+	return b
+
+
+## Selected list item / toggle: muted sage-grey fill, ivory text.
+static func selected(b: Button) -> Button:
+	b.add_theme_stylebox_override("normal", box(C_SELECTED, RADIUS, 14))
+	b.add_theme_stylebox_override("hover", box(C_SELECTED, RADIUS, 14))
 	return b
 
 
@@ -118,7 +182,7 @@ static func expand(c: Control) -> Control:
 ## Full-screen dimmed overlay root that swallows input (so drags don't aim).
 static func overlay(dim: float = 0.55) -> Control:
 	var root := ColorRect.new()
-	root.color = Color(0, 0, 0, dim)
+	root.color = Color(0.09, 0.10, 0.09, dim)  # matte neutral scrim, no blur
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_STOP
 	return root
@@ -146,7 +210,7 @@ static func clear(c: Node) -> void:
 
 ## Safe-area margins in viewport (canvas) units: [left, top, right, bottom].
 static func safe_margins(vp: Viewport) -> Array:
-	var out := [16.0, 16.0, 16.0, 16.0]
+	var out := [32.0, 32.0, 32.0, 32.0]  # 16 logical units
 	if DisplayServer.get_name() == "headless":
 		return out
 	var win_size := Vector2(DisplayServer.window_get_size())
@@ -157,10 +221,10 @@ static func safe_margins(vp: Viewport) -> Array:
 	var vis := vp.get_visible_rect().size
 	var sx := vis.x / win_size.x
 	var sy := vis.y / win_size.y
-	out[0] = maxf(16.0, safe.position.x * sx)
-	out[1] = maxf(16.0, safe.position.y * sy)
-	out[2] = maxf(16.0, (screen.x - safe.end.x) * sx)
-	out[3] = maxf(16.0, (screen.y - safe.end.y) * sy)
+	out[0] = maxf(32.0, safe.position.x * sx)
+	out[1] = maxf(32.0, safe.position.y * sy)
+	out[2] = maxf(32.0, (screen.x - safe.end.x) * sx)
+	out[3] = maxf(32.0, (screen.y - safe.end.y) * sy)
 	return out
 
 
@@ -188,7 +252,7 @@ static func player_button(fb: Footballer, show_stats: bool, used: bool, selected
 	b.text = txt
 	b.disabled = used
 	if selected:
-		primary(b, C_ACCENT_DARK)
+		UiKit.selected(b)
 	return b
 
 

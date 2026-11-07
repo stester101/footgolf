@@ -9,7 +9,7 @@ const PAGES := [
 	["CAPS fly", "CAPS hit the ball in the air: 1 senior cap = 1 yard of carry (on a flat fairway with no wind). Wind, slopes, rough, bunkers and trees change what really happens."],
 	["GOALS roll", "GOALS roll the ball along the ground: 1 international goal = 1 foot. Perfect for putting — but a 0-goal defender won't move the ball at all, and still costs a stroke."],
 	["Aim and shoot", "Drag the course left or right to aim (full 360°). Use MAP for a top-down view: pinch to zoom, tap to measure. Then press TAKE SHOT."],
-	["Scoring", "Stroke play: fewest shots wins. Water or out of bounds costs +1. Stop within 5 ft of the hole and it's holed. The most you can take on a hole is par + 5."],
+	["Scoring", "Stroke play: fewest shots wins. Water or out of bounds costs +1. Stop within 5 ft of the hole and it's holed. There is no maximum score: keep going until you hole out."],
 ]
 
 var _page := 0

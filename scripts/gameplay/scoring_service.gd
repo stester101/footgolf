@@ -10,8 +10,9 @@ const MIN_HOLEOUT_FT := 0.0
 const MAX_HOLEOUT_FT := 10.0
 
 
-static func max_score_for_par(par: int) -> int:
-	return par + MAX_OVER_PAR
+## Owner decision (docs/DECISIONS.md): there is NO maximum score. A hole ends only when holed.
+static func max_score_for_par(_par: int) -> int:
+	return 999999
 
 
 static func clamp_radius_ft(ft: float) -> float:
@@ -40,7 +41,4 @@ static func apply_shot(hs: HoleState, penalty: int, holed: bool) -> String:
 	if holed:
 		hs.complete = true
 		hs.completion = ShotTypes.COMPLETION_HOLED
-	elif hs.raw_total() >= hs.max_score():
-		hs.complete = true
-		hs.completion = ShotTypes.COMPLETION_MAX_SCORE
 	return hs.completion

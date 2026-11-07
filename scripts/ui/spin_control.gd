@@ -11,7 +11,7 @@ var _last_tap_ms := 0
 
 
 func _init() -> void:
-	custom_minimum_size = Vector2(112, 112)
+	custom_minimum_size = Vector2(96, 96)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	tooltip_text = "Strike point: up = topspin, down = backspin"
 
@@ -64,23 +64,15 @@ func _apply(v: float) -> void:
 func _draw() -> void:
 	var c := size * 0.5
 	var r := _radius()
-	var dis := modulate.a < 0.99
-	# ball with simple shading + dimples
-	draw_circle(c + Vector2(3, 4), r, Color(0, 0, 0, 0.35))
-	draw_circle(c, r, Color(0.93, 0.94, 0.92))
-	draw_circle(c + Vector2(-r * 0.25, -r * 0.3), r * 0.55, Color(1, 1, 1, 0.5))
-	for i in 14:
-		var a := TAU * i / 14.0
-		for ring in [0.45, 0.75]:
-			draw_circle(c + Vector2(cos(a), sin(a)) * r * ring, 2.2, Color(0.75, 0.76, 0.74))
-	draw_arc(c, r, 0, TAU, 48, Color(0.55, 0.57, 0.55), 2.0, true)
-	# vertical guide
-	draw_line(c + Vector2(0, -r * 0.85), c + Vector2(0, r * 0.85), Color(0.2, 0.25, 0.22, 0.5), 2.0, true)
-	draw_line(c + Vector2(-r * 0.15, 0), c + Vector2(r * 0.15, 0), Color(0.2, 0.25, 0.22, 0.5), 2.0, true)
-	# strike dot
+	# flat ivory ball, thin outline, quiet guides; no shading or glow
+	draw_circle(c, r, UiKit.C_TEXT)
+	draw_arc(c, r, 0, TAU, 48, UiKit.C_MUTED, 2.5, true)
+	draw_line(c + Vector2(0, -r * 0.82), c + Vector2(0, r * 0.82), Color(UiKit.C_SURFACE, 0.35), 2.0, true)
+	draw_line(c + Vector2(-r * 0.18, 0), c + Vector2(r * 0.18, 0), Color(UiKit.C_SURFACE, 0.35), 2.0, true)
+	for t in [-0.8, -0.4, 0.4, 0.8]:
+		draw_line(c + Vector2(-r * 0.1, -t * r * 0.8), c + Vector2(r * 0.1, -t * r * 0.8), Color(UiKit.C_SURFACE, 0.35), 2.0, true)
 	var dot := c + Vector2(0, -spin * r * 0.8)
-	var col := Color(0.86, 0.15, 0.15) if spin < -0.01 else (Color(0.15, 0.45, 0.9) if spin > 0.01 else Color(0.15, 0.15, 0.15))
-	draw_circle(dot, 11.0, Color(1, 1, 1))
-	draw_circle(dot, 8.0, col)
-	if dis:
-		draw_circle(c, r, Color(0.1, 0.1, 0.1, 0.4))
+	draw_circle(dot, 11.0, UiKit.C_SURFACE)
+	draw_circle(dot, 8.0, UiKit.C_ACCENT)
+	if modulate.a < 0.99:
+		draw_circle(c, r, Color(UiKit.C_SURFACE, 0.4))

@@ -13,18 +13,14 @@ var shots: Array = []  # Array[ShotResult]
 var used_footballer_ids: Array[String] = []
 
 
-func max_score() -> int:
-	return ScoringService.max_score_for_par(par)
-
-
 ## Raw internal total (never clamped) — keeps an unambiguous record.
 func raw_total() -> int:
 	return strokes + penalties
 
 
-## Displayed/recorded hole score, clamped at par + 5.
+## Recorded hole score = strokes + penalties (no cap).
 func score() -> int:
-	return mini(raw_total(), max_score())
+	return raw_total()
 
 
 func relative_to_par() -> int:

@@ -59,8 +59,40 @@ func load_holes(course_id: String = "starter") -> Array:
 	for hid in course_info(course_id).get("holes", []):
 		var h := HoleDefinition.load_from_file("%s%s.json" % [HOLE_DIR, hid])
 		if h != null:
+			h.par = par_for(h.id, h.par)
 			out.append(h)
 	return out
+
+
+func par_for(hole_id: String, base_par: int) -> int:
+	return int(settings.par_overrides.get(hole_id, base_par))
+
+
+## [{id, name, yards, base_par}] for every hole file (for the par editor).
+func all_hole_infos() -> Array:
+	var out: Array = []
+	var seen := {}
+	for c in courses():
+		for hid in c["holes"]:
+			if seen.has(hid):
+				continue
+			seen[hid] = true
+			var f := FileAccess.open("%s%s.json" % [HOLE_DIR, hid], FileAccess.READ)
+			if f == null:
+				continue
+			var d = JSON.parse_string(f.get_as_text())
+			if typeof(d) == TYPE_DICTIONARY:
+				out.append({"id": hid, "name": String(d.get("name", hid)), "yards": int(d.get("yards", 0)), "base_par": int(d.get("par", 4))})
+	return out
+
+
+## Course par from the (possibly edited) hole pars.
+func course_par(course_id: String) -> int:
+	var total := 0
+	for info in all_hole_infos():
+		if (course_info(course_id).get("holes", []) as Array).has(info["id"]):
+			total += par_for(info["id"], info["base_par"])
+	return total
 
 
 func version() -> String:

@@ -18,6 +18,8 @@ var show_stats := true
 var dataset := "real"
 var tutorial_seen := false
 var last_course := "starter"
+## hole id -> par chosen by the player (overrides the hole file); applies to rounds started afterwards.
+var par_overrides: Dictionary = {}
 var lie_override := -1
 var force_surface := false
 var physics := PhysicsConfig.new()
@@ -42,6 +44,11 @@ func load_settings() -> void:
 	show_stats = bool(d.get("show_stats", true))
 	tutorial_seen = bool(d.get("tutorial_seen", false))
 	last_course = String(d.get("last_course", "starter"))
+	if typeof(d.get("par_overrides")) == TYPE_DICTIONARY:
+		for k in (d["par_overrides"] as Dictionary).keys():
+			var pv := int((d["par_overrides"] as Dictionary)[k])
+			if pv >= 2 and pv <= 8:
+				par_overrides[String(k)] = pv
 	dataset = "test" if String(d.get("dataset", "real")) == "test" else "real"
 	lie_override = int(d.get("lie_override", -1))
 	if not Surface.PLAYABLE.has(lie_override):
@@ -62,6 +69,7 @@ func save() -> void:
 	f.store_string(JSON.stringify({
 		"settings_version": VERSION,
 		"last_course": last_course,
+		"par_overrides": par_overrides,
 		"holeout_radius_ft": holeout_radius_ft,
 		"wind_custom": wind_custom,
 		"wind_speed": wind_speed,

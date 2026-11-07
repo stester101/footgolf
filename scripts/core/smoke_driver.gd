@@ -52,6 +52,22 @@ func _find_button(root: Node, text_prefix: String) -> Button:
 	return null
 
 
+func _find_id(root: Node, ui_id: String) -> Button:
+	for c in root.find_children("*", "Button", true, false):
+		var b := c as Button
+		if b.is_visible_in_tree() and not b.disabled and b.has_meta("ui_id") and String(b.get_meta("ui_id")) == ui_id:
+			return b
+	return null
+
+
+func _press_id(ui_id: String) -> bool:
+	var b := _find_id(get_tree().root, ui_id)
+	if b == null:
+		return false
+	b.pressed.emit()
+	return true
+
+
 func _press(text_prefix: String) -> bool:
 	var b := _find_button(get_tree().root, text_prefix)
 	if b == null:
@@ -89,11 +105,10 @@ func _run() -> void:
 				var d := session.distance_to_pin_m()
 				session.aim_at_pin()
 				var want_goals := d < 22.0
-				if not _press("GOALS" if want_goals else "CAPS"):
+				if not _press_id("mode_goals" if want_goals else "mode_caps"):
 					return _fail("mode button missing")
-				if not _press("Choose footballer"):
-					if not _press("▶"):
-						return _fail("picker button missing")
+				if not _press_id("player_row"):
+					return _fail("player row missing")
 				await _frames(2)
 				if not _picker_shot_done:
 					_picker_shot_done = true
@@ -122,17 +137,17 @@ func _run() -> void:
 				if session.selected_id == "":
 					return _fail("selection not applied")
 				var before := session.current_hole_state().strokes
-				if not _press("TAKE SHOT"):
+				if not _press_id("take_shot"):
 					return _fail("Take Shot not pressable")
 				if session.current_hole_state().strokes != before + 1:
 					return _fail("stroke not counted exactly once")
-				_press("TAKE SHOT")  # double tap must be ignored
+				_press_id("take_shot")  # double tap must be ignored
 				if session.current_hole_state().strokes != before + 1:
 					return _fail("double tap counted twice")
 				await _frames(20)
 				if session.is_ball_moving():
 					await _shot("in_flight")
-					_press("Skip")
+					_press_id("skip")
 				await _frames(3)
 			ShotTypes.State.SHOT_RESULT:
 				await _shot("result")

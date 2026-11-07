@@ -13,20 +13,8 @@ func setup() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var bg := ColorRect.new()
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bg.color = Color(0.09, 0.27, 0.15)
+	bg.color = UiKit.C_BG  # flat matte, no gradient
 	add_child(bg)
-	var grad := TextureRect.new()
-	var gt := GradientTexture2D.new()
-	var g := Gradient.new()
-	g.set_color(0, Color(0.32, 0.58, 0.85))
-	g.set_color(1, Color(0.12, 0.42, 0.2))
-	gt.gradient = g
-	gt.fill_from = Vector2(0, 0)
-	gt.fill_to = Vector2(0, 1)
-	grad.texture = gt
-	grad.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	grad.stretch_mode = TextureRect.STRETCH_SCALE
-	add_child(grad)
 	var m := MarginContainer.new()
 	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var sm := UiKit.safe_margins(get_viewport())
@@ -43,9 +31,11 @@ func setup() -> void:
 	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	v.add_child(logo)
-	v.add_child(UiKit.text("FOOTBALL GOLF", 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UiKit.text("Pick a footballer. Caps fly, goals roll.", 26, Color(0.9, 0.95, 0.9), HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UiKit.text("1 cap = 1 yard carry · 1 goal = 1 foot ground", 22, Color(0.85, 0.92, 0.85), HORIZONTAL_ALIGNMENT_CENTER))
+	var ttl := UiKit.text("Football Golf", 54, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	ttl.add_theme_font_override("font", UiKit.font_semi())
+	v.add_child(ttl)
+	v.add_child(UiKit.text("Pick a footballer. Caps fly, goals roll.", 26, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UiKit.text("1 cap = 1 yard carry · 1 goal = 1 foot ground", 22, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(spacer)
@@ -53,7 +43,7 @@ func setup() -> void:
 	v.add_child(_main_box)
 	for c in App.courses():
 		var cid: String = c["id"]
-		var cb := UiKit.button("%s\n%s" % [c["name"], c["blurb"]], func() -> void: play_requested.emit(cid, false), 96, 28)
+		var cb := UiKit.button("%s\n%s · par %d" % [c["name"], c["blurb"], App.course_par(cid)], func() -> void: play_requested.emit(cid, false), 96, 28)
 		if cid == App.settings.last_course:
 			UiKit.primary(cb)
 		_main_box.add_child(cb)
@@ -73,7 +63,7 @@ func setup() -> void:
 	v.add_child(_settings_box)
 	if not App.settings.tutorial_seen and not OS.get_cmdline_user_args().has("--smoke-test"):
 		show_tutorial.call_deferred()
-	v.add_child(UiKit.text("Offline prototype · %s\n%s" % [App.dataset_label(), App.build_label()], 18, Color(0.85, 0.9, 0.85), HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UiKit.text("Offline prototype · %s\n%s" % [App.dataset_label(), App.build_label()], 18, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 
 
 func _show_settings() -> void:
@@ -99,6 +89,7 @@ func _show_settings() -> void:
 		st.save()))
 	v.add_child(cup_row)
 	v.add_child(UiKit.text("Regulation is 4.25 in. The game default is a friendlier 12 in.", 18, UiKit.C_MUTED))
+	v.add_child(UiKit.button("Edit hole pars…", _show_par_editor, 70, 22))
 	var trail := CheckButton.new()
 	trail.text = "Show ball trail"
 	trail.button_pressed = st.show_trail
@@ -158,3 +149,49 @@ func show_tutorial() -> void:
 		App.settings.save()
 		_tutorial.queue_free()
 		_tutorial = null)
+
+
+## Per-hole par editor (3/4/5 or anything 2-8). Applies to rounds started afterwards.
+func _show_par_editor() -> void:
+	var root := UiKit.overlay(0.7)
+	var m := MarginContainer.new()
+	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right", "top", "bottom"]:
+		m.add_theme_constant_override("margin_" + side, 32)
+	root.add_child(m)
+	var p := UiKit.panel(UiKit.C_SURFACE)
+	m.add_child(p)
+	var v := UiKit.vbox(12)
+	p.add_child(v)
+	v.add_child(UiKit.label("Hole pars", 34))
+	v.add_child(UiKit.text("Set each hole's par. Scores have no maximum; par only changes the +/- shown. Applies to the next round.", 19, UiKit.C_MUTED))
+	var sc := ScrollContainer.new()
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.scroll_deadzone = 14
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(sc)
+	var list := UiKit.vbox(8)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(list)
+	for info in App.all_hole_infos():
+		var hid: String = info["id"]
+		var row := UiKit.hbox(10)
+		var nm := UiKit.label("%s\n%d yd" % [info["name"], info["yards"]], 22)
+		UiKit.expand(nm)
+		row.add_child(nm)
+		var sp := UiKit.spin(2, 8, 1, App.par_for(hid, info["base_par"]), func(val: float) -> void:
+			var pv := int(val)
+			if pv == int(info["base_par"]):
+				App.settings.par_overrides.erase(hid)
+			else:
+				App.settings.par_overrides[hid] = pv
+			App.settings.save())
+		row.add_child(sp)
+		list.add_child(row)
+	v.add_child(UiKit.button("Reset all to defaults", func() -> void:
+		App.settings.par_overrides.clear()
+		App.settings.save()
+		root.queue_free()
+		_show_par_editor(), 64, 22))
+	v.add_child(UiKit.primary(UiKit.button("Done", func() -> void: root.queue_free(), 84, 28)))
+	add_child(root)
