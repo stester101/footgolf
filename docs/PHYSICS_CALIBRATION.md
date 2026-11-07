@@ -20,13 +20,12 @@ except the stat conversions and the neutral-baseline definitions.
 
 ## Spin (owner-approved, docs/DECISIONS.md)
 - Strike point s in [-1 backspin, +1 topspin], 0.05 steps, Caps only.
-- Magnus lift `a = -s · 0.00107 · |v_rel|² ` perpendicular to the flight path in the vertical plane.
-- Landing grip: tangential retention `+= s · 0.175` on the first bounce, halving each bounce
+- Magnus lift `a = -s · 0.0016 · |v_rel|² ` perpendicular to the flight path in the vertical plane.
+- Landing grip: tangential retention `+= s · 0.26` on the first bounce, halving each bounce
   (may go slightly negative on greens: backspin draws back).
 - The solver is keyed by spin, so neutral first-contact carry stays exact (tested at s = ±0.5, ±1).
-- Observed (120 caps, flat, after the 2026-11-07 ~1/3 reduction): fairway rollout back 1.5 m / none 4.9 m /
-  top 11.3 m; green back 0.3 m / none 2.2 m / top 6.3 m; apex back 26.6 m / none 25.8 m / top 25.1 m.
-  (Before: fairway back 0.5 / top 15.8 m; green back −0.3 / top 9.7 m; apex back 27.1 / top 24.8 m.)
+- Observed (120 caps, flat): fairway rollout back 0.5 m / none 4.9 m / top 15.8 m; green back −0.3 m /
+  none 2.2 m / top 9.7 m; apex back 27.1 m / none 25.8 m / top 24.8 m.
 
 ## Neutral baselines
 - Caps: `carry_m = caps × 0.9144`, measured as horizontal distance to **first ground contact**,
