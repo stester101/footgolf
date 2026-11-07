@@ -32,6 +32,9 @@ var _view_btn: Button
 var _map_row: HBoxContainer
 var _badge_num: Label
 var _reveal: Tween
+var _spin: SpinControl
+var _spin_box: VBoxContainer
+var _spin_label: Label
 var _round_label: Label
 var _overlays: Array[Control] = []
 var _margin: MarginContainer
@@ -201,6 +204,13 @@ func _build_bottom(col: VBoxContainer) -> void:
 	_skip_btn = UiKit.button("Skip ▸▸", func() -> void: session.skip_motion(), 100, 24)
 	_skip_btn.custom_minimum_size.x = 150
 	shot_row.add_child(_skip_btn)
+	_spin_box = UiKit.vbox(2)
+	_spin = SpinControl.new()
+	_spin.spin_changed.connect(func(v: float) -> void: session.set_spin(v))
+	_spin_box.add_child(_spin)
+	_spin_label = UiKit.label("No spin", 16, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	_spin_box.add_child(_spin_label)
+	shot_row.add_child(_spin_box)
 	_controls.add_child(shot_row)
 	_hint = UiKit.text("", 19, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	_controls.add_child(_hint)
@@ -271,6 +281,13 @@ func refresh() -> void:
 	_controls.visible = session.state != ShotTypes.State.SHOT_RESULT
 	_result_box.visible = session.state == ShotTypes.State.SHOT_RESULT
 	_skip_btn.visible = moving
+	var caps_mode := session.mode == ShotTypes.Mode.CAPS
+	_spin_box.visible = caps_mode and not moving
+	_spin.set_spin(session.spin)
+	if absf(session.spin) < 0.025:
+		_spin_label.text = "No spin"
+	else:
+		_spin_label.text = "%s %d%%" % ["Top" if session.spin > 0.0 else "Back", int(round(absf(session.spin) * 100.0))]
 	_shot_btn.disabled = not (aiming and session.can_take_shot() == "" and _overlays.is_empty())
 	_shot_btn.text = "Ball in motion…" if moving else "TAKE SHOT"
 	_caps_btn.disabled = moving
@@ -422,6 +439,8 @@ func _on_shot_resolved(r: ShotResult) -> void:
 	if r.wind_speed_mps > 0.1 and r.mode == ShotTypes.Mode.CAPS:
 		extra.append("Wind %d mph" % int(round(r.wind_speed_mps * Units.MPS_TO_MPH)))
 	if r.mode == ShotTypes.Mode.CAPS:
+		if absf(r.spin) >= 0.025:
+			extra.append(ShotResult.spin_label(r.spin).capitalize())
 		extra.append("Now on the %s" % Surface.name_of(r.final_lie).to_lower())
 	var extra_l := UiKit.text(" · ".join(extra), 19, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	_result_box.add_child(extra_l)

@@ -1,7 +1,8 @@
 # CLAUDE.md — Football Golf (Godot 4.7, GDScript)
 
 Authoritative spec: `docs/SPECIFICATION.md`. V0.1 = offline, single-player, 3-hole Android APK.
-Do not build multiplayer/networking, clubs, power meters, loft/spin controls, or live data APIs.
+Do not build multiplayer/networking, clubs, power meters, loft controls, sidespin, or live data APIs.
+Owner-approved deviations from the spec are logged in `docs/DECISIONS.md`.
 
 ## Architecture (see docs/ARCHITECTURE.md)
 - `scripts/physics/` — `BallSim` (custom deterministic fixed-step ball controller, NOT RigidBody3D),
@@ -20,6 +21,8 @@ Do not build multiplayer/networking, clubs, power meters, loft/spin controls, or
 
 ## Locked gameplay invariants (never change silently)
 - 1 cap = 1 yd neutral FIRST-CONTACT carry (fixed auto launch angle). 1 goal = 1 ft neutral ground travel.
+- Pre-shot SPIN (owner-approved change, see docs/DECISIONS.md): vertical only (top/back, no sidespin),
+  Caps shots only, never changes neutral carry (solver includes spin). No other loft/power/club controls.
 - Neutral = flat FAIRWAY plane, zero wind, no obstacles. Tolerances: Caps max(0.25 yd, 0.5%),
   Goals max(0.10 ft, 1%).
 - Stats hidden in normal play until the ball has stopped; picker is alphabetical, never stat-ordered.
@@ -33,7 +36,7 @@ Do not build multiplayer/networking, clubs, power meters, loft/spin controls, or
 ## Commands
 ```bash
 tools/scripts/install_godot.sh ~/godot [--templates]   # pinned 4.7-stable, SHA-512 verified
-GODOT=~/godot/godot tools/scripts/run_tests.sh         # import + 52 tests + full-round smoke test
+GODOT=~/godot/godot tools/scripts/run_tests.sh         # import + 59 tests + full-round smoke test
 godot --headless --path . -s res://tests/run_tests.gd -- --filter=<name>   # subset
 godot --path . -- --smoke-test [--screenshots=<dir>]   # play a full round via real UI
 godot --headless --path . --export-debug "Android" builds/football-golf-v0.1-debug.apk

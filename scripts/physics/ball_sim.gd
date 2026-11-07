@@ -20,6 +20,8 @@ var wind := Vector3.ZERO
 var stop_at_first_contact := false
 ## Developer override: force this surface for every ground contact (except water/OOB). -1 = off.
 var surface_override := -1
+## Current spin (-1 back .. +1 top); decays on each bounce. Only Caps shots use it.
+var spin := 0.0
 
 var pos := Vector3.ZERO
 var vel := Vector3.ZERO
@@ -49,7 +51,8 @@ func _init(p_hole: HoleDefinition, p_cfg: PhysicsConfig) -> void:
 	_cup = hole.cup_position()
 
 
-func launch(start: Vector3, velocity: Vector3, airborne: bool) -> void:
+func launch(start: Vector3, velocity: Vector3, airborne: bool, p_spin: float = 0.0) -> void:
+	spin = clampf(p_spin, -1.0, 1.0) if airborne else 0.0
 	pos = start
 	vel = velocity
 	launch_pos = start
@@ -128,7 +131,15 @@ func _surface(x: float, z: float) -> int:
 
 func _air_accel(v: Vector3) -> Vector3:
 	var rel := v - wind
-	return Vector3(0.0, -cfg.gravity, 0.0) - rel * (cfg.drag_k * rel.length())
+	var spd := rel.length()
+	var a := Vector3(0.0, -cfg.gravity, 0.0) - rel * (cfg.drag_k * spd)
+	if spin != 0.0 and spd > 1e-6:
+		var d := rel / spd
+		var up_perp := Vector3.UP - d * d.y
+		var l := up_perp.length()
+		if l > 1e-6:
+			a += up_perp / l * (-spin * cfg.spin_lift_k * spd * spd)
+	return a
 
 
 func _set_hazard(kind: String) -> void:
@@ -213,7 +224,9 @@ func _on_contact() -> void:
 	var vt := vel - n * vn
 	var e: float = float(prm["restitution"]) / (1.0 + absf(vn) / cfg.bounce_soft)
 	var new_vn := -vn * e
-	vt *= float(prm["retention"])
+	var ret: float = float(prm["retention"]) + spin * cfg.spin_retention
+	vt *= clampf(ret, -0.15, 0.95)  # negative = strong backspin draws the ball back
+	spin *= 0.5
 	bounces += 1
 	if new_vn < cfg.min_bounce_speed:
 		vel = vt

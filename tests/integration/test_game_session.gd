@@ -241,3 +241,20 @@ func test_restart_hole_returns_hole_consumptions() -> void:
 	assert_eq(s.current_hole_state().strokes, 0)
 	assert_true(s.pool.is_available(id))
 	TestHelpers.cleanup_repo(s.repo)
+
+
+func test_spin_recorded_and_replayed() -> void:
+	var s := TestHelpers.make_session()
+	s.set_spin(-0.73)
+	assert_near(s.spin, -0.75, 1e-9, "spin snaps to 0.05")
+	var id := TestHelpers.add_player(s.repo, 120, 3)
+	s.select_footballer(id)
+	s.take_shot()
+	s.skip_motion()
+	var first := s.last_result
+	assert_near(first.spin, -0.75, 1e-9)
+	assert_true(s.dev_replay())
+	s.skip_motion()
+	assert_eq(s.last_result.final_pos, first.final_pos, "replay with spin is deterministic")
+	assert_near(s.last_result.spin, -0.75, 1e-9)
+	TestHelpers.cleanup_repo(s.repo)

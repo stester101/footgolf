@@ -28,6 +28,8 @@ var ball_pos := Vector3.ZERO
 var last_safe_pos := Vector3.ZERO
 var aim_bearing_deg := 0.0
 var mode: int = ShotTypes.Mode.CAPS
+## Strike-point spin for Caps shots: -1 full backspin .. +1 full topspin (0.05 steps).
+var spin := 0.0
 var selected_id := ""
 var holeout_radius_ft := ScoringService.DEFAULT_HOLEOUT_FT
 var wind_custom := false
@@ -128,6 +130,13 @@ func set_mode(m: int) -> void:
 		selection_changed.emit()
 
 
+func set_spin(value: float) -> void:
+	if not is_finite(value):
+		return
+	spin = ShotCalculator.quantise_spin(value)
+	selection_changed.emit()
+
+
 func select_footballer(id: String) -> bool:
 	if not repo.has(id) or not pool.is_available(id):
 		return false
@@ -206,6 +215,7 @@ func take_shot() -> bool:
 	req.footballer_id = fb.id
 	req.mode = mode
 	req.aim_bearing_deg = aim_bearing_deg
+	req.spin = spin if mode == ShotTypes.Mode.CAPS else 0.0
 	req.start_pos = ball_pos
 	req.launch_lie = current_lie()
 	req.wind_speed_mps = wind_speed()
@@ -248,7 +258,7 @@ func _plan_shot(req: ShotRequest, caps: int, goals: int) -> Dictionary:
 		if is_equal_approx(cmin, cmax):
 			factor = cmin
 		var target := base * factor
-		var speed := ShotCalculator.solve_caps_speed(target, cfg)
+		var speed := ShotCalculator.solve_caps_speed(target, cfg, req.spin)
 		plan["stat"] = caps
 		plan["base_m"] = base
 		plan["lie_factor"] = factor
@@ -256,7 +266,7 @@ func _plan_shot(req: ShotRequest, caps: int, goals: int) -> Dictionary:
 		plan["speed"] = speed
 		plan["velocity"] = ShotCalculator.launch_velocity(Units.bearing_to_dir(req.aim_bearing_deg), speed, cfg.launch_angle_deg)
 		plan["airborne"] = true
-		plan["calib_err_pct"] = 0.0 if target <= 0.0 else (ShotCalculator.measure_neutral_carry(speed, cfg) - target) / target * 100.0
+		plan["calib_err_pct"] = 0.0 if target <= 0.0 else (ShotCalculator.measure_neutral_carry(speed, cfg, ShotCalculator.quantise_spin(req.spin)) - target) / target * 100.0
 	else:
 		var base2 := Units.goals_to_roll_m(goals)
 		var speed2 := ShotCalculator.solve_goals_speed(base2, cfg)
@@ -282,7 +292,7 @@ func _launch(req: ShotRequest, plan: Dictionary) -> void:
 	sim = BallSim.new(hole, cfg)
 	sim.wind = Units.bearing_to_dir(req.wind_bearing_deg) * req.wind_speed_mps
 	sim.surface_override = req.launch_lie if (force_surface and lie_override >= 0) else -1
-	sim.launch(req.start_pos, plan["velocity"], plan["airborne"])
+	sim.launch(req.start_pos, plan["velocity"], plan["airborne"], ShotCalculator.quantise_spin(req.spin))
 	_accum = 0.0
 	_set_state(ShotTypes.State.BALL_IN_MOTION)
 	shot_started.emit(req)
@@ -336,6 +346,7 @@ func _resolve() -> void:
 	r.launch_speed_mps = _plan["speed"]
 	r.launch_angle_deg = cfg.launch_angle_deg if req.mode == ShotTypes.Mode.CAPS else 0.0
 	r.aim_bearing_deg = req.aim_bearing_deg
+	r.spin = ShotCalculator.quantise_spin(req.spin)
 	r.wind_speed_mps = req.wind_speed_mps
 	r.wind_bearing_deg = req.wind_bearing_deg
 	r.start_pos = req.start_pos
@@ -453,6 +464,7 @@ func _snapshot() -> Dictionary:
 		"history_size": history.size(),
 		"aim": aim_bearing_deg,
 		"mode": mode,
+		"spin": spin,
 		"selected": selected_id,
 	}
 
@@ -477,6 +489,7 @@ func dev_undo() -> bool:
 	last_safe_pos = s["last_safe_pos"]
 	aim_bearing_deg = s["aim"]
 	mode = s["mode"]
+	spin = s.get("spin", 0.0)
 	selected_id = s["selected"]
 	last_result = null
 	state_version += 1

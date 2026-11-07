@@ -7,6 +7,7 @@ var hole_id := ""
 var footballer_id := ""
 var mode: int = ShotTypes.Mode.CAPS
 var aim_bearing_deg := 0.0
+var spin := 0.0
 var start_pos := Vector3.ZERO
 var launch_lie: int = Surface.Type.TEE
 var wind_speed_mps := 0.0
@@ -19,7 +20,7 @@ var developer_replay := false
 
 func copy() -> ShotRequest:
 	var r := ShotRequest.new()
-	for p in ["shot_id", "hole_id", "footballer_id", "mode", "aim_bearing_deg", "start_pos", "launch_lie",
+	for p in ["shot_id", "hole_id", "footballer_id", "mode", "aim_bearing_deg", "spin", "start_pos", "launch_lie",
 			"wind_speed_mps", "wind_bearing_deg", "seed", "state_version", "timestamp_ms", "developer_replay"]:
 		r.set(p, get(p))
 	return r
@@ -28,7 +29,7 @@ func copy() -> ShotRequest:
 func to_dict() -> Dictionary:
 	return {
 		"shot_id": shot_id, "hole_id": hole_id, "footballer_id": footballer_id,
-		"mode": ShotTypes.mode_name(mode), "aim_bearing_deg": aim_bearing_deg,
+		"mode": ShotTypes.mode_name(mode), "aim_bearing_deg": aim_bearing_deg, "spin": spin,
 		"start_pos": [start_pos.x, start_pos.y, start_pos.z], "launch_lie": Surface.name_of(launch_lie),
 		"wind_speed_mps": wind_speed_mps, "wind_bearing_deg": wind_bearing_deg, "seed": seed,
 		"developer_replay": developer_replay,

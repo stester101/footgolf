@@ -17,6 +17,7 @@ var target_distance_m := 0.0
 var launch_speed_mps := 0.0
 var launch_angle_deg := 0.0
 var aim_bearing_deg := 0.0
+var spin := 0.0
 var wind_speed_mps := 0.0
 var wind_bearing_deg := 0.0
 var start_pos := Vector3.ZERO
@@ -48,6 +49,12 @@ var sim_error := false
 var developer_replay := false
 var end_reason := ""
 var hole_score_after := 0
+
+
+static func spin_label(s: float) -> String:
+	if absf(s) < 0.025:
+		return "none"
+	return "%s %d%%" % ["topspin" if s > 0.0 else "backspin", int(round(absf(s) * 100.0))]
 
 
 func mode_name() -> String:
@@ -93,7 +100,7 @@ func diagnostic_text() -> String:
 	else:
 		lines.append("Neutral target: %.2f ft (%.4f m) ground travel" % [Units.m_to_feet(base_distance_m), base_distance_m])
 	lines.append("Lie factor %.4f -> solved target %.3f m" % [lie_factor, target_distance_m])
-	lines.append("Aim bearing %.1f deg" % aim_bearing_deg)
+	lines.append("Aim bearing %.1f deg · spin %s" % [aim_bearing_deg, spin_label(spin)])
 	lines.append("Launch angle %.1f deg, speed %.3f m/s" % [launch_angle_deg if mode == ShotTypes.Mode.CAPS else 0.0, launch_speed_mps])
 	lines.append("Wind %.2f m/s (%.1f mph) toward %.0f deg" % [wind_speed_mps, wind_speed_mps * Units.MPS_TO_MPH, wind_bearing_deg])
 	lines.append("Lie: start %s -> final %s" % [Surface.name_of(start_lie), Surface.name_of(final_lie)])
@@ -117,5 +124,5 @@ func to_dict() -> Dictionary:
 		"mode": mode_name(), "stat": stat_value, "base_m": base_distance_m, "lie_factor": lie_factor,
 		"carry_m": carry_m, "roll_m": roll_m, "total_m": total_m, "hazard": hazard, "penalty": penalty,
 		"holed": holed, "remaining_m": remaining_m, "seed": seed, "speed_mps": launch_speed_mps,
-		"time_s": time_in_motion_s, "start_lie": Surface.name_of(start_lie), "final_lie": Surface.name_of(final_lie),
+		"time_s": time_in_motion_s, "spin": spin, "start_lie": Surface.name_of(start_lie), "final_lie": Surface.name_of(final_lie),
 	}

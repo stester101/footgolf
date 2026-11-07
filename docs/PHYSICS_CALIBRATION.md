@@ -18,6 +18,14 @@ except the stat conversions and the neutral-baseline definitions.
 - **Ball radius:** 0.02135 m physically. The *visual* sphere is enlarged with camera distance
   (visual-only, documented) so it remains visible on a phone.
 
+## Spin (owner-approved, docs/DECISIONS.md)
+- Strike point s in [-1 backspin, +1 topspin], 0.05 steps, Caps only.
+- Magnus lift `a = -s · 0.0016 · |v_rel|² ` perpendicular to the flight path in the vertical plane.
+- Landing grip: tangential retention `+= s · 0.26` on the first bounce, halving each bounce
+  (may go slightly negative on greens: backspin draws back).
+- The solver is keyed by spin, so neutral first-contact carry stays exact (tested at s = ±0.5, ±1).
+- Observed (120 caps, flat): fairway rollout back 0.5 m / none 4.9 m / top 15.3 m; green back −0.3 m.
+
 ## Neutral baselines
 - Caps: `carry_m = caps × 0.9144`, measured as horizontal distance to **first ground contact**,
   launch angle 42° (engineering default), flat FAIRWAY plane, zero wind, no obstacles.

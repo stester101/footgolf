@@ -145,3 +145,33 @@ func test_extreme_speed_is_finite() -> void:
 		sim.run_until_done()
 		assert_false(sim.is_moving())
 		assert_true(is_finite(sim.pos.length()))
+
+
+func _caps_with_spin(surface: int, caps: int, sp: float) -> BallSim:
+	var cfg := PhysicsConfig.new()
+	var sim := TestHelpers.flat_sim(surface)
+	var speed := ShotCalculator.solve_caps_speed(Units.caps_to_carry_m(caps), cfg, sp)
+	sim.launch(Vector3(0, cfg.ball_radius, 0), ShotCalculator.launch_velocity(Vector3(0, 0, 1), speed, cfg.launch_angle_deg), true, sp)
+	sim.run_until_done()
+	return sim
+
+
+func test_spin_changes_flight_and_rollout() -> void:
+	for surf in [Surface.Type.FAIRWAY, Surface.Type.GREEN]:
+		var back := _caps_with_spin(surf, 120, -1.0)
+		var none := _caps_with_spin(surf, 120, 0.0)
+		var top := _caps_with_spin(surf, 120, 1.0)
+		var rb := back.pos.z - back.carry_m
+		var rn := none.pos.z - none.carry_m
+		var rt := top.pos.z - top.carry_m
+		note("%s 120 caps rollout: back %.2f m / none %.2f m / top %.2f m; apex back %.1f none %.1f top %.1f m" % [Surface.name_of(surf), rb, rn, rt, back.max_height, none.max_height, top.max_height])
+		assert_lt(rb, rn, "backspin rolls less")
+		assert_gt(rt, rn, "topspin rolls more")
+		assert_gt(back.max_height, none.max_height, "backspin flies higher")
+		assert_lt(top.max_height, none.max_height, "topspin flies lower")
+
+
+func test_goals_ignore_spin() -> void:
+	var sim := TestHelpers.flat_sim(Surface.Type.FAIRWAY)
+	sim.launch(Vector3(0, 0.02135, 0), Vector3(0, 0, 3), false, -1.0)
+	assert_eq(sim.spin, 0.0, "ground shots carry no spin")

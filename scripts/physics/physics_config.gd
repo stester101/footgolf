@@ -20,6 +20,11 @@ var cup_radius := 0.054
 var cup_capture_speed := 1.6
 var cup_landing_capture_speed := 7.0
 var canopy_damping := 5.0
+## Strike-point spin (Caps only), s in [-1 backspin .. +1 topspin]:
+## Magnus lift a = -s * spin_lift_k * |v_rel|^2 (perpendicular to flight, upward for backspin);
+## landing grip: retention += s * spin_retention on the first bounce (halving each bounce).
+var spin_lift_k := 0.0016
+var spin_retention := 0.26
 var trunk_restitution := 0.4
 var surfaces: Dictionary = {}
 
@@ -46,7 +51,7 @@ func signature() -> String:
 	var f: Dictionary = surface(Surface.Type.FAIRWAY)
 	return "%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s" % [
 		gravity, dt, ball_radius, launch_angle_deg, drag_k, rest_speed, rest_time,
-		f["roll_decel"], f["roll_drag"], f["restitution"], f["retention"], static_factor]
+		f["roll_decel"], f["roll_drag"], f["restitution"], f["retention"], static_factor] + "|%s" % spin_lift_k
 
 
 func to_dict() -> Dictionary:
@@ -70,6 +75,8 @@ func to_dict() -> Dictionary:
 		"cup_landing_capture_speed": cup_landing_capture_speed,
 		"canopy_damping": canopy_damping,
 		"trunk_restitution": trunk_restitution,
+		"spin_lift_k": spin_lift_k,
+		"spin_retention": spin_retention,
 		"surfaces": s,
 	}
 
@@ -78,7 +85,7 @@ func apply_dict(d: Dictionary) -> void:
 	for key in ["gravity", "dt", "ball_radius", "launch_angle_deg", "drag_k", "bounce_soft",
 			"min_bounce_speed", "rest_speed", "rest_time", "static_factor", "max_motion_time",
 			"cup_radius", "cup_capture_speed", "cup_landing_capture_speed", "canopy_damping",
-			"trunk_restitution"]:
+			"trunk_restitution", "spin_lift_k", "spin_retention"]:
 		if d.has(key):
 			var v = d[key]
 			if (typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT) and is_finite(float(v)):

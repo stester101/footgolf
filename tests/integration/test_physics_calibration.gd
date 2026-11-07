@@ -71,3 +71,15 @@ func test_repeatability() -> void:
 	var b := _gameplay_caps_carry(150, cfg)
 	assert_eq(float(a["carry"]), float(b["carry"]), "identical carry")
 	assert_eq(float(a["total"]), float(b["total"]), "identical total")
+
+
+func test_caps_carry_exact_with_any_spin() -> void:
+	var cfg := PhysicsConfig.new()
+	for sp in [-1.0, -0.5, 0.5, 1.0]:
+		for caps in [10, 150, 400]:
+			var target := Units.caps_to_carry_m(caps)
+			var speed := ShotCalculator.solve_caps_speed(target, cfg, sp)
+			var sim := BallSim.new(HoleDefinition.make_flat(Surface.Type.FAIRWAY), cfg)
+			sim.launch(Vector3(0, cfg.ball_radius, 0), ShotCalculator.launch_velocity(Vector3(0, 0, 1), speed, cfg.launch_angle_deg), true, sp)
+			sim.run_until_done()
+			assert_near(sim.carry_m, target, _caps_tol_m(target), "caps %d spin %.1f carry" % [caps, sp])
