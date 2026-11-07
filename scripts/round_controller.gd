@@ -14,6 +14,7 @@ var sun: DirectionalLight3D
 var course: CourseView
 var ball_mesh: MeshInstance3D
 var aim_line: LineDrawer
+var aim_arc: LineDrawer
 var trail_line: LineDrawer
 var measure_line: LineDrawer
 var rig: CameraRig
@@ -53,6 +54,8 @@ func _ready() -> void:
 	add_child(ball_mesh)
 	aim_line = LineDrawer.new(Color.WHITE)
 	add_child(aim_line)
+	aim_arc = LineDrawer.new(Color.WHITE)
+	add_child(aim_arc)
 	trail_line = LineDrawer.new(Color.WHITE)
 	add_child(trail_line)
 	measure_line = LineDrawer.new(Color.WHITE)
@@ -235,6 +238,7 @@ func _process(delta: float) -> void:
 func _update_aim_guide(bpos: Vector3) -> void:
 	var show := session.state == ShotTypes.State.AIMING
 	aim_line.visible = show
+	aim_arc.visible = show and session.mode == ShotTypes.Mode.CAPS
 	if not show:
 		_last_aim = -1.0
 		return
@@ -250,42 +254,36 @@ func _update_aim_guide(bpos: Vector3) -> void:
 	var segs: Array = []
 	var s := 1.2 * k
 	var h := session.hole
-	# Caps: 3D arc showing the initial launch path for the chosen trajectory (same guide length,
-	# shape independent of the footballer so no stats are revealed). Goals: chevrons on the ground.
 	var caps := session.mode == ShotTypes.Mode.CAPS
 	var tan_a := tan(deg_to_rad(session.launch_angle_for(session.trajectory)))
-	if caps:
-		# thin camera-facing line (never giant chevrons near the camera)
-		var pts := PackedVector3Array()
-		var n := 40
-		for i in n + 1:
-			var x := length * float(i) / float(n)
-			var p := bpos + d * x
-			p.y = maxf(bpos.y + _arc_height(x, length, tan_a), h.contact_height(p.x, p.z) + 0.05)
-			pts.append(p)
-		var col := Color(UiKit.C_TEXT, 0.9)
-		aim_line.draw_trail(pts, rig.cam.global_position, 0.0035 * (2.0 if over else 1.0), col)
-		_last_aim = -1.0  # camera moves: keep the camera-facing ribbon updated
-		return
 	while s < length:
 		var a := bpos + d * s
 		var b := bpos + d * (s + 1.1 * k)
-		if caps:
-			a.y = bpos.y + _arc_height(s, length, tan_a)
-			b.y = bpos.y + _arc_height(s + 1.1 * k, length, tan_a)
-			a.y = maxf(a.y, h.contact_height(a.x, a.z) + 0.05)
-			b.y = maxf(b.y, h.contact_height(b.x, b.z) + 0.05)
-		else:
-			a.y = h.contact_height(a.x, a.z) + 0.05
-			b.y = h.contact_height(b.x, b.z) + 0.05
+		a.y = h.contact_height(a.x, a.z) + 0.05
+		b.y = h.contact_height(b.x, b.z) + 0.05
 		segs.append([a, b])
 		s += 2.2 * k
 	aim_line.draw_dashes(segs, 0.55 * k, Color(UiKit.C_TEXT, 0.9) if over else Color(UiKit.C_TEXT, 0.75))
-
-
-## Initial-flight arc: starts at the launch angle and flattens to half that slope at the end.
-static func _arc_height(x: float, length: float, tan_a: float) -> float:
-	return x * tan_a * (1.0 - x / (4.0 * length))
+	# Caps: 3D arc of the initial flight for the chosen trajectory, AIM_GUIDE_LEN of path long.
+	# Its shape is independent of the footballer, so no stats are revealed.
+	aim_arc.visible = caps
+	if caps:
+		var pts := PackedVector3Array()
+		var pos := bpos
+		var slope := tan_a
+		var step := length / 40.0
+		var travelled := 0.0
+		pts.append(pos)
+		while travelled < length:
+			var x := Units.horizontal_distance(pos, bpos)
+			slope = tan_a * (1.0 - x / (2.0 * length))
+			var dir := (d + Vector3.UP * slope).normalized()
+			pos += dir * step
+			travelled += step
+			pos.y = maxf(pos.y, h.contact_height(pos.x, pos.z) + 0.05)
+			pts.append(pos)
+		aim_arc.draw_trail(pts, rig.cam.global_position, 0.0035 * (2.0 if over else 1.0), Color(UiKit.C_TEXT, 0.95))
+		_last_aim = -1.0  # camera-facing ribbon: refresh while the camera moves
 
 
 func _update_trail(bpos: Vector3, moving: bool) -> void:
