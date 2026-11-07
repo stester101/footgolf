@@ -4,6 +4,8 @@ extends RefCounted
 const HOLE_PATHS := ["res://data/holes/hole_01.json", "res://data/holes/hole_02.json", "res://data/holes/hole_03.json"]
 const RIDGE_PATHS := ["res://data/holes/hole_04.json", "res://data/holes/hole_05.json", "res://data/holes/hole_06.json",
 	"res://data/holes/hole_07.json", "res://data/holes/hole_08.json", "res://data/holes/hole_09.json"]
+const COASTAL_IDS := ["hole_10", "hole_11", "hole_12", "hole_13"]
+const LAKESIDE_IDS := ["hole_14", "hole_15", "hole_16", "hole_17"]
 
 
 static func make_repo() -> FootballerRepository:
@@ -32,6 +34,25 @@ static func load_ridge_holes() -> Array:
 	for p in RIDGE_PATHS:
 		out.append(HoleDefinition.load_from_file(p))
 	return out
+
+
+## Load holes by id (res://data/holes/<id>.json).
+static func load_hole_ids(ids: Array) -> Array:
+	var out: Array = []
+	for hid in ids:
+		out.append(HoleDefinition.load_from_file("res://data/holes/%s.json" % hid))
+	return out
+
+
+## Every hole referenced by data/courses.json (deduplicated, in course order).
+static func load_all_course_holes() -> Array:
+	var d = JSON.parse_string(FileAccess.get_file_as_string("res://data/courses.json"))
+	var ids: Array = []
+	for c in d["courses"]:
+		for hid in c["holes"]:
+			if not ids.has(hid):
+				ids.append(hid)
+	return load_hole_ids(ids)
 
 
 static func make_session(defs: Array = []) -> GameSession:

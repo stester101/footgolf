@@ -173,7 +173,7 @@ func test_oob_gives_one_penalty_and_safe_relief() -> void:
 	var s := TestHelpers.make_session()
 	s.wind_custom = true
 	s.wind_custom_speed = 0.0
-	var r := TestHelpers.shoot(s, ShotTypes.Mode.CAPS, 120, 0, 90.0)  # hard right, boundary ~52 m
+	var r := TestHelpers.shoot(s, ShotTypes.Mode.CAPS, 120, 0, 90.0)  # hard right: only the far map edge is OOB (play area ends 65 m right of the tee)
 	assert_eq(r.hazard, "OOB")
 	assert_eq(r.penalty, 1)
 	assert_eq(s.current_hole_state().score(), 2)

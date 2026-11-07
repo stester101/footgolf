@@ -4,40 +4,38 @@
       "id": "starter",
       "name": "Starter Links",
       "blurb": "3 classic test holes",
-      "holes": [
-        "hole_01",
-        "hole_02",
-        "hole_03"
-      ]
+      "holes": ["hole_01", "hole_02", "hole_03"]
     },
     {
       "id": "ridge",
       "name": "Pinewood Ridge",
       "blurb": "6 hilly forest holes",
-      "holes": [
-        "hole_04",
-        "hole_05",
-        "hole_06",
-        "hole_07",
-        "hole_08",
-        "hole_09"
-      ]
+      "holes": ["hole_04", "hole_05", "hole_06", "hole_07", "hole_08", "hole_09"]
+    },
+    {
+      "id": "coastal",
+      "name": "Coastal Links",
+      "blurb": "4 windy holes, dunes + pot bunkers",
+      "holes": ["hole_10", "hole_11", "hole_12", "hole_13"]
+    },
+    {
+      "id": "lakeside",
+      "name": "Lakeside",
+      "blurb": "4 parkland holes, water carries",
+      "holes": ["hole_14", "hole_15", "hole_16", "hole_17"]
+    },
+    {
+      "id": "full9",
+      "name": "Full 9",
+      "blurb": "Starter Links + Pinewood Ridge",
+      "holes": ["hole_01", "hole_02", "hole_03", "hole_04", "hole_05", "hole_06", "hole_07", "hole_08", "hole_09"]
     },
     {
       "id": "all",
-      "name": "Full 9",
-      "blurb": "Starter Links + Pinewood Ridge",
-      "holes": [
-        "hole_01",
-        "hole_02",
-        "hole_03",
-        "hole_04",
-        "hole_05",
-        "hole_06",
-        "hole_07",
-        "hole_08",
-        "hole_09"
-      ]
+      "name": "Grand Tour",
+      "blurb": "All 17 holes, every course",
+      "holes": ["hole_01", "hole_02", "hole_03", "hole_04", "hole_05", "hole_06", "hole_07", "hole_08", "hole_09",
+        "hole_10", "hole_11", "hole_12", "hole_13", "hole_14", "hole_15", "hole_16", "hole_17"]
     }
   ]
 }
