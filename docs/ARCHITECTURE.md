@@ -54,7 +54,8 @@ taps during motion or during the result are rejected.
 ## Terrain and lies
 `HoleDefinition` defines an analytic height function (plane + Gaussian bumps, flattened tees,
 tilted/undulating greens, carved bunkers, lowered lake beds) and a priority classifier
-(OOB > water > bunker > green > fringe > tee > fairway > rough). Physics queries it directly;
+(OOB > water > bunker > green > fringe > tee > fairway > rough). OOB is only the outer 25 m band of the
+rendered terrain (`play_area` = `bounds` inset by `oob_inset`); everything visible inside it is in play. Physics queries it directly;
 `TerrainBuilder` samples the same functions on a 2 m grid for the mesh and vertex colours, so
 visual and physical regions agree to within one grid cell. Trees are generated deterministically
 from JSON lines/clusters; each has a trunk cylinder + canopy ellipsoid collision proxy in

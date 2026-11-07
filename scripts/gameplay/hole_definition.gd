@@ -120,8 +120,15 @@ var waters: Array = []          # [Ellipse]
 var water_level: Array = []
 var fairway: Array = []         # [{p0:Vector2,p1:Vector2,hw:float}]
 var fairway_aabb := Rect2()
+## Out-of-bounds line: the rectangle `play_area` (rendered terrain `bounds` inset by `oob_inset`), so the
+## whole visible course is in play and only the far map edge is OOB ("Make all visible course playable",
+## docs/DECISIONS.md). Kept as a closed polygon for presentation (edge stakes). Legacy per-hole
+## "boundary" polygons in JSON are ignored.
 var boundary := PackedVector2Array()
 var bounds := Rect2(-100, -50, 200, 300)
+const OOB_INSET_M := 25.0
+var oob_inset := OOB_INSET_M
+var play_area := Rect2(-75, -25, 150, 250)
 var trees: Array = []           # [{x,z,base_y,trunk_r,trunk_h,canopy_y,canopy_r,canopy_ry,kind}]
 var _tree_grid: Dictionary = {}
 var _spacing_grid: Dictionary = {}  # 4.5 m cells -> tree indices (placement spacing check)
@@ -157,7 +164,14 @@ static func make_flat(surface_type: int) -> HoleDefinition:
 	h.has_cup = false
 	h.pin = Vector2(1.0e6, 1.0e6)
 	h.bounds = Rect2(-1000, -1000, 2000, 2000)
+	h._set_play_area()
 	return h
+
+
+func _set_play_area() -> void:
+	play_area = bounds.grow(-oob_inset)
+	var r := play_area
+	boundary = PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])
 
 
 static func _v2(a) -> Vector2:
@@ -203,11 +217,11 @@ func _parse(d: Dictionary) -> void:
 		bunker_depth.append(float(bd2.get("depth", 0.6)))
 	for wd in d.get("water", []):
 		waters.append(Ellipse.new(wd, WATER_OUTER + 0.5))
-	for p in d.get("boundary", []):
-		boundary.append(_v2(p))
 	var bb: Array = d.get("bounds", [])
 	if bb.size() == 4:
 		bounds = Rect2(float(bb[0]), float(bb[1]), float(bb[2]) - float(bb[0]), float(bb[3]) - float(bb[1]))
+	oob_inset = clampf(float(d.get("oob_inset", OOB_INSET_M)), 0.0, minf(bounds.size.x, bounds.size.y) * 0.25)
+	_set_play_area()
 	conifer_ratio = clampf(float((d.get("theme", {}) as Dictionary).get("conifer", 0.5)), 0.0, 1.0)
 	var w: Dictionary = d.get("wind", {})
 	wind_speed = float(w.get("speed", 0.0))
@@ -312,10 +326,9 @@ func normal_at(x: float, z: float) -> Vector3:
 	return Vector3(-hx / (2.0 * e), 1.0, -hz / (2.0 * e)).normalized()
 
 
+## Everything inside the play area (the visible terrain minus the outer `oob_inset` band) is in play.
 func in_bounds(x: float, z: float) -> bool:
-	if boundary.size() < 3:
-		return true
-	return Geometry2D.is_point_in_polygon(Vector2(x, z), boundary)
+	return x >= play_area.position.x and x <= play_area.end.x and z >= play_area.position.y and z <= play_area.end.y
 
 
 func fairway_distance(x: float, z: float) -> float:

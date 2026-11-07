@@ -10,7 +10,7 @@ Full brief: [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md).
 ## Current status (evidence-based)
 | Area | State |
 |---|---|
-| Nine playable 3D holes in 3 courses: Starter Links (3 classic holes) and Pinewood Ridge (6 hilly forest-mountainside holes, par 24), or the Full 9 | Implemented; each course completed by a test bot and a UI smoke test |
+| 17 playable 3D holes: Starter Links (3 classic holes), Pinewood Ridge (6 hilly forest holes, par 24), Coastal Links (4 windy links holes, par 16), Lakeside (4 parkland water holes, par 16), plus Full 9 and Grand Tour (all 17). The whole visible course is in play (OOB only at the far map edge) | Implemented; each course completed by a test bot; Starter Links and Pinewood Ridge also by a UI smoke test |
 | Calibrated physics (flight, drag, wind, bounce, roll, slopes, lies, trees, cup) | Implemented; calibration error < 0.001% on all spec inputs |
 | Atomic shot commit, once-per-match footballer pool, par+5, water/OOB relief, hole-out rules | Implemented + tested |
 | Footballer picker (stats hidden), shot result reveal, scorecard + history, round complete | Implemented |

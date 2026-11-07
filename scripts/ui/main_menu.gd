@@ -36,17 +36,30 @@ func setup() -> void:
 	v.add_child(ttl)
 	v.add_child(UiKit.text("Pick a footballer. Caps fly, goals roll.", 26, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UiKit.text("1 cap = 1 yard carry · 1 goal = 1 foot ground", 22, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	v.add_child(spacer)
 	_main_box = UiKit.vbox(16)
+	_main_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(_main_box)
+	# Courses come from data/courses.json; the list scrolls when it does not fit (bottom-aligned otherwise).
+	var sc := ScrollContainer.new()
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.scroll_deadzone = 14
+	_main_box.add_child(sc)
+	var list := UiKit.vbox(16)
+	list.alignment = BoxContainer.ALIGNMENT_END
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.add_child(list)
+	var current: Control = null
 	for c in App.courses():
 		var cid: String = c["id"]
 		var cb := UiKit.button("%s\n%s · par %d" % [c["name"], c["blurb"], App.course_par(cid)], func() -> void: play_requested.emit(cid, false), 96, 28)
 		if cid == App.settings.last_course:
 			UiKit.primary(cb)
-		_main_box.add_child(cb)
+			current = cb
+		list.add_child(cb)
+	if current != null:
+		sc.ensure_control_visible.call_deferred(current)
 	var dev := UiKit.button("Developer Test", func() -> void: play_requested.emit("all", true), 70, 24)
 	dev.add_theme_color_override("font_color", UiKit.C_DEV)
 	_main_box.add_child(dev)
