@@ -95,20 +95,10 @@ func _render() -> void:
 	for i in mini(_limit, total):
 		var fb: Footballer = all_matches[i]
 		var used := session.pool.is_used(fb.id)
-		var txt := fb.display_label()
-		if used:
-			txt += "   · USED"
-		if show_stats:
-			txt += "\n%d caps  ·  %d goals" % [fb.caps, fb.goals]
-		var b := UiKit.button(txt, func() -> void: _on_pick(fb.id), 88 if show_stats else 68, 23)
+		var b := UiKit.player_button(fb, show_stats, used, fb.id == session.selected_id, func() -> void: _on_pick(fb.id))
 		# Let drags reach the ScrollContainer (touch scrolling); a press only picks if the list didn't scroll.
 		b.mouse_filter = Control.MOUSE_FILTER_PASS
 		b.button_down.connect(func() -> void: _press_scroll = _sc.scroll_vertical)
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		b.disabled = used
-		if fb.id == session.selected_id:
-			UiKit.primary(b, UiKit.C_ACCENT_DARK)
 		_list.add_child(b)
 		if not used:
 			available += 1

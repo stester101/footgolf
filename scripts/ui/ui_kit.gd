@@ -162,3 +162,35 @@ static func safe_margins(vp: Viewport) -> Array:
 	out[2] = maxf(16.0, (screen.x - safe.end.x) * sx)
 	out[3] = maxf(16.0, (screen.y - safe.end.y) * sy)
 	return out
+
+
+## Player card button: flag icon, name on line 1, nation/era (+ stats in test mode) on line 2.
+## Stores the footballer id in meta "footballer_id".
+static func player_button(fb: Footballer, show_stats: bool, used: bool, selected: bool, cb: Callable) -> Button:
+	var b := button("", cb, 84, 23)
+	b.icon = Flags.texture(fb.country_code)
+	b.expand_icon = false
+	b.add_theme_constant_override("h_separation", 14)
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	b.set_meta("footballer_id", fb.id)
+	var era := ""
+	if fb.career_years != "":
+		var parts := fb.career_years.split("–")
+		era = parts[0] if parts.size() == 2 and parts[0] == parts[1] else fb.career_years
+	elif fb.birth_year > 0:
+		era = "b. %d" % fb.birth_year
+	var line2 := fb.nationality + ("  ·  " + era if era != "" else "")
+	var txt := "%s%s\n%s" % [fb.name, "   —  USED" if used else "", line2]
+	if show_stats:
+		txt += "\n%s  ·  %s" % [plural(fb.caps, "cap"), plural(fb.goals, "goal")]
+		b.custom_minimum_size.y = 108
+	b.text = txt
+	b.disabled = used
+	if selected:
+		primary(b, C_ACCENT_DARK)
+	return b
+
+
+static func plural(n: int, word: String) -> String:
+	return "%d %s%s" % [n, word, "" if n == 1 else "s"]

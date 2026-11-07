@@ -55,10 +55,19 @@ func setup() -> void:
 	var dev := UiKit.button("Developer Test", func() -> void: play_requested.emit(true), 86, 28)
 	dev.add_theme_color_override("font_color", UiKit.C_DEV)
 	_main_box.add_child(dev)
-	_main_box.add_child(UiKit.button("Settings", _show_settings, 86, 28))
+	var row := UiKit.hbox(12)
+	var how := UiKit.button("How to play", show_tutorial, 80, 26)
+	UiKit.expand(how)
+	row.add_child(how)
+	var set_b := UiKit.button("Settings", _show_settings, 80, 26)
+	UiKit.expand(set_b)
+	row.add_child(set_b)
+	_main_box.add_child(row)
 	_settings_box = UiKit.vbox(12)
 	_settings_box.visible = false
 	v.add_child(_settings_box)
+	if not App.settings.tutorial_seen and not OS.get_cmdline_user_args().has("--smoke-test"):
+		show_tutorial.call_deferred()
 	v.add_child(UiKit.text("Offline prototype · %s\n%s" % [App.dataset_label(), App.build_label()], 18, Color(0.85, 0.9, 0.85), HORIZONTAL_ALIGNMENT_CENTER))
 
 
@@ -114,7 +123,26 @@ func _hide_settings() -> void:
 
 
 func handle_back() -> bool:
+	if _tutorial != null and is_instance_valid(_tutorial):
+		_tutorial.finished.emit()
+		return true
 	if _settings_box.visible:
 		_hide_settings()
 		return true
 	return false
+
+
+var _tutorial: Tutorial
+
+
+func show_tutorial() -> void:
+	if _tutorial != null and is_instance_valid(_tutorial):
+		return
+	_tutorial = Tutorial.new()
+	add_child(_tutorial)
+	_tutorial.setup()
+	_tutorial.finished.connect(func() -> void:
+		App.settings.tutorial_seen = true
+		App.settings.save()
+		_tutorial.queue_free()
+		_tutorial = null)

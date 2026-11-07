@@ -101,7 +101,7 @@ func _run() -> void:
 				var picked := false
 				for c in (picker[0] as Node).find_children("*", "Button", true, false):
 					var b := c as Button
-					if not b.disabled and b.text.contains("(") and not b.text.begins_with("Close"):
+					if not b.disabled and b.has_meta("footballer_id"):
 						b.pressed.emit()
 						picked = true
 						break

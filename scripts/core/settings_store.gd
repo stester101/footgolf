@@ -15,6 +15,7 @@ var show_trail := true
 var show_stats := true
 ## "real" = bundled Wikidata snapshot, "test" = synthetic test players.
 var dataset := "real"
+var tutorial_seen := false
 var lie_override := -1
 var force_surface := false
 var physics := PhysicsConfig.new()
@@ -37,6 +38,7 @@ func load_settings() -> void:
 	sim_speed = clampf(float(d.get("sim_speed", 1.0)), 0.25, 8.0)
 	show_trail = bool(d.get("show_trail", true))
 	show_stats = bool(d.get("show_stats", true))
+	tutorial_seen = bool(d.get("tutorial_seen", false))
 	dataset = "test" if String(d.get("dataset", "real")) == "test" else "real"
 	lie_override = int(d.get("lie_override", -1))
 	if not Surface.PLAYABLE.has(lie_override):
@@ -61,6 +63,7 @@ func save() -> void:
 		"show_trail": show_trail,
 		"show_stats": show_stats,
 		"dataset": dataset,
+		"tutorial_seen": tutorial_seen,
 		"lie_override": lie_override,
 		"force_surface": force_surface,
 		"physics": physics.to_dict(),

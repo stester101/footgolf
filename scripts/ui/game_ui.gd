@@ -30,6 +30,9 @@ var _toast_t := 0.0
 var _measure_label: Label
 var _view_btn: Button
 var _map_row: HBoxContainer
+var _badge_num: Label
+var _reveal: Tween
+var _round_label: Label
 var _overlays: Array[Control] = []
 var _margin: MarginContainer
 var camera_yaw := 0.0
@@ -76,48 +79,91 @@ func _apply_safe_area() -> void:
 	_margin.add_theme_constant_override("margin_bottom", int(sm[3]))
 
 
+func _chip(text_label: Label, min_w: float = 0.0) -> PanelContainer:
+	var c := UiKit.panel(Color(0.04, 0.07, 0.06, 0.72))
+	c.add_theme_stylebox_override("panel", UiKit.box(Color(0.04, 0.07, 0.06, 0.72), 22, 10))
+	c.custom_minimum_size.x = min_w
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.add_child(text_label)
+	return c
+
+
+func _small_btn(text: String, cb: Callable) -> Button:
+	var b := UiKit.button(text, cb, 54, 20)
+	b.custom_minimum_size.x = 70
+	b.add_theme_stylebox_override("normal", UiKit.box(Color(0.04, 0.07, 0.06, 0.78), 27, 10))
+	return b
+
+
 func _build_top(col: VBoxContainer) -> void:
-	var p := UiKit.panel()
+	var p := UiKit.panel(Color(0.04, 0.08, 0.06, 0.86))
 	col.add_child(p)
-	var v := UiKit.vbox(4)
-	p.add_child(v)
-	var r1 := UiKit.hbox()
-	_top_title = UiKit.expand(UiKit.label("", 28)) as Label
-	_top_score = UiKit.label("", 22, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
-	r1.add_child(_top_title)
-	r1.add_child(_top_score)
-	v.add_child(r1)
-	_lie_label = UiKit.text("", 21, UiKit.C_MUTED)
-	v.add_child(_lie_label)
-	var r3 := UiKit.hbox()
+	var row := UiKit.hbox(14)
+	p.add_child(row)
+	# hole badge
+	var badge := PanelContainer.new()
+	badge.add_theme_stylebox_override("panel", UiKit.box(UiKit.C_ACCENT_DARK, 16, 8))
+	badge.custom_minimum_size = Vector2(86, 86)
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bv := UiKit.vbox(0)
+	bv.alignment = BoxContainer.ALIGNMENT_CENTER
+	bv.add_child(UiKit.label("HOLE", 16, Color(0.85, 1, 0.88), HORIZONTAL_ALIGNMENT_CENTER))
+	_badge_num = UiKit.label("1", 40, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	bv.add_child(_badge_num)
+	badge.add_child(bv)
+	row.add_child(badge)
+	var mid := UiKit.vbox(2)
+	UiKit.expand(mid)
+	mid.alignment = BoxContainer.ALIGNMENT_CENTER
+	_top_title = UiKit.label("", 27)
+	_top_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	mid.add_child(_top_title)
+	_pin_label = UiKit.label("", 21, UiKit.C_MUTED)
+	mid.add_child(_pin_label)
+	_lie_label = UiKit.label("", 19, UiKit.C_MUTED)
+	_lie_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	mid.add_child(_lie_label)
+	row.add_child(mid)
+	var right := UiKit.vbox(0)
+	right.alignment = BoxContainer.ALIGNMENT_CENTER
+	right.add_child(UiKit.label("ROUND", 16, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_RIGHT))
+	_round_label = UiKit.label("E", 36, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	right.add_child(_round_label)
+	_top_score = UiKit.label("", 18, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
+	right.add_child(_top_score)
+	row.add_child(right)
+	# chips + actions
+	var bar := UiKit.hbox(8)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var wind_chip := UiKit.hbox(6)
+	wind_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_wind = WindIndicator.new()
-	r3.add_child(_wind)
-	_wind_label = UiKit.expand(UiKit.label("", 22)) as Label
+	wind_chip.add_child(_wind)
+	_wind_label = UiKit.label("", 20)
 	_wind_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	r3.add_child(_wind_label)
-	_pin_label = UiKit.label("", 24, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
-	_pin_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	r3.add_child(_pin_label)
-	v.add_child(r3)
-	var actions := UiKit.hbox(8)
-	actions.alignment = BoxContainer.ALIGNMENT_END
-	actions.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_view_btn = UiKit.button("Overhead", func() -> void: camera_toggle_requested.emit(), 58, 22)
-	actions.add_child(_view_btn)
-	actions.add_child(UiKit.button("Card", show_scorecard, 58, 22))
+	wind_chip.add_child(_wind_label)
+	var wc := UiKit.panel(Color(0.04, 0.07, 0.06, 0.72))
+	wc.add_theme_stylebox_override("panel", UiKit.box(Color(0.04, 0.07, 0.06, 0.72), 27, 8))
+	wc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wc.add_child(wind_chip)
+	bar.add_child(wc)
+	var sp := Control.new()
+	UiKit.expand(sp)
+	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_child(sp)
+	_view_btn = _small_btn("MAP", func() -> void: camera_toggle_requested.emit())
+	bar.add_child(_view_btn)
+	bar.add_child(_small_btn("CARD", show_scorecard))
+	var dev := _small_btn("DEV", func() -> void: developer_requested.emit())
+	dev.add_theme_color_override("font_color", UiKit.C_DEV)
+	bar.add_child(dev)
+	bar.add_child(_small_btn("II", show_pause))
+	col.add_child(bar)
 	_map_row = UiKit.hbox(8)
 	_map_row.alignment = BoxContainer.ALIGNMENT_END
-	for spec in [["−", 1.0 / 1.4], ["+", 1.4], ["Fit", 0.0]]:
+	for spec in [["−", 1.0 / 1.4], ["+", 1.4], ["FIT", 0.0]]:
 		var f: float = spec[1]
-		var zb := UiKit.button(spec[0], func() -> void: overhead_zoom_requested.emit(f), 58, 24)
-		zb.custom_minimum_size.x = 76
-		_map_row.add_child(zb)
-
-	var dev := UiKit.button("DEV", func() -> void: developer_requested.emit(), 58, 22)
-	dev.add_theme_color_override("font_color", UiKit.C_DEV)
-	actions.add_child(dev)
-	actions.add_child(UiKit.button("II", show_pause, 58, 22))
-	col.add_child(actions)
+		_map_row.add_child(_small_btn(spec[0], func() -> void: overhead_zoom_requested.emit(f)))
 	col.add_child(_map_row)
 	_measure_label = UiKit.text("", 22, UiKit.C_WARN, HORIZONTAL_ALIGNMENT_RIGHT)
 	_measure_label.add_theme_constant_override("outline_size", 6)
@@ -125,7 +171,7 @@ func _build_top(col: VBoxContainer) -> void:
 
 
 func _build_bottom(col: VBoxContainer) -> void:
-	var p := UiKit.panel()
+	var p := UiKit.panel(Color(0.04, 0.08, 0.06, 0.88))
 	col.add_child(p)
 	_bottom = UiKit.vbox(10)
 	p.add_child(_bottom)
@@ -133,28 +179,32 @@ func _build_bottom(col: VBoxContainer) -> void:
 	_bottom.add_child(_controls)
 	var seg := UiKit.hbox(8)
 	var group := ButtonGroup.new()
-	_caps_btn = UiKit.button("CAPS · air", func() -> void: session.set_mode(ShotTypes.Mode.CAPS), 70, 26)
-	_goals_btn = UiKit.button("GOALS · ground", func() -> void: session.set_mode(ShotTypes.Mode.GOALS), 70, 26)
+	_caps_btn = UiKit.button("CAPS\nin the air · 1 cap = 1 yd", func() -> void: session.set_mode(ShotTypes.Mode.CAPS), 78, 22)
+	_goals_btn = UiKit.button("GOALS\non the ground · 1 goal = 1 ft", func() -> void: session.set_mode(ShotTypes.Mode.GOALS), 78, 22)
 	for b in [_caps_btn, _goals_btn]:
 		b.toggle_mode = true
 		b.button_group = group
+		b.add_theme_stylebox_override("pressed", UiKit.box(UiKit.C_ACCENT_DARK, 14, 10))
+		b.add_theme_stylebox_override("hover_pressed", UiKit.box(UiKit.C_ACCENT_DARK, 14, 10))
 		UiKit.expand(b)
 		seg.add_child(b)
 	_controls.add_child(seg)
-	_pick_btn = UiKit.button("Choose footballer…", show_picker, 70, 25)
+	_pick_btn = UiKit.button("Choose footballer…", show_picker, 84, 24)
+	_pick_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_pick_btn.add_theme_constant_override("h_separation", 14)
 	_pick_btn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_controls.add_child(_pick_btn)
 	var shot_row := UiKit.hbox(8)
-	_shot_btn = UiKit.primary(UiKit.button("TAKE SHOT", _on_take_shot, 104, 34))
+	_shot_btn = UiKit.primary(UiKit.button("TAKE SHOT", _on_take_shot, 100, 34))
 	UiKit.expand(_shot_btn)
 	shot_row.add_child(_shot_btn)
-	_skip_btn = UiKit.button("Skip ▸▸", func() -> void: session.skip_motion(), 104, 24)
+	_skip_btn = UiKit.button("Skip ▸▸", func() -> void: session.skip_motion(), 100, 24)
 	_skip_btn.custom_minimum_size.x = 150
 	shot_row.add_child(_skip_btn)
 	_controls.add_child(shot_row)
-	_hint = UiKit.text("Drag the course left/right to aim · 360°", 20, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	_hint = UiKit.text("", 19, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	_controls.add_child(_hint)
-	_result_box = UiKit.vbox(6)
+	_result_box = UiKit.vbox(8)
 	_result_box.visible = false
 	_bottom.add_child(_result_box)
 
@@ -175,9 +225,10 @@ func _process(delta: float) -> void:
 			_toast.text = ""
 	if session == null or session.hole == null:
 		return
-	_pin_label.text = "Pin %s" % Units.fmt_distance(Units.horizontal_distance(session.ball_render_pos(), session.hole.cup_position()))
+	var h := session.hole
+	_pin_label.text = "Par %d · %d yd · Pin %s" % [h.par, int(h.yards), Units.fmt_distance(Units.horizontal_distance(session.ball_render_pos(), h.cup_position()))]
 	var wb := deg_to_rad(session.wind_bearing())
-	_wind.set_wind(camera_yaw - wb if not overhead else -wb + camera_yaw, session.wind_speed())
+	_wind.set_wind(camera_yaw - wb, session.wind_speed())
 
 
 func refresh() -> void:
@@ -185,38 +236,43 @@ func refresh() -> void:
 		return
 	var hs := session.current_hole_state()
 	var h := session.hole
-	_top_title.text = "Hole %d · Par %d · %d yd" % [session.round_state.current_index + 1, h.par, int(h.yards)]
+	_badge_num.text = str(session.round_state.current_index + 1)
+	_top_title.text = h.display_name
 	var pen := " (+%d pen)" % hs.penalties if hs.penalties > 0 else ""
 	var thru := session.round_state.holes_completed()
-	_top_score.text = "Strokes %d%s · Round %s%s" % [hs.raw_total(), pen, RoundState.fmt_relative(session.round_state.relative_to_par()), (" thru %d" % thru) if thru > 0 else ""]
+	_round_label.text = RoundState.fmt_relative(session.round_state.relative_to_par())
+	_top_score.text = "Strokes %d%s%s" % [hs.raw_total(), pen, (" · thru %d" % thru) if thru > 0 else ""]
 	var lie := session.current_lie()
-	var dev := " [DEV lie]" if session.lie_override >= 0 else ""
-	_lie_label.text = "Lie: %s%s — %s" % [Surface.name_of(lie), dev, Surface.effect_hint(lie, session.cfg.surfaces)]
-	_wind_label.text = "Wind %d mph" % int(round(session.wind_speed() * Units.MPS_TO_MPH))
+	var dev := " [DEV]" if session.lie_override >= 0 else ""
+	_lie_label.text = "%s%s · %s" % [Surface.name_of(lie), dev, Surface.effect_hint(lie, session.cfg.surfaces)]
+	_wind_label.text = "%d mph" % int(round(session.wind_speed() * Units.MPS_TO_MPH))
 	_caps_btn.set_pressed_no_signal(session.mode == ShotTypes.Mode.CAPS)
 	_goals_btn.set_pressed_no_signal(session.mode == ShotTypes.Mode.GOALS)
 	var fb := session.repo.get_by_id(session.selected_id) if session.selected_id != "" else null
 	if fb == null:
-		_pick_btn.text = "Choose footballer…"
-	elif App.settings.show_stats:
-		if session.mode == ShotTypes.Mode.CAPS:
-			_pick_btn.text = "▶ %s · %d caps = %d yd carry" % [fb.name, fb.caps, fb.caps]
-		else:
-			_pick_btn.text = "▶ %s · %d goals = %d ft roll" % [fb.name, fb.goals, fb.goals]
+		_pick_btn.icon = null
+		_pick_btn.text = "Choose footballer…\nSearch %d players by name or country" % session.repo.count()
 	else:
-		_pick_btn.text = "▶ %s" % fb.display_label()
+		_pick_btn.icon = Flags.texture(fb.country_code)
+		var line2 := fb.nationality
+		if App.settings.show_stats:
+			if session.mode == ShotTypes.Mode.CAPS:
+				line2 += "  ·  %s = %d yd carry" % [UiKit.plural(fb.caps, "cap"), fb.caps]
+			else:
+				line2 += "  ·  %s = %d ft roll" % [UiKit.plural(fb.goals, "goal"), fb.goals]
+		else:
+			line2 += "  ·  stats revealed after the shot"
+		_pick_btn.text = "▶ %s\n%s" % [fb.name, line2]
 	var moving := session.is_ball_moving()
 	var aiming := session.state == ShotTypes.State.AIMING
+	if session.state != ShotTypes.State.SHOT_RESULT and _reveal != null and _reveal.is_valid():
+		_reveal.kill()
+		_result_box.modulate.a = 1.0
 	_controls.visible = session.state != ShotTypes.State.SHOT_RESULT
 	_result_box.visible = session.state == ShotTypes.State.SHOT_RESULT
 	_skip_btn.visible = moving
 	_shot_btn.disabled = not (aiming and session.can_take_shot() == "" and _overlays.is_empty())
-	if moving:
-		_shot_btn.text = "Ball in motion…"
-	elif aiming and fb == null:
-		_shot_btn.text = "TAKE SHOT"
-	else:
-		_shot_btn.text = "TAKE SHOT"
+	_shot_btn.text = "Ball in motion…" if moving else "TAKE SHOT"
 	_caps_btn.disabled = moving
 	_goals_btn.disabled = moving
 	_pick_btn.disabled = moving
@@ -224,9 +280,11 @@ func refresh() -> void:
 		_hint.text = "Ball in motion · Skip fast-forwards the same simulation"
 	elif overhead:
 		_hint.text = "Pinch/± to zoom · drag to pan · tap to measure"
+	elif fb == null:
+		_hint.text = "Drag the course to aim · then choose a footballer"
 	else:
 		_hint.text = "Drag the course left/right to aim · 360°"
-	_view_btn.text = "Behind" if overhead else "Overhead"
+	_view_btn.text = "BEHIND" if overhead else "MAP"
 	_map_row.visible = overhead
 
 
@@ -311,50 +369,102 @@ func show_hole_intro() -> void:
 	push_overlay(root)
 
 
+func _stat_cell(caption: String, value: String) -> VBoxContainer:
+	var v := UiKit.vbox(0)
+	UiKit.expand(v)
+	v.add_child(UiKit.label(value, 30, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UiKit.label(caption, 16, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	return v
+
+
+## Shot summary card with an animated stat reveal (only shown after the ball has stopped).
 func _on_shot_resolved(r: ShotResult) -> void:
+	if _reveal != null and _reveal.is_valid():
+		_reveal.kill()
 	UiKit.clear(_result_box)
-	var head := UiKit.hbox()
-	head.add_child(UiKit.expand(UiKit.label("%s (%s)" % [r.footballer_name, r.nationality], 26)))
+	var head := UiKit.hbox(12)
+	var fb := session.repo.get_by_id(r.footballer_id)
+	var flag := TextureRect.new()
+	flag.texture = Flags.texture(fb.country_code if fb != null else "")
+	flag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	flag.custom_minimum_size = Vector2(60, 40)
+	head.add_child(flag)
+	var hv := UiKit.vbox(0)
+	UiKit.expand(hv)
+	var nm := UiKit.label(r.footballer_name, 26)
+	nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	hv.add_child(nm)
+	hv.add_child(UiKit.label(r.nationality, 18, UiKit.C_MUTED))
+	head.add_child(hv)
 	_result_box.add_child(head)
-	var stat_line := "%s → %s" % [r.stat_label().to_upper(), r.base_label()]
-	_result_box.add_child(UiKit.text(stat_line, 32, UiKit.C_ACCENT.lightened(0.3)))
-	var dist_line := ""
+	# big animated stat
+	var unit := "CAPS" if r.mode == ShotTypes.Mode.CAPS else "GOALS"
+	var big := UiKit.label("0 %s" % unit, 46, Color(0.55, 0.95, 0.6), HORIZONTAL_ALIGNMENT_CENTER)
+	_result_box.add_child(big)
+	var sub := UiKit.label("= %s neutral %s" % [("%d yd" % r.stat_value) if r.mode == ShotTypes.Mode.CAPS else ("%d ft" % r.stat_value), "carry" if r.mode == ShotTypes.Mode.CAPS else "ground travel"], 20, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	_result_box.add_child(sub)
+	var grid := UiKit.hbox(6)
 	if r.mode == ShotTypes.Mode.CAPS:
-		dist_line = "Carry %d yd · Roll %d ft · Total %d yd" % [int(round(Units.m_to_yards(r.carry_m))), int(round(Units.m_to_feet(r.roll_m))), int(round(Units.m_to_yards(r.total_m)))]
+		grid.add_child(_stat_cell("CARRY", "%d yd" % int(round(Units.m_to_yards(r.carry_m)))))
+		grid.add_child(_stat_cell("ROLL", "%d ft" % int(round(Units.m_to_feet(r.roll_m)))))
+		grid.add_child(_stat_cell("TOTAL", "%d yd" % int(round(Units.m_to_yards(r.total_m)))))
 	else:
-		dist_line = "Ground travel %.1f ft (%d yd)" % [Units.m_to_feet(r.total_m), int(round(Units.m_to_yards(r.total_m)))]
-	_result_box.add_child(UiKit.text(dist_line, 24))
+		grid.add_child(_stat_cell("TRAVEL", "%.1f ft" % Units.m_to_feet(r.total_m)))
+		grid.add_child(_stat_cell("LIE", Surface.name_of(r.final_lie)))
+	if not r.holed:
+		grid.add_child(_stat_cell("TO PIN", Units.fmt_distance(r.remaining_m)))
+	_result_box.add_child(grid)
 	var extra: Array[String] = []
 	if r.lie_factor < 0.999:
 		extra.append("%s lie cost %d%%" % [Surface.name_of(r.start_lie), int(round((1.0 - r.lie_factor) * 100.0))])
 	if not r.collisions.is_empty():
-		extra.append("Hit tree (%s)" % r.collision_summary())
+		extra.append("Hit a tree")
 	if r.wind_speed_mps > 0.1 and r.mode == ShotTypes.Mode.CAPS:
 		extra.append("Wind %d mph" % int(round(r.wind_speed_mps * Units.MPS_TO_MPH)))
-	if not extra.is_empty():
-		_result_box.add_child(UiKit.text(" · ".join(extra), 21, UiKit.C_MUTED))
+	if r.mode == ShotTypes.Mode.CAPS:
+		extra.append("Now on the %s" % Surface.name_of(r.final_lie).to_lower())
+	var extra_l := UiKit.text(" · ".join(extra), 19, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	_result_box.add_child(extra_l)
+	var banner: Label = null
 	if r.penalty > 0:
-		_result_box.add_child(UiKit.text("%s! +%d penalty stroke · ball dropped safely" % ["Water" if r.hazard == "WATER" else "Out of bounds", r.penalty], 25, UiKit.C_WARN))
-	if r.holed:
-		_result_box.add_child(UiKit.text("HOLED!", 34, UiKit.C_WARN))
-	else:
-		_result_box.add_child(UiKit.text("Lie: %s · %s to pin" % [Surface.name_of(r.final_lie), Units.fmt_distance(r.remaining_m)], 24))
+		banner = UiKit.text("%s!  +%d penalty · ball dropped safely" % ["WATER" if r.hazard == "WATER" else "OUT OF BOUNDS", r.penalty], 24, UiKit.C_WARN, HORIZONTAL_ALIGNMENT_CENTER)
+	elif r.holed:
+		banner = UiKit.text("IN THE HOLE!", 36, UiKit.C_WARN, HORIZONTAL_ALIGNMENT_CENTER)
+	if banner != null:
+		_result_box.add_child(banner)
 	var hs := session.current_hole_state()
+	var status := ""
 	if hs.complete:
-		_result_box.add_child(UiKit.text("Hole score %d (%s)" % [hs.score(), RoundState.fmt_relative(hs.relative_to_par())], 22, UiKit.C_MUTED))
+		status = "Hole score %d (%s)" % [hs.score(), RoundState.fmt_relative(hs.relative_to_par())]
 	else:
-		_result_box.add_child(UiKit.text("Strokes so far %d (par %d, max %d)" % [hs.raw_total(), hs.par, hs.max_score()], 22, UiKit.C_MUTED))
-	var details := UiKit.text(r.diagnostic_text(), 17, UiKit.C_MUTED)
+		status = "Strokes so far %d · par %d · max %d" % [hs.raw_total(), hs.par, hs.max_score()]
+	_result_box.add_child(UiKit.label(status, 19, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	var details := UiKit.text(r.diagnostic_text(), 16, UiKit.C_MUTED)
 	details.visible = false
 	var row := UiKit.hbox()
-	var det_btn := UiKit.button("Details", func() -> void: details.visible = not details.visible, 66, 22)
-	row.add_child(det_btn)
+	row.add_child(UiKit.button("Details", func() -> void: details.visible = not details.visible, 70, 21))
 	var cont := UiKit.primary(UiKit.button("Continue", func() -> void: session.acknowledge_result(), 80, 30))
 	UiKit.expand(cont)
 	row.add_child(cont)
 	_result_box.add_child(details)
 	_result_box.add_child(row)
 	refresh()
+	# --- reveal animation: count the stat up, then fade the breakdown in
+	var later: Array = [sub, grid, extra_l, banner]
+	for n in later:
+		if n != null:
+			(n as Control).modulate.a = 0.0
+	_result_box.modulate.a = 0.0
+	var tw := create_tween()
+	_reveal = tw
+	tw.tween_property(_result_box, "modulate:a", 1.0, 0.2)
+	var target := r.stat_value
+	tw.tween_method(func(v: float) -> void:
+		if is_instance_valid(big):
+			big.text = "%d %s" % [int(round(v)), unit], 0.0, float(target), clampf(0.25 + target * 0.004, 0.3, 1.1)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	for n in later:
+		if n != null:
+			tw.tween_property(n, "modulate:a", 1.0, 0.18)
 
 
 func _on_hole_completed(hs: HoleState) -> void:
