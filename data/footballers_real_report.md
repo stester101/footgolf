@@ -68,6 +68,7 @@ Negative goals treated as 0 (goals-conceded convention): 2. Zero-cap records exc
 - Arthur Savage (England, Q4800239): 1 caps, 3 -> 0 goals
 - John Sands (England, Q6256641): 1 caps, 2 -> 0 goals
 - José María Echevarría (Spain, Q2396303): 1 caps, 2 -> 0 goals
+- Albert Parsys (France, Q2831448): 5 caps, 8 -> 0 goals
 - André Renaux (France, Q2848516): 1 caps, 12 -> 0 goals
 - Charles Allé (France, Q2958378): 1 caps, 4 -> 0 goals
 - Charles Berthelot (France, Q2958540): 1 caps, 8 -> 0 goals
@@ -78,17 +79,16 @@ Negative goals treated as 0 (goals-conceded convention): 2. Zero-cap records exc
 - Zacharie Baton (France, Q3574514): 4 caps, 19 -> 0 goals
 - Émile Friess (France, Q3588513): 2 caps, 5 -> 0 goals
 - Gaston Rouxel (France, Q15916223): 2 caps, 2 -> 0 goals
-- Albert Parsys (France, Q2831448): 5 caps, 8 -> 0 goals
 - Emiliano Viviano (Italy, Q241103): 6 caps, 3 -> 0 goals
 - Lorenzo Buffon (Italy, Q452234): 15 caps, 17 -> 0 goals
 - Ottavio Bugatti (Italy, Q458450): 7 caps, 13 -> 0 goals
 - Bruno Venturini (Italy, Q640818): 4 caps, 2 -> 0 goals
 - Giuseppe Vavassori (Italy, Q678453): 1 caps, 2 -> 0 goals
 - Ugo Amoretti (Italy, Q980829): 1 caps, 2 -> 0 goals
-- Giuliano Sarti (Italy, Q1527940): 8 caps, 5 -> 0 goals
-- Angelo Cameroni (Italy, Q1533095): 1 caps, 4 -> 0 goals
 - Carlo Ceresoli (Italy, Q1042039): 8 caps, 10 -> 0 goals
 - Giuseppe Peruchetti (Italy, Q1145748): 2 caps, 3 -> 0 goals
+- Giuliano Sarti (Italy, Q1527940): 8 caps, 5 -> 0 goals
+- Angelo Cameroni (Italy, Q1533095): 1 caps, 4 -> 0 goals
 - Leonardo Costagliola (Italy, Q2546680): 3 caps, 2 -> 0 goals
 - Giovanni De Prà (Italy, Q2738936): 19 caps, 29 -> 0 goals
 - Ezio Sclavi (Italy, Q3062839): 3 caps, 4 -> 0 goals
@@ -110,12 +110,12 @@ Negative goals treated as 0 (goals-conceded convention): 2. Zero-cap records exc
 - Miguel Ángel Santoro (Argentina, Q577910): 14 caps, 11 -> 0 goals
 - Carlos Tomás Wilson (Argentina, Q616127): 25 caps, 36 -> 0 goals
 - Enrique Vidallé (Argentina, Q2459785): 6 caps, 12 -> 0 goals
+- Jorge Iribarren (Argentina, Q3810073): 3 caps, 4 -> 0 goals
+- Juan Rithner (Argentina, Q3810915): 10 caps, 19 -> 0 goals
 - Juan Pablo Carrizo (Argentina, Q336870): 12 caps, 13 -> 0 goals
 - Edgardo Andrada (Argentina, Q1757383): 20 caps, 29 -> 0 goals
 - Carlos Isola (Argentina, Q2013014): 21 caps, 25 -> 0 goals
 - Federico Cancino (Argentina, Q3741655): 2 caps, 3 -> 0 goals
-- Jorge Iribarren (Argentina, Q3810073): 3 caps, 4 -> 0 goals
-- Juan Rithner (Argentina, Q3810915): 10 caps, 19 -> 0 goals
 
 ## Excluded as implausible (>3 goals per cap, 5+ caps) (1)
 
