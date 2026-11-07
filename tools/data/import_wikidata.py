@@ -22,7 +22,7 @@ MALE = "Q6581097"
 BAD_TEAM_LABEL = re.compile(r"(women|under-?\s?\d|\bu-?\d\d\b|youth|olympic|amateur|\bb team\b| b national|futsal|beach|universiade|military|legends|xi\b|unofficial|league)", re.I)
 
 
-def sparql(query, retries=5):
+def sparql(query, retries=3):
     data = urllib.parse.urlencode({"query": query, "format": "json"}).encode()
     for attempt in range(retries):
         try:
@@ -31,7 +31,7 @@ def sparql(query, retries=5):
                 return json.load(r)["results"]["bindings"]
         except Exception as e:  # noqa: BLE001
             wait = 10 * (attempt + 1)
-            print(f"  query failed ({e}); retry in {wait}s", file=sys.stderr)
+            print(f"  query failed ({e}); retry in {wait}s", file=sys.stderr, flush=True)
             time.sleep(wait)
     raise RuntimeError("SPARQL query failed repeatedly")
 
@@ -52,32 +52,31 @@ def year(s):
 
 
 def resolve_team(country):
+    """Senior men's team = the item linked from the English Wikipedia article
+    "<Country> national football team" (fast exact lookup), unless pinned with "team"."""
     if country.get("team"):
         return country["team"], "pinned"
+    title = country.get("wiki", f"{country['name']} national football team")
     q = f"""
-SELECT ?team ?teamLabel (COUNT(DISTINCT ?p) AS ?n) WHERE {{
-  ?team wdt:P31/wdt:P279* wd:{NAT_TEAM} .
-  {{ ?team wdt:P1532 wd:{country['country']} }} UNION {{ ?team wdt:P17 wd:{country['country']} }}
-  ?p p:P54 ?st . ?st ps:P54 ?team ; pq:P1350 ?caps .
-  ?p wdt:P21 wd:{MALE} .
-  SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
-}} GROUP BY ?team ?teamLabel ORDER BY DESC(?n)"""
+SELECT ?team WHERE {{
+  ?article schema:about ?team ; schema:isPartOf <https://en.wikipedia.org/> ; schema:name "{title}"@en .
+}}"""
     rows = sparql(q)
-    cands = [(qid(val(r, "team")), val(r, "teamLabel") or "", int(val(r, "n"))) for r in rows]
-    good = [c for c in cands if not BAD_TEAM_LABEL.search(c[1])]
-    if not good:
-        raise RuntimeError(f"no senior team found for {country['name']}: {cands[:5]}")
-    best = good[0]
-    return best[0], f"auto: {best[1]} ({best[2]} capped players); other candidates: {[c[:2] for c in cands[1:4]]}"
+    if not rows:
+        raise RuntimeError(f"no Wikidata item for enwiki article '{title}'")
+    return qid(val(rows[0], "team")), f"enwiki '{title}'"
+
+
+NATIONAL_LABEL = re.compile(r"national.*(football|soccer)|(football|soccer).*national", re.I)
 
 
 def fetch_players(team_q):
+    # Only statements carrying a caps qualifier; national teams are recognised by label in Python.
     q = f"""
 SELECT ?p ?pLabel ?birth ?team ?teamLabel ?caps ?goals ?start ?end WHERE {{
   ?p p:P54 ?st0 . ?st0 ps:P54 wd:{team_q} .
   ?p wdt:P21 wd:{MALE} .
-  ?p p:P54 ?st . ?st ps:P54 ?team . ?team wdt:P31/wdt:P279* wd:{NAT_TEAM} .
-  OPTIONAL {{ ?st pq:P1350 ?caps }}
+  ?p p:P54 ?st . ?st ps:P54 ?team ; pq:P1350 ?caps .
   OPTIONAL {{ ?st pq:P1351 ?goals }}
   OPTIONAL {{ ?st pq:P580 ?start }}
   OPTIONAL {{ ?st pq:P582 ?end }}
@@ -101,21 +100,21 @@ def main():
         t, how = resolve_team(c)
         selected[t] = c
         team_info[c["code"]] = (t, how)
-        print(f"{c['name']}: {t} [{how}]")
+        print(f"{c['name']}: {t} [{how}]", flush=True)
         time.sleep(1)
 
     players = {}   # qid -> dict
     stats = {c["code"]: {"rows": 0, "kept": 0, "no_caps": 0, "no_goals": 0, "final_elsewhere": 0, "final_unselected": 0} for c in cfg["countries"]}
     for t, c in selected.items():
         rows = fetch_players(t)
-        print(f"{c['name']}: {len(rows)} statement rows")
+        print(f"{c['name']}: {len(rows)} statement rows", flush=True)
         by_p = {}
         for r in rows:
             p = qid(val(r, "p"))
             d = by_p.setdefault(p, {"name": val(r, "pLabel"), "birth": year(val(r, "birth")), "teams": {}})
             team = qid(val(r, "team"))
             label = val(r, "teamLabel") or ""
-            if BAD_TEAM_LABEL.search(label):
+            if team != t and (BAD_TEAM_LABEL.search(label) or not NATIONAL_LABEL.search(label)):
                 continue
             caps = val(r, "caps")
             goals = val(r, "goals")
