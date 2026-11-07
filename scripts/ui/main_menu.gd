@@ -117,6 +117,7 @@ func _show_settings() -> void:
 	v.add_child(ds_label)
 	v.add_child(UiKit.text("Audio: none in V0.1 (silent).", 20, UiKit.C_MUTED))
 	v.add_child(UiKit.button("Reset footballer database to seed", func() -> void: App.repo.reset_to_seed(), 70, 22))
+	v.add_child(UiKit.button("Export data…", _show_export, 70, 22))
 	v.add_child(UiKit.button("Back", _hide_settings, 76, 26))
 
 
@@ -193,5 +194,57 @@ func _show_par_editor() -> void:
 		App.settings.save()
 		root.queue_free()
 		_show_par_editor(), 64, 22))
+	v.add_child(UiKit.primary(UiKit.button("Done", func() -> void: root.queue_free(), 84, 28)))
+	add_child(root)
+
+
+## Export recorded play data (user://telemetry): copy a summary, save CSV + JSON files, or clear it.
+func _show_export() -> void:
+	var tl: TelemetryLog = App.telemetry
+	var root := UiKit.overlay(0.7)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_child(center)
+	var p := UiKit.panel(UiKit.C_SURFACE)
+	p.custom_minimum_size = Vector2(600, 0)
+	center.add_child(p)
+	var v := UiKit.vbox(12)
+	p.add_child(v)
+	v.add_child(UiKit.label("Export data", 34))
+	var counts := UiKit.text("", 20, UiKit.C_MUTED)
+	counts.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(counts)
+	var status := UiKit.text("", 20, UiKit.C_TEXT)
+	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var refresh := func() -> void:
+		var recs := tl.load_records()
+		counts.text = "Recorded on this device: %d rounds, %d holes, %d shots." % [
+			TelemetryLog.of_type(recs, "round_start").size(), TelemetryLog.of_type(recs, "hole").size(),
+			TelemetryLog.of_type(recs, "shot").size()]
+	refresh.call()
+	v.add_child(UiKit.button("Copy summary", func() -> void:
+		var txt := TelemetryLog.summary_text(tl.load_records())
+		DisplayServer.clipboard_set(txt)
+		status.text = "Summary copied to the clipboard (%d lines)." % txt.count("\n"), 70, 22))
+	v.add_child(UiKit.button("Save files", func() -> void:
+		var res := tl.export_files()
+		if bool(res["ok"]):
+			status.text = "Saved %d files to:\n%s" % [(res["files"] as Array).size(), res["dir"]]
+		else:
+			status.text = "Could not save files (%s)." % res["error"], 70, 22))
+	var clear_b := UiKit.button("Clear data", Callable(), 70, 22)
+	clear_b.pressed.connect(func() -> void:
+		if not clear_b.has_meta("armed"):
+			clear_b.set_meta("armed", true)
+			clear_b.text = "Tap again to delete all recorded data"
+			return
+		clear_b.remove_meta("armed")
+		clear_b.text = "Clear data"
+		var n := tl.clear()
+		status.text = "Deleted %d data files." % n
+		refresh.call())
+	clear_b.add_theme_color_override("font_color", UiKit.C_WARN)
+	v.add_child(clear_b)
+	v.add_child(status)
 	v.add_child(UiKit.primary(UiKit.button("Done", func() -> void: root.queue_free(), 84, 28)))
 	add_child(root)

@@ -10,9 +10,11 @@ signal closed
 
 const PAGE := 50
 
-## Remembered between openings (you reopen the picker every shot).
-static var _saved := {"sort": "name_az", "nations": {}, "eras": {}, "avail": false,
-	"caps_band": 0, "goals_band": 0, "filters_open": false}
+## Remembered between openings within a round (you reopen the picker every shot): search text,
+## sort, filters, page size and scroll position. A new round clears the search and scroll.
+static var _saved := {"q": "", "sort": "name_az", "nations": {}, "eras": {}, "avail": false,
+	"caps_band": 0, "goals_band": 0, "filters_open": false, "limit": PAGE, "scroll": 0}
+static var _saved_round_id := -1
 
 var session: GameSession
 var show_stats := false
@@ -39,6 +41,12 @@ var _debounce: Timer
 
 func setup(s: GameSession) -> void:
 	session = s
+	var rid := session.round_state.get_instance_id()
+	if rid != _saved_round_id:
+		_saved_round_id = rid
+		_saved["q"] = ""
+		_saved["limit"] = PAGE
+		_saved["scroll"] = 0
 	theme = UiKit.make_theme()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -68,13 +76,16 @@ func setup(s: GameSession) -> void:
 	_search.placeholder_text = "Search %d players…" % session.repo.count()
 	_search.custom_minimum_size = Vector2(0, 60)
 	_search.clear_button_enabled = true
+	_search.text = String(_saved.get("q", ""))
 	_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_debounce = Timer.new()
 	_debounce.one_shot = true
 	_debounce.wait_time = 0.18
 	_debounce.timeout.connect(_rebuild)
 	add_child(_debounce)
-	_search.text_changed.connect(func(_t: String) -> void: _debounce.start())
+	_search.text_changed.connect(func(t: String) -> void:
+		_saved["q"] = t
+		_debounce.start())
 	srow.add_child(_search)
 	var rnd := UiKit.button("Random", _on_random, 60, 20)
 	rnd.custom_minimum_size.x = 130
@@ -168,7 +179,29 @@ func setup(s: GameSession) -> void:
 	_list = UiKit.vbox(8)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_sc.add_child(_list)
+	var keep_limit := maxi(int(_saved.get("limit", PAGE)), PAGE)
+	var keep_scroll := int(_saved.get("scroll", 0))
 	_rebuild()
+	if keep_limit > PAGE:
+		_limit = keep_limit
+		_saved["limit"] = _limit
+		_render()
+	_sc.get_v_scroll_bar().value_changed.connect(func(val: float) -> void: _saved["scroll"] = int(val))
+	if keep_scroll > 0:
+		_restore_scroll(keep_scroll)
+
+
+## The list has no size until it has been laid out, so wait a couple of frames before scrolling.
+func _restore_scroll(px: int) -> void:
+	for i in 3:
+		if not is_inside_tree():
+			return
+		await get_tree().process_frame
+		if not is_instance_valid(_sc):
+			return
+		_sc.scroll_vertical = px
+		if _sc.scroll_vertical == px:
+			return
 
 
 func _band_option(bands: Array, selected: int) -> OptionButton:
@@ -241,6 +274,10 @@ func _update_filter_labels(o: Dictionary = {}) -> void:
 func _rebuild() -> void:
 	_limit = PAGE
 	var o := _options(-1)
+	_saved["q"] = o["q"]
+	_saved["limit"] = PAGE
+	_saved["scroll"] = 0
+	_sc.scroll_vertical = 0
 	_saved["sort"] = o["sort"]
 	_saved["nations"] = o["nations"]
 	_saved["eras"] = o["eras"]
@@ -282,6 +319,7 @@ func _render() -> void:
 	if total > _limit:
 		var more := UiKit.button("Show more (%d of %d shown)" % [_limit, total], func() -> void:
 			_limit += PAGE
+			_saved["limit"] = _limit
 			var keep := _sc.scroll_vertical
 			_render()
 			_sc.set_deferred("scroll_vertical", keep), 64, 22)

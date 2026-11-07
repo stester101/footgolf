@@ -6,6 +6,8 @@ const HOLE_DIR := "res://data/holes/"
 
 var settings := SettingsStore.new()
 var repo := FootballerRepository.new()
+## On-device shot/hole/round log (user://telemetry); exported from Settings.
+var telemetry := TelemetryLog.new()
 var dev_mode := false
 var build_info := {}
 
