@@ -31,6 +31,7 @@ var _round_sub: Label
 # utility
 var _wind_icon: LineIcon
 var _wind_label: Label
+var _unit_btn: Button
 var _utility_row: HBoxContainer
 var _scorecard_root: Control
 var _right_shot: VBoxContainer
@@ -225,6 +226,22 @@ func _build_scoreboard() -> PanelContainer:
 	return p
 
 
+func _toggle_units() -> void:
+	Units.show_feet = not Units.show_feet
+	App.settings.distance_feet = Units.show_feet
+	App.settings.save()
+	_update_unit_btn()
+	if _target_dist_m >= 0.0:
+		_target_value.text = Units.fmt_len(_target_dist_m)
+		markers.target_dist_text = Units.fmt_len(_target_dist_m)
+	toast("Distances in %s" % ("feet" if Units.show_feet else "yards"), 1.5)
+
+
+func _update_unit_btn() -> void:
+	if _unit_btn != null:
+		_unit_btn.text = "FT  ·  yd" if Units.show_feet else "YD  ·  ft"
+
+
 func _build_utility_row() -> HBoxContainer:
 	var row := UiKit.hbox(GAP)
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -242,6 +259,17 @@ func _build_utility_row() -> HBoxContainer:
 	wind.add_child(wr)
 	wind.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left.add_child(wind)
+	# yards / feet switch (any time); persisted in settings
+	_unit_btn = UiKit.button("", func() -> void: _toggle_units(), 64, 22)
+	_unit_btn.custom_minimum_size.x = 120
+	_unit_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_unit_btn.add_theme_font_override("font", UiKit.font_semi())
+	_unit_btn.set_meta("ui_id", "units")
+	_unit_btn.tooltip_text = "Switch distances between yards and feet"
+	for st in ["normal", "hover", "pressed"]:
+		_unit_btn.add_theme_stylebox_override(st, UiKit.box(UiKit.C_SURFACE, UiKit.RADIUS, 12))
+	left.add_child(_unit_btn)
+	_update_unit_btn()
 	row.add_child(left)
 	var spacer := Control.new()
 	UiKit.expand(spacer)
@@ -496,10 +524,10 @@ func set_measure(text: String) -> void:
 func set_target(world: Vector3, dist_m: float, surface_name: String, bearing: float) -> void:
 	_target_dist_m = dist_m
 	markers.target_world = world
-	markers.target_dist_text = Units.fmt_yards(dist_m)
+	markers.target_dist_text = Units.fmt_len(dist_m)
 	markers.target_sub_text = "%s · %d°" % [surface_name, int(round(bearing))]
 	markers.show_target = true
-	_target_value.text = Units.fmt_yards(dist_m)
+	_target_value.text = Units.fmt_len(dist_m)
 
 
 func clear_target() -> void:
@@ -525,7 +553,7 @@ func _process(delta: float) -> void:
 	if session == null or session.hole == null:
 		return
 	var pin_m := Units.horizontal_distance(session.ball_render_pos(), session.hole.cup_position())
-	var pin_txt := Units.fmt_distance(pin_m)
+	var pin_txt := Units.fmt_len(pin_m)
 	markers.pin_world = session.hole.cup_position() + Vector3(0, 1.2, 0)
 	markers.pin_text = pin_txt
 	_pin_value.text = pin_txt
@@ -742,14 +770,14 @@ func _on_shot_resolved(r: ShotResult) -> void:
 	_result_box.add_child(sub)
 	var grid := UiKit.hbox(6)
 	if r.mode == ShotTypes.Mode.CAPS:
-		grid.add_child(_stat_cell("CARRY", "%d yd" % int(round(Units.m_to_yards(r.carry_m)))))
-		grid.add_child(_stat_cell("ROLL", "%d ft" % int(round(Units.m_to_feet(r.roll_m)))))
-		grid.add_child(_stat_cell("TOTAL", "%d yd" % int(round(Units.m_to_yards(r.total_m)))))
+		grid.add_child(_stat_cell("CARRY", Units.fmt_len(r.carry_m)))
+		grid.add_child(_stat_cell("ROLL", Units.fmt_len(r.roll_m)))
+		grid.add_child(_stat_cell("TOTAL", Units.fmt_len(r.total_m)))
 	else:
-		grid.add_child(_stat_cell("TRAVEL", "%.1f ft" % Units.m_to_feet(r.total_m)))
+		grid.add_child(_stat_cell("TRAVEL", Units.fmt_len(r.total_m)))
 		grid.add_child(_stat_cell("LIE", Surface.name_of(r.final_lie)))
 	if not r.holed:
-		grid.add_child(_stat_cell("TO PIN", Units.fmt_distance(r.remaining_m)))
+		grid.add_child(_stat_cell("TO PIN", Units.fmt_len(r.remaining_m)))
 	_result_box.add_child(grid)
 	var extra: Array[String] = []
 	if r.lie_factor < 0.999:

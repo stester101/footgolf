@@ -12,6 +12,8 @@ var wind_speed := 0.0
 var wind_bearing := 0.0
 var sim_speed := 1.0
 var show_trail := true
+## Distance display unit: false = yards, true = feet (switchable any time from the HUD).
+var distance_feet := false
 ## TEST MODE: show caps/goals in the picker before the shot (developer/testing aid; off = normal rules).
 var show_stats := true
 ## "real" = bundled Wikidata snapshot, "test" = synthetic test players.
@@ -41,6 +43,8 @@ func load_settings() -> void:
 	wind_bearing = fposmod(float(d.get("wind_bearing", 0.0)), 360.0)
 	sim_speed = clampf(float(d.get("sim_speed", 1.0)), 0.25, 8.0)
 	show_trail = bool(d.get("show_trail", true))
+	distance_feet = bool(d.get("distance_feet", false))
+	Units.show_feet = distance_feet
 	show_stats = bool(d.get("show_stats", true))
 	tutorial_seen = bool(d.get("tutorial_seen", false))
 	last_course = String(d.get("last_course", "starter"))
@@ -76,6 +80,7 @@ func save() -> void:
 		"wind_bearing": wind_bearing,
 		"sim_speed": sim_speed,
 		"show_trail": show_trail,
+		"distance_feet": distance_feet,
 		"show_stats": show_stats,
 		"dataset": dataset,
 		"tutorial_seen": tutorial_seen,
