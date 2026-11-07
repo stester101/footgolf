@@ -80,7 +80,7 @@ NATIONAL_LABEL = re.compile(r"national.*(football|soccer)|(football|soccer).*nat
 def fetch_players(team_q):
     # Only statements carrying a caps qualifier; national teams are recognised by label in Python.
     q = f"""
-SELECT ?p ?pLabel ?birth ?team ?teamLabel ?caps ?goals ?start ?end WHERE {{
+SELECT ?p ?pLabel ?birth ?team ?teamLabel ?caps ?goals ?start ?end ?gk WHERE {{
   ?p p:P54 ?st0 . ?st0 ps:P54 wd:{team_q} .
   ?p wdt:P21 wd:{MALE} .
   ?p p:P54 ?st . ?st ps:P54 ?team ; pq:P1350 ?caps .
@@ -88,6 +88,7 @@ SELECT ?p ?pLabel ?birth ?team ?teamLabel ?caps ?goals ?start ?end WHERE {{
   OPTIONAL {{ ?st pq:P580 ?start }}
   OPTIONAL {{ ?st pq:P582 ?end }}
   OPTIONAL {{ ?p wdt:P569 ?birth }}
+  OPTIONAL {{ ?p wdt:P413 ?gk . FILTER(?gk = wd:Q201330) }}
   SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
 }}"""
     return sparql(q)
@@ -111,6 +112,8 @@ def main():
         time.sleep(1)
 
     players = {}   # qid -> dict
+    gk_fixed = []
+    implausible = []
     stats = {c["code"]: {"rows": 0, "kept": 0, "no_caps": 0, "no_goals": 0, "final_elsewhere": 0, "final_unselected": 0} for c in cfg["countries"]}
     for t, c in selected.items():
         rows = fetch_players(t)
@@ -118,7 +121,9 @@ def main():
         by_p = {}
         for r in rows:
             p = qid(val(r, "p"))
-            d = by_p.setdefault(p, {"name": val(r, "pLabel"), "birth": year(val(r, "birth")), "teams": {}})
+            d = by_p.setdefault(p, {"name": val(r, "pLabel"), "birth": year(val(r, "birth")), "teams": {}, "gk": False})
+            if val(r, "gk"):
+                d["gk"] = True
             team = qid(val(r, "team"))
             label = val(r, "teamLabel") or ""
             if team != t and (BAD_TEAM_LABEL.search(label) or NON_FIFA.search(label) or not NATIONAL_LABEL.search(label)):
@@ -158,6 +163,17 @@ def main():
                 s.setdefault("negative_goals_fixed", 0)
                 s["negative_goals_fixed"] += 1
                 mine["goals"] = 0
+            if d["gk"] and mine["goals"] > 1 + 0.2 * mine["caps"]:
+                # Goalkeeper with an implausible tally: goals CONCEDED stored as goals.
+                s.setdefault("gk_conceded_fixed", 0)
+                s["gk_conceded_fixed"] += 1
+                gk_fixed.append(f"{d['name']} ({c['name']}, {p}): {mine['caps']} caps, {mine['goals']} -> 0 goals")
+                mine["goals"] = 0
+            if mine["caps"] >= 5 and mine["goals"] > 3 * mine["caps"]:
+                s.setdefault("implausible", 0)
+                s["implausible"] += 1
+                implausible.append(f"{d['name']} ({c['name']}, {p}): {mine['caps']} caps / {mine['goals']} goals")
+                continue
             if not d["name"] or re.match(r"^Q\d+$", d["name"]):
                 continue
             first = mine["first"] if mine["first"] != 9999 else 0
@@ -231,6 +247,8 @@ def main():
     sus = sorted([r for r in out if r["senior_international_goals"] > max(3, 2 * r["senior_international_caps"])],
                  key=lambda r: -(r["senior_international_goals"] - r["senior_international_caps"]))
     gc = sum(1 for r in out if r["senior_international_goals"] > r["senior_international_caps"])
+    lines += ["", f"## Goalkeepers: goals-conceded tallies reset to 0 ({len(gk_fixed)})", ""] + [f"- {x}" for x in gk_fixed]
+    lines += ["", f"## Excluded as implausible (>3 goals per cap, 5+ caps) ({len(implausible)})", ""] + [f"- {x}" for x in implausible]
     lines += ["", f"## Review: goals > caps ({gc} players; often genuine for pre-1930 strikers)", "",
               "Most suspicious (goals > 2x caps); fix via tools/data/corrections.json if wrong:", ""]
     lines += [f"- {r['name']} ({r['nationality']}, {r['wikidata']}): {r['senior_international_caps']} caps / {r['senior_international_goals']} goals" for r in sus[:40]]
