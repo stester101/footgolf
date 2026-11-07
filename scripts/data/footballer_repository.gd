@@ -17,6 +17,7 @@ var seed_path := SEED_PATH
 var last_error := ""
 var dataset_id := ""
 var _sorted_cache: Array[Footballer] = []
+var _folded_names := PackedStringArray()  # parallel to _sorted_cache
 var _sorted_dirty := true
 var _nat_cache: Array[String] = []
 
@@ -126,6 +127,9 @@ func all_sorted() -> Array[Footballer]:
 		for fb in _by_id.values():
 			_sorted_cache.append(fb)
 		_sorted_cache.sort_custom(_compare)
+		_folded_names.resize(_sorted_cache.size())
+		for i in _sorted_cache.size():
+			_folded_names[i] = fold(_sorted_cache[i].name)
 		_sorted_dirty = false
 	return _sorted_cache
 
@@ -147,10 +151,12 @@ static func _compare(a: Footballer, b: Footballer) -> bool:
 func search(query: String, nationality: String = "", limit: int = -1) -> Array[Footballer]:
 	var q := fold(query.strip_edges())
 	var out: Array[Footballer] = []
-	for fb in all_sorted():
+	var all := all_sorted()
+	for i in all.size():
+		var fb: Footballer = all[i]
 		if nationality != "" and fb.nationality != nationality:
 			continue
-		if q != "" and not fold(fb.name).contains(q):
+		if q != "" and not _folded_names[i].contains(q):
 			continue
 		out.append(fb)
 		if limit >= 0 and out.size() >= limit:

@@ -47,7 +47,12 @@ func setup(s: GameSession) -> void:
 	_search.placeholder_text = "Search name…"
 	_search.custom_minimum_size = Vector2(0, 64)
 	_search.clear_button_enabled = true
-	_search.text_changed.connect(func(_t: String) -> void: _rebuild())
+	var debounce := Timer.new()
+	debounce.one_shot = true
+	debounce.wait_time = 0.2
+	debounce.timeout.connect(_rebuild)
+	add_child(debounce)
+	_search.text_changed.connect(func(_t: String) -> void: debounce.start())
 	v.add_child(_search)
 	_nation = OptionButton.new()
 	_nation.custom_minimum_size = Vector2(0, 60)
