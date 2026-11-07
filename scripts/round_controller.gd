@@ -79,30 +79,38 @@ func _build_environment() -> void:
 	env.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
 	var psm := ProceduralSkyMaterial.new()
-	psm.sky_top_color = Color(0.26, 0.47, 0.78)
-	psm.sky_horizon_color = Color(0.70, 0.80, 0.90)
-	psm.ground_horizon_color = Color(0.55, 0.62, 0.55)
-	psm.ground_bottom_color = Color(0.2, 0.28, 0.18)
-	psm.sun_angle_max = 30.0
+	psm.sky_top_color = Color(0.20, 0.42, 0.78)
+	psm.sky_horizon_color = Color(0.66, 0.78, 0.90)
+	psm.sky_curve = 0.12
+	psm.ground_horizon_color = Color(0.45, 0.55, 0.42)
+	psm.ground_bottom_color = Color(0.16, 0.24, 0.12)
+	psm.sun_angle_max = 25.0
 	sky.sky_material = psm
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.75
+	env.ambient_light_energy = 0.55
+	env.ambient_light_sky_contribution = 0.8
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 1.0
+	env.tonemap_exposure = 1.05
+	env.tonemap_white = 6.0
+	env.adjustment_enabled = true
+	env.adjustment_saturation = 1.15
+	env.adjustment_contrast = 1.06
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.72, 0.80, 0.88)
-	env.fog_density = 0.0012
+	env.fog_light_color = Color(0.74, 0.83, 0.93)
+	env.fog_density = 0.00045
+	env.fog_aerial_perspective = 0.6
 	env.fog_sky_affect = 0.0
 	world_env.environment = env
 	add_child(world_env)
 	sun = DirectionalLight3D.new()
-	sun.light_energy = 1.25
-	sun.light_color = Color(1.0, 0.97, 0.9)
+	sun.light_energy = 1.45
+	sun.light_color = Color(1.0, 0.95, 0.85)
+	sun.shadow_blur = 1.5
 	sun.shadow_enabled = true
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
-	sun.directional_shadow_max_distance = 140.0
-	sun.rotation_degrees = Vector3(-48.0, 35.0, 0.0)
+	sun.directional_shadow_max_distance = 160.0
+	sun.rotation_degrees = Vector3(-38.0, 145.0, 0.0)
 	add_child(sun)
 
 
@@ -139,6 +147,8 @@ func _set_overhead(on: bool) -> void:
 	ui.overhead = on
 	# Depth fog adds atmosphere at ground level but would wash out the 600 m-high map view.
 	world_env.environment.fog_enabled = not on
+	# Perspective shadow cascades don't suit a 600 m-high orthographic map view.
+	sun.shadow_enabled = not on
 	if not on:
 		measure_line.clear()
 		ui.set_measure("")
@@ -220,9 +230,8 @@ func _update_trail(bpos: Vector3, moving: bool) -> void:
 	if moving and session.sim != null:
 		var pts := session.sim.trail.duplicate()
 		pts.append(bpos)
-		var w := clampf(rig.cam.global_position.distance_to(bpos) * 0.004, 0.04, 0.6)
-		trail_line.draw_ribbon(pts, w, Color(1, 1, 1, 0.55))
-	elif session.state == ShotTypes.State.AIMING:
+		trail_line.draw_trail(pts, rig.cam.global_position, 0.0022, Color(1, 1, 1, 0.8))
+	else:
 		trail_line.clear()
 
 

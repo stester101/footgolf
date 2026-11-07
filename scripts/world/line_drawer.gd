@@ -54,6 +54,47 @@ func draw_ribbon(points: PackedVector3Array, width: float, color: Color, fade: b
 	_im.surface_end()
 
 
+## Camera-facing tapered trail: width grows with distance to camera so it reads as a thin line
+## everywhere (never a wall when it passes near the camera).
+func draw_trail(points: PackedVector3Array, cam_pos: Vector3, px_factor: float, color: Color) -> void:
+	_im.clear_surfaces()
+	var n := points.size()
+	if n < 2:
+		return
+	var verts := PackedVector3Array()
+	var cols := PackedColorArray()
+	for i in n - 1:
+		var a := points[i]
+		var b := points[i + 1]
+		var d := b - a
+		if d.length() < 1e-5:
+			continue
+		var sa := d.cross(a - cam_pos)
+		var sb := d.cross(b - cam_pos)
+		if sa.length() < 1e-6 or sb.length() < 1e-6:
+			continue
+		var wa := clampf(a.distance_to(cam_pos) * px_factor, 0.01, 0.6)
+		var wb := clampf(b.distance_to(cam_pos) * px_factor, 0.01, 0.6)
+		sa = sa.normalized() * wa
+		sb = sb.normalized() * wb
+		var ca := color
+		var cb := color
+		ca.a *= 0.25 + 0.75 * float(i) / float(n)
+		cb.a *= 0.25 + 0.75 * float(i + 1) / float(n)
+		# hide segments very close to the camera
+		ca.a *= smoothstep(1.5, 6.0, a.distance_to(cam_pos))
+		cb.a *= smoothstep(1.5, 6.0, b.distance_to(cam_pos))
+		verts.append_array([a - sa, b - sb, a + sa, a + sa, b - sb, b + sb])
+		cols.append_array([ca, cb, ca, ca, cb, cb])
+	if verts.is_empty():
+		return
+	_im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	for k in verts.size():
+		_im.surface_set_color(cols[k])
+		_im.surface_add_vertex(verts[k])
+	_im.surface_end()
+
+
 ## Dashed chevron guide along the ground.
 func draw_dashes(segments: Array, width: float, color: Color) -> void:
 	_im.clear_surfaces()

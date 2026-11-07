@@ -9,6 +9,7 @@ var main: Node
 var shots_dir := ""
 var _log: Array[String] = []
 var _shot_no := 0
+var _picker_shot_done := false
 
 
 func _ready() -> void:
@@ -90,6 +91,9 @@ func _run() -> void:
 					if not _press("▶"):
 						return _fail("picker button missing")
 				await _frames(2)
+				if not _picker_shot_done:
+					_picker_shot_done = true
+					await _shot("picker")
 				var picker := get_tree().root.find_children("*", "FootballerPicker", true, false)
 				if picker.is_empty():
 					return _fail("picker did not open")

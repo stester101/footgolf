@@ -85,6 +85,13 @@ func _show_settings() -> void:
 		st.show_trail = on
 		st.save())
 	v.add_child(trail)
+	var stats := CheckButton.new()
+	stats.text = "TEST MODE: show caps/goals before shot"
+	stats.button_pressed = st.show_stats
+	stats.toggled.connect(func(on: bool) -> void:
+		st.show_stats = on
+		st.save())
+	v.add_child(stats)
 	v.add_child(UiKit.text("Audio: none in V0.1 (silent).", 20, UiKit.C_MUTED))
 	v.add_child(UiKit.button("Reset footballer database to seed", func() -> void: App.repo.reset_to_seed(), 70, 22))
 	v.add_child(UiKit.button("Back", _hide_settings, 76, 26))

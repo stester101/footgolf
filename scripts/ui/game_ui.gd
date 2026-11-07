@@ -80,7 +80,7 @@ func _build_top(col: VBoxContainer) -> void:
 	p.add_child(v)
 	var r1 := UiKit.hbox()
 	_top_title = UiKit.expand(UiKit.label("", 28)) as Label
-	_top_score = UiKit.label("", 26, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
+	_top_score = UiKit.label("", 22, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
 	r1.add_child(_top_title)
 	r1.add_child(_top_score)
 	v.add_child(r1)
@@ -173,7 +173,7 @@ func refresh() -> void:
 		return
 	var hs := session.current_hole_state()
 	var h := session.hole
-	_top_title.text = "HOLE %d · PAR %d · %d YD" % [session.round_state.current_index + 1, h.par, int(h.yards)]
+	_top_title.text = "Hole %d · Par %d · %d yd" % [session.round_state.current_index + 1, h.par, int(h.yards)]
 	var pen := " (+%d pen)" % hs.penalties if hs.penalties > 0 else ""
 	var thru := session.round_state.holes_completed()
 	_top_score.text = "Strokes %d%s · Round %s%s" % [hs.raw_total(), pen, RoundState.fmt_relative(session.round_state.relative_to_par()), (" thru %d" % thru) if thru > 0 else ""]
@@ -184,7 +184,15 @@ func refresh() -> void:
 	_caps_btn.set_pressed_no_signal(session.mode == ShotTypes.Mode.CAPS)
 	_goals_btn.set_pressed_no_signal(session.mode == ShotTypes.Mode.GOALS)
 	var fb := session.repo.get_by_id(session.selected_id) if session.selected_id != "" else null
-	_pick_btn.text = ("▶ %s" % fb.display_label()) if fb != null else "Choose footballer…"
+	if fb == null:
+		_pick_btn.text = "Choose footballer…"
+	elif App.settings.show_stats:
+		if session.mode == ShotTypes.Mode.CAPS:
+			_pick_btn.text = "▶ %s · %d caps = %d yd carry" % [fb.name, fb.caps, fb.caps]
+		else:
+			_pick_btn.text = "▶ %s · %d goals = %d ft roll" % [fb.name, fb.goals, fb.goals]
+	else:
+		_pick_btn.text = "▶ %s" % fb.display_label()
 	var moving := session.is_ball_moving()
 	var aiming := session.state == ShotTypes.State.AIMING
 	_controls.visible = session.state != ShotTypes.State.SHOT_RESULT
@@ -254,6 +262,7 @@ func show_picker() -> void:
 	if session.is_ball_moving():
 		return
 	var p := FootballerPicker.new()
+	p.show_stats = App.settings.show_stats
 	push_overlay(p)
 	p.setup(session)
 	p.picked.connect(func(_id: String) -> void: _remove_overlay(p))
@@ -318,7 +327,10 @@ func _on_shot_resolved(r: ShotResult) -> void:
 	else:
 		_result_box.add_child(UiKit.text("Lie: %s · %s to pin" % [Surface.name_of(r.final_lie), Units.fmt_distance(r.remaining_m)], 24))
 	var hs := session.current_hole_state()
-	_result_box.add_child(UiKit.text("Hole score %d (%s)" % [hs.score(), RoundState.fmt_relative(hs.score() - hs.par)], 22, UiKit.C_MUTED))
+	if hs.complete:
+		_result_box.add_child(UiKit.text("Hole score %d (%s)" % [hs.score(), RoundState.fmt_relative(hs.relative_to_par())], 22, UiKit.C_MUTED))
+	else:
+		_result_box.add_child(UiKit.text("Strokes so far %d (par %d, max %d)" % [hs.raw_total(), hs.par, hs.max_score()], 22, UiKit.C_MUTED))
 	var details := UiKit.text(r.diagnostic_text(), 17, UiKit.C_MUTED)
 	details.visible = false
 	var row := UiKit.hbox()

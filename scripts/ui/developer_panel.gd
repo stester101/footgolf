@@ -288,7 +288,16 @@ func _save() -> void:
 
 func _build_players_tab() -> VBoxContainer:
 	var v := UiKit.vbox(8)
-	v.add_child(UiKit.text("DEV editor shows stats. Normal picker never does.", 20, UiKit.C_DEV))
+	var ss := CheckButton.new()
+	ss.text = "TEST MODE: show caps/goals in normal picker"
+	ss.add_theme_font_size_override("font_size", 21)
+	ss.button_pressed = settings.show_stats
+	ss.toggled.connect(func(on: bool) -> void:
+		settings.show_stats = on
+		settings.save()
+		session.selection_changed.emit())
+	v.add_child(ss)
+	v.add_child(UiKit.text("This editor always shows stats.", 20, UiKit.C_DEV))
 	_p_search = LineEdit.new()
 	_p_search.placeholder_text = "Search…"
 	_p_search.custom_minimum_size = Vector2(0, 56)

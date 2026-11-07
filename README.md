@@ -39,6 +39,8 @@ Docs: [Architecture](docs/ARCHITECTURE.md) · [Physics calibration](docs/PHYSICS
 [Asset licences](docs/ASSET_LICENCES.md) · [Agent rules](CLAUDE.md)
 
 ## Known limitations
+- **TEST MODE is ON by default in this build:** the footballer picker shows caps/goals before the
+  shot so mechanics can be checked. Turn it off (Settings or DEV → Players) for normal hidden-stat rules.
 - Seed footballers are **synthetic fictional test data**, not real players.
 - Visuals are procedural (no imported art); the ball is drawn larger than its physical 42.7 mm when
   far from the camera so it stays visible.

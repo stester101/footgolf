@@ -11,6 +11,8 @@ var _search: LineEdit
 var _nation: OptionButton
 var _list: VBoxContainer
 var _nations: Array[String] = []
+## Test mode: reveal caps/goals before the shot (normal rules hide them).
+var show_stats := false
 
 
 func setup(s: GameSession) -> void:
@@ -35,7 +37,10 @@ func setup(s: GameSession) -> void:
 	head.add_child(UiKit.expand(UiKit.label("Choose footballer", 34)))
 	head.add_child(UiKit.button("Close", func() -> void: closed.emit(), 64, 24))
 	v.add_child(head)
-	v.add_child(UiKit.text("Synthetic test players · caps & goals stay hidden until the ball stops", 20, UiKit.C_MUTED))
+	if show_stats:
+		v.add_child(UiKit.text("TEST MODE: caps & goals shown before the shot (turn off in Settings for normal rules)", 21, UiKit.C_WARN))
+	else:
+		v.add_child(UiKit.text("Synthetic test players · caps & goals stay hidden until the ball stops", 20, UiKit.C_MUTED))
 	_search = LineEdit.new()
 	_search.placeholder_text = "Search name…"
 	_search.custom_minimum_size = Vector2(0, 64)
@@ -70,6 +75,8 @@ func _rebuild() -> void:
 	for fb in results:
 		var used := session.pool.is_used(fb.id)
 		var txt := fb.display_label()
+		if show_stats:
+			txt = "%s (%s)   ·   %d caps  ·  %d goals" % [fb.name, fb.nationality, fb.caps, fb.goals]
 		if used:
 			txt += "   · USED"
 		var b := UiKit.button(txt, func() -> void: _on_pick(fb.id), 68, 24)

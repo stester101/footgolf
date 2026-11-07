@@ -1,9 +1,12 @@
 shader_type spatial;
-// Procedural golf turf. Vertex colour = surface base colour (linear); COLOR.a = mown flag.
-render_mode diffuse_lambert, specular_schlick_ggx;
+// Procedural golf turf. surface_tex: per-pixel surface colour (sRGB) + alpha
+// (1 = mown stripes, 0.5 = clumpy rough, 0 = sand/bed). UV spans the hole bounds.
+render_mode diffuse_burley, specular_schlick_ggx;
 
+uniform sampler2D surface_tex : source_color, filter_linear_mipmap, repeat_disable;
 uniform vec2 stripe_dir = vec2(1.0, 0.0);
-uniform float stripe_width = 6.0;
+uniform float stripe_width = 8.0;
+uniform float detail_fade = 60.0;
 
 varying vec3 wpos;
 
@@ -24,12 +27,34 @@ void vertex() {
 }
 
 void fragment() {
+	vec4 s = texture(surface_tex, UV);
+	vec3 base = s.rgb;
+	float kind = s.a;
 	vec2 p = wpos.xz;
-	float n = vnoise(p * 0.08) * 0.45 + vnoise(p * 0.6) * 0.35 + vnoise(p * 3.1) * 0.2;
-	float stripe = step(0.5, fract(dot(p, stripe_dir) / stripe_width)) - 0.5;
-	vec3 c = COLOR.rgb * (0.86 + 0.28 * n);
-	c *= 1.0 + 0.11 * stripe * COLOR.a;
+	float dist = length(wpos - (INV_VIEW_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz);
+	float near = 1.0 - smoothstep(detail_fade * 0.3, detail_fade, dist);
+
+	// large patches (soil moisture / wear)
+	float patches = vnoise(p * 0.035) * 0.6 + vnoise(p * 0.11) * 0.4;
+	vec3 c = base * mix(0.82, 1.12, patches);
+	// warm/dry tint variation
+	c = mix(c, c * vec3(1.10, 1.02, 0.80), vnoise(p * 0.02 + 7.0) * 0.35);
+
+	float mown = smoothstep(0.8, 1.0, kind);
+	float rough = smoothstep(0.3, 0.5, kind) * (1.0 - mown);
+	float sand = 1.0 - smoothstep(0.0, 0.3, kind);
+
+	// mowing stripes (fairway/green/tee)
+	float st = step(0.5, fract(dot(p, stripe_dir) / stripe_width));
+	c *= mix(1.0, mix(0.90, 1.10, st), mown);
+	// clumpy rough
+	float clump = vnoise(p * 0.7) * 0.6 + vnoise(p * 2.3) * 0.4;
+	c *= mix(1.0, mix(0.80, 1.10, clump), rough);
+	// grass grain / sand grain close to camera
+	float grain = vnoise(p * 9.0) * 0.6 + vnoise(p * 23.0) * 0.4;
+	c *= mix(1.0, mix(0.86, 1.10, grain), near * (1.0 - sand * 0.6));
+
 	ALBEDO = c;
-	ROUGHNESS = 0.92;
-	SPECULAR = 0.25;
+	ROUGHNESS = mix(0.88, 0.97, sand);
+	SPECULAR = mix(0.35, 0.15, rough);
 }
