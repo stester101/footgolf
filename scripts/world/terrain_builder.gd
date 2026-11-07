@@ -2,99 +2,117 @@ class_name TerrainBuilder
 extends RefCounted
 ## Builds the visual terrain mesh from the SAME HoleDefinition height and surface functions
 ## used by physics, so visual surface regions correspond to physics lies.
+## Work is incremental (row by row against a time deadline) so a hole can be prepared over
+## several frames while a loading bar runs; the static helpers build everything in one go.
 
-## sRGB base colours. Alpha in the surface map: 1 = mown stripes, 0.5 = clumpy rough, 0 = none.
+## sRGB base colours (the turf shader adds stripes, clumps, grain and tint variation on top).
 const COLORS := {
-	Surface.Type.TEE: Color(0.42, 0.66, 0.22),
-	Surface.Type.FAIRWAY: Color(0.40, 0.64, 0.20),
-	Surface.Type.FRINGE: Color(0.36, 0.60, 0.20),
-	Surface.Type.GREEN: Color(0.46, 0.74, 0.26),
-	Surface.Type.ROUGH: Color(0.30, 0.50, 0.16),
-	Surface.Type.BUNKER: Color(0.90, 0.83, 0.64),
+	Surface.Type.TEE: Color(0.40, 0.62, 0.22),
+	Surface.Type.FAIRWAY: Color(0.38, 0.60, 0.20),
+	Surface.Type.FRINGE: Color(0.36, 0.58, 0.21),
+	Surface.Type.GREEN: Color(0.42, 0.66, 0.25),
+	Surface.Type.ROUGH: Color(0.29, 0.46, 0.15),
+	Surface.Type.BUNKER: Color(0.88, 0.80, 0.62),
 	Surface.Type.WATER: Color(0.22, 0.24, 0.14),
-	Surface.Type.OOB: Color(0.21, 0.37, 0.12),
+	Surface.Type.OOB: Color(0.25, 0.41, 0.14),
 }
-const SURFACE_ALPHA := {
-	Surface.Type.TEE: 1.0, Surface.Type.FAIRWAY: 1.0, Surface.Type.GREEN: 1.0,
-	Surface.Type.FRINGE: 0.9, Surface.Type.ROUGH: 0.5, Surface.Type.OOB: 0.5,
-	Surface.Type.BUNKER: 0.0, Surface.Type.WATER: 0.0,
+## Surface "kind" weights for the turf shader: R = mown fairway/tee/fringe, G = putting green,
+## B = rough/long grass, A = sand. Stored in a second map texture.
+const KINDS := {
+	Surface.Type.TEE: Color(1.0, 0.0, 0.0, 0.0),
+	Surface.Type.FAIRWAY: Color(1.0, 0.0, 0.0, 0.0),
+	Surface.Type.FRINGE: Color(0.45, 0.0, 0.25, 0.0),
+	Surface.Type.GREEN: Color(0.0, 1.0, 0.0, 0.0),
+	Surface.Type.ROUGH: Color(0.0, 0.0, 1.0, 0.0),
+	Surface.Type.OOB: Color(0.0, 0.0, 1.0, 0.0),
+	Surface.Type.BUNKER: Color(0.0, 0.0, 0.0, 1.0),
+	Surface.Type.WATER: Color(0.0, 0.0, 0.0, 0.0),
 }
 const MAP_M_PER_PX := 1.0
 const MAP_MAX_PIXELS := 120000.0
 const MESH_TARGET_VERTS := 45000.0
+const EDGE_BLEND := 22.0
+
+var hole: HoleDefinition
+var spacing := 2.0
+var nx := 0
+var nz := 0
+var outer_h := 0.0
+var heights := PackedFloat32Array()
+# surface maps
+var map_w := 0
+var map_h := 0
+var map_mpp := 1.0
+var color_bytes := PackedByteArray()
+var kind_bytes := PackedByteArray()
+
+var _row := 0
+var _nrow := 0
+var _map_row := 0
+var _verts := PackedVector3Array()
+var _norms := PackedVector3Array()
+var _uvs := PackedVector2Array()
+
+
+func _init(p_hole: HoleDefinition, p_spacing: float = -1.0) -> void:
+	hole = p_hole
+	spacing = p_spacing if p_spacing > 0.0 else mesh_spacing(p_hole)
+	var r := hole.bounds
+	nx = int(ceil(r.size.x / spacing)) + 1
+	nz = int(ceil(r.size.y / spacing)) + 1
+	outer_h = outer_height(hole)
+	var count := nx * nz
+	heights.resize(count)
+	_verts.resize(count)
+	_norms.resize(count)
+	_uvs.resize(count)
+	map_mpp = map_scale(hole)
+	map_w = int(ceil(r.size.x / map_mpp))
+	map_h = int(ceil(r.size.y / map_mpp))
+	color_bytes.resize(map_w * map_h * 4)
+	kind_bytes.resize(map_w * map_h * 4)
 
 
 ## Metres per surface-map pixel: 1 m, coarser on very large holes (keeps load time bounded).
-static func map_scale(hole: HoleDefinition) -> float:
-	return maxf(MAP_M_PER_PX, sqrt(hole.bounds.get_area() / MAP_MAX_PIXELS))
+static func map_scale(p_hole: HoleDefinition) -> float:
+	return maxf(MAP_M_PER_PX, sqrt(p_hole.bounds.get_area() / MAP_MAX_PIXELS))
 
 
-static func mesh_spacing(hole: HoleDefinition) -> float:
-	return clampf(sqrt(hole.bounds.get_area() / MESH_TARGET_VERTS), 2.0, 3.2)
-
-## Per-pixel surface colour map covering hole.bounds (same classifier as physics).
-static func build_surface_texture(hole: HoleDefinition) -> ImageTexture:
-	var r := hole.bounds
-	var mpp := map_scale(hole)
-	var w := int(ceil(r.size.x / mpp))
-	var h := int(ceil(r.size.y / mpp))
-	var data := PackedByteArray()
-	data.resize(w * h * 4)
-	var k := 0
-	var cache := {}
-	for t in COLORS.keys():
-		var c: Color = COLORS[t]
-		cache[t] = PackedByteArray([c.r8, c.g8, c.b8, int(float(SURFACE_ALPHA[t]) * 255.0)])
-	for iy in h:
-		var z := r.position.y + (iy + 0.5) * mpp
-		for ix in w:
-			var x := r.position.x + (ix + 0.5) * mpp
-			var px: PackedByteArray = cache[hole.surface_at(x, z)]
-			data[k] = px[0]
-			data[k + 1] = px[1]
-			data[k + 2] = px[2]
-			data[k + 3] = px[3]
-			k += 4
-	var img := Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, data)
-	img.generate_mipmaps()
-	return ImageTexture.create_from_image(img)
-const MOWN := [Surface.Type.TEE, Surface.Type.FAIRWAY, Surface.Type.GREEN]
-const EDGE_BLEND := 22.0
+static func mesh_spacing(p_hole: HoleDefinition) -> float:
+	return clampf(sqrt(p_hole.bounds.get_area() / MESH_TARGET_VERTS), 2.0, 3.2)
 
 
-static func outer_height(hole: HoleDefinition) -> float:
-	var r := hole.bounds
+static func outer_height(p_hole: HoleDefinition) -> float:
+	var r := p_hole.bounds
 	var s := 0.0
 	var n := 0
 	for i in 9:
 		var t := float(i) / 8.0
 		for p in [Vector2(r.position.x + r.size.x * t, r.position.y), Vector2(r.position.x + r.size.x * t, r.end.y),
 				Vector2(r.position.x, r.position.y + r.size.y * t), Vector2(r.end.x, r.position.y + r.size.y * t)]:
-			s += hole.terrain_height(p.x, p.y)
+			s += p_hole.terrain_height(p.x, p.y)
 			n += 1
 	return s / float(n)
 
 
-static func build_mesh(hole: HoleDefinition, spacing: float) -> ArrayMesh:
+## Relative cost of the remaining work units (for a loading bar).
+func total_work() -> float:
+	return float(nx * nz) * 1.2 + float(map_w * map_h) * 0.25
+
+
+func done_work() -> float:
+	return float(_row * nx) + float(_nrow * nx) * 0.2 + float(_map_row * map_w) * 0.25
+
+
+func is_done() -> bool:
+	return _row >= nz and _nrow >= nz and _map_row >= map_h
+
+
+## Advance height rows, then normal rows, then surface-map rows until `deadline_usec`.
+func step(deadline_usec: int) -> bool:
 	var r := hole.bounds
-	var nx := int(ceil(r.size.x / spacing)) + 1
-	var nz := int(ceil(r.size.y / spacing)) + 1
-	var outer_h := outer_height(hole)
-	var count := nx * nz
-	var verts := PackedVector3Array()
-	var cols := PackedColorArray()
-	var norms := PackedVector3Array()
-	var uvs := PackedVector2Array()
-	verts.resize(count)
-	cols.resize(count)
-	norms.resize(count)
-	uvs.resize(count)
-	var heights := PackedFloat32Array()
-	heights.resize(count)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(hole.id)
-	for iz in nz:
-		var z := r.position.y + iz * spacing
+	while _row < nz:
+		var z := r.position.y + _row * spacing
 		for ix in nx:
 			var x := r.position.x + ix * spacing
 			var h := hole.terrain_height(x, z)
@@ -102,19 +120,60 @@ static func build_mesh(hole: HoleDefinition, spacing: float) -> ArrayMesh:
 			var w := 1.0 - smoothstep(0.0, EDGE_BLEND, edge)
 			if w > 0.0:
 				h = lerpf(h, outer_h, w)
-			var idx := iz * nx + ix
+			var idx := _row * nx + ix
 			heights[idx] = h
-			verts[idx] = Vector3(x, h, z)
-			uvs[idx] = Vector2((x - r.position.x) / r.size.x, (z - r.position.y) / r.size.y)
-			cols[idx] = Color(1, 1, 1, 1)
-	for iz in nz:
+			_verts[idx] = Vector3(x, h, z)
+			_uvs[idx] = Vector2((x - r.position.x) / r.size.x, (z - r.position.y) / r.size.y)
+		_row += 1
+		if Time.get_ticks_usec() > deadline_usec:
+			return false
+	while _nrow < nz:
+		var iz := _nrow
 		for ix in nx:
-			var idx := iz * nx + ix
 			var hl := heights[iz * nx + maxi(ix - 1, 0)]
 			var hr := heights[iz * nx + mini(ix + 1, nx - 1)]
 			var hd := heights[maxi(iz - 1, 0) * nx + ix]
 			var hu := heights[mini(iz + 1, nz - 1) * nx + ix]
-			norms[idx] = Vector3(hl - hr, 2.0 * spacing, hd - hu).normalized()
+			_norms[iz * nx + ix] = Vector3(hl - hr, 2.0 * spacing, hd - hu).normalized()
+		_nrow += 1
+		if _nrow % 8 == 0 and Time.get_ticks_usec() > deadline_usec:
+			return false
+	var cache_c := {}
+	var cache_k := {}
+	for t in COLORS.keys():
+		var c: Color = COLORS[t]
+		cache_c[t] = PackedByteArray([c.r8, c.g8, c.b8, 255])
+		var kc: Color = KINDS[t]
+		cache_k[t] = PackedByteArray([kc.r8, kc.g8, kc.b8, kc.a8])
+	while _map_row < map_h:
+		var z := r.position.y + (_map_row + 0.5) * map_mpp
+		var k := _map_row * map_w * 4
+		for ix in map_w:
+			var x := r.position.x + (ix + 0.5) * map_mpp
+			var s := hole.surface_at(x, z)
+			var pc: PackedByteArray = cache_c[s]
+			var pk: PackedByteArray = cache_k[s]
+			color_bytes[k] = pc[0]
+			color_bytes[k + 1] = pc[1]
+			color_bytes[k + 2] = pc[2]
+			color_bytes[k + 3] = 255
+			kind_bytes[k] = pk[0]
+			kind_bytes[k + 1] = pk[1]
+			kind_bytes[k + 2] = pk[2]
+			kind_bytes[k + 3] = pk[3]
+			k += 4
+		_map_row += 1
+		if _map_row % 4 == 0 and Time.get_ticks_usec() > deadline_usec:
+			return false
+	return true
+
+
+func build_all() -> void:
+	while not step(Time.get_ticks_usec() + 1000000000):
+		pass
+
+
+func commit_mesh() -> ArrayMesh:
 	var idxs := PackedInt32Array()
 	idxs.resize((nx - 1) * (nz - 1) * 6)
 	var k := 0
@@ -133,34 +192,92 @@ static func build_mesh(hole: HoleDefinition, spacing: float) -> ArrayMesh:
 			k += 6
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = verts
-	arrays[Mesh.ARRAY_NORMAL] = norms
-	arrays[Mesh.ARRAY_COLOR] = cols
-	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_VERTEX] = _verts
+	arrays[Mesh.ARRAY_NORMAL] = _norms
+	arrays[Mesh.ARRAY_TEX_UV] = _uvs
 	arrays[Mesh.ARRAY_INDEX] = idxs
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
 
 
+func color_texture() -> ImageTexture:
+	var img := Image.create_from_data(map_w, map_h, false, Image.FORMAT_RGBA8, color_bytes)
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
+
+
+func kind_texture() -> ImageTexture:
+	var img := Image.create_from_data(map_w, map_h, false, Image.FORMAT_RGBA8, kind_bytes)
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
+
+
+## Height of the RENDERED terrain surface (same grid, edge blend and triangulation as the mesh).
+func mesh_height_at(x: float, z: float) -> float:
+	var r := hole.bounds
+	var fx := clampf((x - r.position.x) / spacing, 0.0, nx - 1.001)
+	var fz := clampf((z - r.position.y) / spacing, 0.0, nz - 1.001)
+	var ix := int(fx)
+	var iz := int(fz)
+	var u := fx - ix
+	var v := fz - iz
+	var ha := heights[iz * nx + ix]
+	var hb := heights[iz * nx + ix + 1]
+	var hc := heights[(iz + 1) * nx + ix]
+	var hd := heights[(iz + 1) * nx + ix + 1]
+	# triangles (a, b, c) and (b, d, c): split along the b-c diagonal
+	if u + v <= 1.0:
+		return ha + (hb - ha) * u + (hc - ha) * v
+	return hd + (hc - hd) * (1.0 - u) + (hb - hd) * (1.0 - v)
+
+
+## Surface kind weights (RGBA as in KINDS) of the surface map at a world point (nearest pixel).
+func kind_at(x: float, z: float) -> Color:
+	var r := hole.bounds
+	var px := clampi(int((x - r.position.x) / map_mpp), 0, map_w - 1)
+	var pz := clampi(int((z - r.position.y) / map_mpp), 0, map_h - 1)
+	var k := (pz * map_w + px) * 4
+	return Color8(kind_bytes[k], kind_bytes[k + 1], kind_bytes[k + 2], kind_bytes[k + 3])
+
+
+static func build_mesh(p_hole: HoleDefinition, p_spacing: float) -> ArrayMesh:
+	var tb := TerrainBuilder.new(p_hole, p_spacing)
+	tb.build_all()
+	return tb.commit_mesh()
+
+
 static func ellipse_mesh(e: HoleDefinition.Ellipse, y: float, segments: int) -> ArrayMesh:
 	var verts := PackedVector3Array()
 	var norms := PackedVector3Array()
+	var uvs := PackedVector2Array()
 	var idxs := PackedInt32Array()
 	verts.append(Vector3(e.cx, y, e.cz))
 	norms.append(Vector3.UP)
-	for i in segments:
-		var p := e.point_at(TAU * float(i) / float(segments))
-		verts.append(Vector3(p.x, y, p.y))
-		norms.append(Vector3.UP)
+	uvs.append(Vector2(0.0, 0.0))
+	# two rings so the shore band (UV.x -> 1) gets its own gradient
+	for ring in [0.82, 1.0]:
+		for i in segments:
+			var p := e.point_at(TAU * float(i) / float(segments))
+			var q := Vector2(e.cx, e.cz).lerp(p, ring)
+			verts.append(Vector3(q.x, y, q.y))
+			norms.append(Vector3.UP)
+			uvs.append(Vector2(ring, 0.0))
 	for i in segments:
 		idxs.append(0)
 		idxs.append(1 + i)
 		idxs.append(1 + (i + 1) % segments)
+	for i in segments:
+		var a := 1 + i
+		var b := 1 + (i + 1) % segments
+		var c := a + segments
+		var d := b + segments
+		idxs.append_array([a, c, b, b, c, d])
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
 	arrays[Mesh.ARRAY_NORMAL] = norms
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
 	arrays[Mesh.ARRAY_INDEX] = idxs
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
