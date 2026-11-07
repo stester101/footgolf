@@ -14,11 +14,12 @@ func current() -> HoleState:
 	return holes[current_index]
 
 
+## Sum of COMPLETED hole scores (an in-progress hole is not counted against par).
 func total_score() -> int:
 	var t := 0
 	for h in holes:
 		var hs: HoleState = h
-		if hs.complete or hs.raw_total() > 0:
+		if hs.complete:
 			t += hs.score()
 	return t
 
@@ -27,9 +28,17 @@ func total_par_played() -> int:
 	var t := 0
 	for h in holes:
 		var hs: HoleState = h
-		if hs.complete or hs.raw_total() > 0:
+		if hs.complete:
 			t += hs.par
 	return t
+
+
+func holes_completed() -> int:
+	var n := 0
+	for h in holes:
+		if (h as HoleState).complete:
+			n += 1
+	return n
 
 
 func total_par() -> int:

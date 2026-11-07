@@ -1,0 +1,124 @@
+name: Android debug APK
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  APK_NAME: football-golf-v0.1-debug.apk
+  BUILD_TOOLS: "35.0.0"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Cache Godot editor + Android templates
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-4.7-stable-android-v1
+
+      - name: Install pinned Godot 4.7-stable + export templates (SHA-512 verified)
+        run: bash tools/scripts/install_godot.sh "$HOME/godot" --templates
+
+      - name: Android SDK packages (platform-tools, build-tools)
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" --install "platform-tools" "build-tools;${BUILD_TOOLS}" > /dev/null
+          ls "$ANDROID_HOME/build-tools"
+
+      # Consistent debug signing: secret (if configured) > cached keystore > newly generated.
+      # A debug keystore is NOT a release key; never use it for store publishing.
+      - name: Restore cached debug keystore
+        uses: actions/cache@v4
+        with:
+          path: ~/.android-debug
+          key: football-golf-debug-keystore-v1
+
+      - name: Prepare debug keystore and editor settings
+        env:
+          DEBUG_KEYSTORE_B64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p ~/.android-debug
+          KS="$HOME/.android-debug/debug.keystore"
+          if [ -n "${DEBUG_KEYSTORE_B64:-}" ]; then
+            echo "$DEBUG_KEYSTORE_B64" | base64 -d > "$KS"; echo "Using keystore from secret"
+          elif [ -f "$KS" ]; then
+            echo "Using cached debug keystore"
+          else
+            keytool -genkeypair -keystore "$KS" -storepass android -alias androiddebugkey -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+            echo "Generated new debug keystore"
+          fi
+          keytool -list -v -keystore "$KS" -storepass android | grep -E "SHA256:" | head -1
+          mkdir -p ~/.config/godot
+          cat > ~/.config/godot/editor_settings-4.7.tres <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          export/android/debug_keystore = "$KS"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+          sed -i 's/^          //' ~/.config/godot/editor_settings-4.7.tres
+          cat ~/.config/godot/editor_settings-4.7.tres
+
+      - name: Headless import + tests + runtime smoke test
+        run: GODOT="$HOME/godot/godot" bash tools/scripts/run_tests.sh
+
+      - name: Stamp build info
+        run: |
+          printf '{"commit":"%s","run":"%s","ref":"%s"}\n' "$GITHUB_SHA" "$GITHUB_RUN_NUMBER" "$GITHUB_REF_NAME" > build_info.json
+          cat build_info.json
+
+      - name: Export debug APK
+        run: |
+          mkdir -p builds
+          "$HOME/godot/godot" --headless --path . --export-debug "Android" "builds/$APK_NAME" 2>&1 | tee builds/export.log | grep -vE "ADDING:|^\s*$" | tail -40
+          test -s "builds/$APK_NAME"
+
+      - name: Verify APK structure and signature
+        run: bash tools/scripts/verify_apk.sh "builds/$APK_NAME" "$ANDROID_HOME/build-tools/${BUILD_TOOLS}/apksigner"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: football-golf-v0.1-debug-apk
+          path: builds/${{ env.APK_NAME }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Build summary
+        if: always()
+        run: |
+          {
+            echo "## Football Golf Android debug build"
+            echo "- Commit: \`$GITHUB_SHA\`"
+            echo "- Artifact: \`football-golf-v0.1-debug-apk\` (contains \`$APK_NAME\`)"
+            if [ -f "builds/$APK_NAME" ]; then
+              echo "- Size: $(stat -c %s "builds/$APK_NAME") bytes"
+              echo "- SHA-256: \`$(sha256sum "builds/$APK_NAME" | cut -d' ' -f1)\`"
+            else
+              echo "- APK: not produced"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

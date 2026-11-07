@@ -1,0 +1,38 @@
+name: Validate (headless tests)
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot editor
+        uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-editor-4.7-stable-v1
+
+      - name: Install pinned Godot 4.7-stable (SHA-512 verified)
+        run: bash tools/scripts/install_godot.sh "$HOME/godot"
+
+      - name: Import, unit/integration tests, runtime smoke test
+        run: GODOT="$HOME/godot/godot" bash tools/scripts/run_tests.sh
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validate-logs
+          path: builds/logs/
+          if-no-files-found: ignore
