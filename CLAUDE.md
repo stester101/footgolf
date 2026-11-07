@@ -46,5 +46,7 @@ Android export needs editor settings (`~/.config/godot/editor_settings-4.7.tres`
 - Report only observed results. Never claim a build/test/device check passed unless it ran.
 - After any change: run `tools/scripts/run_tests.sh`; fix SCRIPT ERRORs before committing.
 - Physics changes must keep calibration tests green; tune via `Surface.default_params()`/`PhysicsConfig`.
-- Seed footballers are SYNTHETIC; never present them as real players' records.
+- `data/footballers_seed.json` is SYNTHETIC test data; never present it as real records.
+- `data/footballers_real.json` is generated (Wikidata, CC0) by `tools/data/import_wikidata.py` via the
+  "Import footballers" workflow — do not hand-edit it; use `tools/data/corrections.json`.
 - Never commit keystores, passwords or secrets.

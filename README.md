@@ -27,6 +27,15 @@ Download the APK artifact from **Actions → Android debug APK → Artifacts**
 Controls: drag the course to aim (360°) · Caps/Goals · Choose footballer · **TAKE SHOT** ·
 Overhead (tap to measure) · Card · DEV · II (pause).
 
+## Footballer data
+- Countries: edit `tools/data/countries.json`; manual fixes: `tools/data/corrections.json`.
+- Re-import: GitHub → Actions → **Import footballers (Wikidata)** → Run workflow (also runs on changes
+  under `tools/data/`). The job commits `data/footballers_real.json` + a validation report to the branch.
+- Rules applied: senior men's national team only; final national team only (regional/non-FIFA sides
+  ignored); records without caps or goals excluded; negative goals (goals-conceded convention) → 0.
+- Player edits made in the DEV panel are tied to the dataset snapshot; a new snapshot backs them up
+  instead of applying them to different data.
+
 ## Develop
 ```bash
 tools/scripts/install_godot.sh ~/godot --templates
@@ -41,7 +50,9 @@ Docs: [Architecture](docs/ARCHITECTURE.md) · [Physics calibration](docs/PHYSICS
 ## Known limitations
 - **TEST MODE is ON by default in this build:** the footballer picker shows caps/goals before the
   shot so mechanics can be checked. Turn it off (Settings or DEV → Players) for normal hidden-stat rules.
-- Seed footballers are **synthetic fictional test data**, not real players.
+- Footballers: a **provisional Wikidata snapshot** of complete senior men's caps/goals lists for 14 countries
+  (~9,800 players; see `data/footballers_real_report.md`). Wikidata can be incomplete or out of date.
+  Synthetic test players remain available (Settings → "Use real footballers" off).
 - Overhead map edges are noise-warped for a natural look, so visual surface boundaries can differ from
   the physics boundary by up to ~1.5 m.
 - Visuals are procedural (no imported art); the ball is drawn larger than its physical 42.7 mm when
