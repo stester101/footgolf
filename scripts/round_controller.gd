@@ -94,6 +94,7 @@ func _ready() -> void:
 	ui.main_menu_requested.connect(func() -> void: exit_to_menu.emit())
 	ui.developer_requested.connect(toggle_dev_panel)
 	DisplayServer.screen_set_keep_on(true)
+	App.telemetry.attach(session, course_id, String(App.course_info(course_id).get("name", course_id)))
 	session.start_round(App.load_holes(course_id))
 	if open_dev_on_start:
 		toggle_dev_panel()

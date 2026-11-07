@@ -58,8 +58,18 @@ func load_settings() -> void:
 		physics.apply_dict(d["physics"])
 		if int(d.get("settings_version", 1)) < 2:
 			physics.cup_radius = PhysicsConfig.new().cup_radius  # v2: larger default hole
+		_migrate_spin_defaults()
 	if typeof(d.get("scenario")) == TYPE_DICTIONARY:
 		scenario = d["scenario"]
+
+
+## Saved settings carry the old (stronger) spin defaults; move untouched values to the new ones.
+func _migrate_spin_defaults() -> void:
+	var fresh := PhysicsConfig.new()
+	if is_equal_approx(physics.spin_lift_k, PhysicsConfig.LEGACY_SPIN_LIFT_K):
+		physics.spin_lift_k = fresh.spin_lift_k
+	if is_equal_approx(physics.spin_retention, PhysicsConfig.LEGACY_SPIN_RETENTION):
+		physics.spin_retention = fresh.spin_retention
 
 
 func save() -> void:

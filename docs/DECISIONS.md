@@ -13,6 +13,14 @@ Changes to locked rules in `docs/SPECIFICATION.md`, made explicitly by the produ
 - **Scope:** Caps (aerial) shots only. Goals (ground) shots carry no spin so 1 goal = 1 ft stays exact.
 - Spin is part of `ShotRequest` (recorded, replayed, shown in results and diagnostics).
 
+## 2026-11-07 — Spin effect reduced by about a third
+- **Owner request:** top/back spin was taking too much distance and changing the bounce/roll too much
+  after landing. Both spin strengths are about 1/3 weaker: Magnus lift `spin_lift_k` 0.0016 → 0.00107,
+  landing grip `spin_retention` 0.26 → 0.175 (`PhysicsConfig`).
+- **Rule preserved:** neutral first-contact carry is still exact for every spin (the solver includes spin;
+  calibration tests unchanged). Saved settings still holding the old defaults are moved to the new values on load.
+- Observed (120 caps, flat fairway): rollout back 1.5 m / none 4.9 m / top 11.3 m (was 0.5 / 4.9 / 15.8 m).
+
 ## 2026-11-07 — Test mode stat visibility
 - TEST MODE (default on during testing) shows caps/goals before the shot. Turning it off restores the
   locked hidden-stats rule.

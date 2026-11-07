@@ -27,8 +27,11 @@ var canopy_damping := 5.0
 ## Strike-point spin (Caps only), s in [-1 backspin .. +1 topspin]:
 ## Magnus lift a = -s * spin_lift_k * |v_rel|^2 (perpendicular to flight, upward for backspin);
 ## landing grip: retention += s * spin_retention on the first bounce (halving each bounce).
-var spin_lift_k := 0.0016
-var spin_retention := 0.26
+## 2026-11-07: both reduced by ~1/3 (owner request: spin effect too strong; docs/DECISIONS.md).
+const LEGACY_SPIN_LIFT_K := 0.0016
+const LEGACY_SPIN_RETENTION := 0.26
+var spin_lift_k := 0.00107
+var spin_retention := 0.175
 var trunk_restitution := 0.4
 var surfaces: Dictionary = {}
 
