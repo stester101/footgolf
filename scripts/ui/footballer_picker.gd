@@ -267,6 +267,8 @@ func _build_main_panel() -> PanelContainer:
 		_sort_keys.append(String(labels[i][0]))
 		_sort_popup.add_radio_check_item(String(labels[i][1]), i)
 	_sort_popup.id_pressed.connect(func(id: int) -> void:
+		if _sort_popup.is_item_disabled(id):
+			return  # caps/goals sorts need a country filter
 		_sort_key = _sort_keys[id]
 		_rebuild())
 	add_child(_sort_popup)
@@ -587,6 +589,13 @@ func _render() -> void:
 	_summary.text = "%d footballers available" % avail if avail == total else "%d footballers available · %d used" % [avail, total - avail]
 	var n := _filter_count()
 	_filters_label.text = "Filters (%d)" % n if n > 0 else "Filters"
+	# Caps/Goals sorts only work with a country filter on (greyed out otherwise).
+	var stat_ok := not _sel_nations.is_empty()
+	for i in _sort_popup.item_count:
+		if _sort_keys[i] in ["caps_hi", "caps_lo", "goals_hi", "goals_lo"]:
+			_sort_popup.set_item_disabled(i, not stat_ok)
+	if not stat_ok and _sort_key in ["caps_hi", "caps_lo", "goals_hi", "goals_lo"]:
+		_sort_key = "name_az"
 	var idx := maxi(_sort_keys.find(_sort_key), 0)
 	_sort_label.text = String(((FootballerRepository.SORT_LABELS + (FootballerRepository.STAT_SORT_LABELS if (show_stats or stat_sort) else []))[idx])[1])
 	for i in _sort_popup.item_count:
