@@ -440,6 +440,7 @@ func _build_pin() -> void:
 	_cup_disc.mesh = cm
 	var cmat := StandardMaterial3D.new()
 	cmat.albedo_color = Color(0.03, 0.03, 0.03)
+	cmat.cull_mode = BaseMaterial3D.CULL_DISABLED  # the terrain-following disc must show from above whatever its winding
 	_cup_disc.material_override = cmat
 	_cup_disc.position = cup + Vector3(0, 0.006, 0)
 	add_child(_cup_disc)
@@ -452,6 +453,7 @@ func _build_pin() -> void:
 	_cup_ring.mesh = tm
 	var rmat := StandardMaterial3D.new()
 	rmat.albedo_color = Color(0.95, 0.95, 0.95)
+	rmat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_cup_ring.material_override = rmat
 	_cup_ring.position = cup + Vector3(0, 0.004, 0)
 	add_child(_cup_ring)
@@ -554,14 +556,14 @@ func set_cup_radius(r: float) -> void:
 	cup_radius = r
 	# The cup disc and rim follow the ground under them: a flat disc on a sloped green sank into the
 	# turf on one side and floated on the other, which showed as a dark ellipse at the hole.
+	# Back to the flat cup (it was visible in earlier builds; the terrain-following mesh was not drawn). It sits at
+	# the cup's own ground height, drawn two-sided so it shows from any angle.
 	if _cup_disc != null:
-		_cup_disc.mesh = _ground_disc(0.0, r, 0.012)
-		_cup_disc.scale = Vector3.ONE
-		_cup_disc.position = Vector3.ZERO
+		_cup_disc.scale = Vector3(r, 1.0, r)
+		_cup_disc.position = hole.cup_position() + Vector3(0, 0.006, 0)
 	if _cup_ring != null:
-		_cup_ring.mesh = _ground_disc(0.92 * r, 1.12 * r, 0.02)
-		_cup_ring.scale = Vector3.ONE
-		_cup_ring.position = Vector3.ZERO
+		_cup_ring.scale = Vector3(r, 0.1, r)
+		_cup_ring.position = hole.cup_position() + Vector3(0, 0.004, 0)
 
 
 ## Flat annulus (inner..outer radius, metres) whose vertices sit on the terrain plus a small lift.

@@ -70,6 +70,22 @@ func dispose() -> void:
 			if connection.callable.get_object() == self:
 				sig.disconnect(connection.callable)
 
+## Guest's own pre-pick (local, never sent): survives host updates while it is still available.
+var _preselect := ""
+
+
+func select_footballer(id: String) -> bool:
+	var ok := super.select_footballer(id)
+	if ok and not _host:
+		_preselect = id
+	return ok
+
+
+func clear_selection() -> void:
+	_preselect = ""
+	super.clear_selection()
+
+
 func controls_turn() -> bool:
 	return room != null and room.active and not room.paused and not pending and room.seat == turn
 
@@ -257,7 +273,13 @@ func apply_snapshot(data: Dictionary, animate: bool) -> void:
 	style = int(data.style)
 	spin = float(data.spin)
 	trajectory = int(data.trajectory)
-	selected_id = String(data.selected)
+	# The host's selection belongs to the active player. A guest keeps its own pre-pick across updates: it stays
+	# selected while the footballer is still free, and is dropped (the player re-picks) once someone else uses them.
+	selected_id = String(data.selected) if _host else ""
+	if not _host and _preselect != "" and repo.has(_preselect) and pool.is_available(_preselect, mode):
+		selected_id = _preselect
+	elif not _host:
+		_preselect = ""
 	_next_is_replacement = bool(data.replacement)
 	sim = null
 	if old_hole != round_state.current_index:
