@@ -911,7 +911,7 @@ func _apply_player_style() -> void:
 		var key := "%d:%d:%d" % [session.turn, session.round_state.current_index, session.shot_counter]
 		if key != _last_turn_key:
 			_last_turn_key = key
-			_flash_turn(String(session.active_name()).to_upper() + " · YOUR SHOT", col)
+			_flash_turn(String(session.active_name()).to_upper() + (" · YOUR SHOT" if not (session is OnlineSession) or (session as OnlineSession).controls_turn() else " · TO PLAY"), col)
 
 
 func _flash_turn(text: String, col: Color) -> void:
