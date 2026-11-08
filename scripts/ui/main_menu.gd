@@ -743,6 +743,13 @@ func _open_settings_visual() -> void:
 		st.vibration = on
 		st.save())
 	body.add_child(vib)
+	var dt := CheckButton.new()
+	dt.text = "Drag up/down to change trajectory (trial)"
+	dt.button_pressed = st.drag_trajectory
+	dt.toggled.connect(func(on: bool) -> void:
+		st.drag_trajectory = on
+		st.save())
+	body.add_child(dt)
 	body.add_child(_note("Audio: none yet (silent). Sound is planned."))
 	_push(pg["root"])
 

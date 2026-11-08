@@ -7,6 +7,7 @@ signal exit_to_menu
 
 const AIM_DEG_PER_PX := 0.22
 const AIM_GUIDE_LEN := 3.2
+const TRAJ_DRAG_PX := 48.0
 
 var session: GameSession
 var world_env: WorldEnvironment
@@ -22,6 +23,7 @@ var ui: GameUI
 var dev_panel: DeveloperPanel
 var _canvas: CanvasLayer
 var _drag_active := false
+var _traj_accum := 0.0
 var _drag_moved := 0.0
 var _tap_place := false
 var _built_hole_id := ""
@@ -334,7 +336,7 @@ func _process(delta: float) -> void:
 	if session == null or session.hole == null:
 		return
 	_step_preload()
-	session.advance(delta, App.settings.sim_speed)
+	session.advance(delta, App.settings.sim_speed * (4.0 if ui.fast_forward else 1.0))
 	var bpos := session.ball_render_pos()
 	var moving := session.is_ball_moving()
 	var aim := session.aim_dir()
@@ -443,6 +445,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _touches.size() == 1:
 				_drag_active = true
 				_drag_moved = 0.0
+				_traj_accum = 0.0
 			else:
 				_drag_moved = 999.0  # multi-touch is never a tap
 				_pinch_dist = _pinch_distance()
@@ -471,6 +474,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				rig.overhead_pan(sd.relative)
 		elif session.state == ShotTypes.State.AIMING and _touches.size() == 1:
 			session.set_aim(session.aim_bearing_deg - sd.relative.x * AIM_DEG_PER_PX)
+			# trial: drag up/down (mostly vertical movement) steps the trajectory Punch / Low / Standard / High
+			if App.settings.drag_trajectory and session.style == ShotTypes.Style.FLIGHT and absf(sd.relative.y) > absf(sd.relative.x):
+				_traj_accum -= sd.relative.y
+				while absf(_traj_accum) >= TRAJ_DRAG_PX:
+					var step := 1 if _traj_accum > 0.0 else -1
+					_traj_accum -= step * TRAJ_DRAG_PX
+					session.set_trajectory(clampi(session.trajectory + step, 0, 3))
 
 
 func _pinch_distance() -> float:

@@ -49,6 +49,7 @@ var wind_bearing := 0.0
 var sim_speed := 1.0
 var show_trail := true
 var vibration := true
+var drag_trajectory := true  # trial: drag up/down on the aim view to change trajectory
 ## Favourite footballer ids (starred in the picker). Global for now; per-profile later.
 var favourites: Array = []
 ## TEST MODE: show caps/goals in the picker before the shot (developer/testing aid; off = normal rules).
@@ -81,6 +82,7 @@ func load_settings() -> void:
 	sim_speed = clampf(float(d.get("sim_speed", 1.0)), 0.25, 8.0)
 	show_trail = bool(d.get("show_trail", true))
 	vibration = bool(d.get("vibration", true))
+	drag_trajectory = bool(d.get("drag_trajectory", true))
 	favourites = (d.get("favourites", []) as Array).duplicate() if typeof(d.get("favourites")) == TYPE_ARRAY else []
 	show_stats = bool(d.get("show_stats", true))
 	tutorial_seen = bool(d.get("tutorial_seen", false))
@@ -121,6 +123,7 @@ func save() -> void:
 		"sim_speed": sim_speed,
 		"show_trail": show_trail,
 		"vibration": vibration,
+		"drag_trajectory": drag_trajectory,
 		"favourites": favourites,
 		"show_stats": show_stats,
 		"dataset": dataset,

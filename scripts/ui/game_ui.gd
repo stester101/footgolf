@@ -55,6 +55,9 @@ var _spin: SpinControl
 var _spin_label: Label
 var _traj_btn: Button
 var _skip_btn: Button
+var _fast_btn: Button
+## True while the player holds the fast-forward button (shot animation runs faster).
+var fast_forward := false
 var _shot_btn: Button
 var _shot_label: Label
 var _shot_icon: LineIcon
@@ -564,6 +567,15 @@ func _build_shot_controls() -> VBoxContainer:
 	sc.add_child(sh)
 	_shot_btn.add_child(sc)
 	cv.add_child(_shot_btn)
+	_fast_btn = Button.new()
+	_fast_btn.text = "HOLD TO FAST-FORWARD  ▶▶"
+	_fast_btn.custom_minimum_size = Vector2(0, 60)
+	_fast_btn.visible = false
+	_fast_btn.set_meta("ui_id", "fast_forward")
+	_fast_btn.add_theme_font_size_override("font_size", 24)
+	_fast_btn.button_down.connect(func() -> void: fast_forward = true)
+	_fast_btn.button_up.connect(func() -> void: fast_forward = false)
+	cv.add_child(_fast_btn)
 	cv.add_child(_card_rule())
 	var r1: Array = _seg_row("STAT", "CAPS", "mode_caps", func() -> void: session.set_mode(ShotTypes.Mode.CAPS),
 		"GOALS", "mode_goals", func() -> void: session.set_mode(ShotTypes.Mode.GOALS))
@@ -805,7 +817,7 @@ func refresh() -> void:
 	_shot_controls.visible = not show_result and not overhead and not between
 	_utility_row.visible = not between  # never hidden for a modal: that collapsed the layout and made the HUD jump
 	_result_card.visible = show_result and not overhead
-	_map_controls.visible = overhead
+	_map_controls.visible = overhead and session.state != ShotTypes.State.HOLE_INTRO  # the intro bar owns the bottom edge
 	_right_shot.visible = not overhead
 	_right_map.visible = overhead
 	var flight := session.style == ShotTypes.Style.FLIGHT
@@ -821,6 +833,9 @@ func refresh() -> void:
 	var can_act := aiming and _overlays.is_empty()
 	if session is OnlineSession:
 		can_act = can_act and (session as OnlineSession).controls_turn()
+	_fast_btn.visible = moving
+	if not moving:
+		fast_forward = false
 	if moving:
 		_shot_btn.set_meta("ui_id", "skip")
 		_shot_label.text = "SKIP"

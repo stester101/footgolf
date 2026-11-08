@@ -483,7 +483,7 @@ func _footballer_row(fb: Footballer, used: bool, selected: bool, cb: Callable) -
 	mc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mc.add_theme_constant_override("margin_left", 16)
 	mc.add_theme_constant_override("margin_right", 14)
-	var h := UiKit.hbox(16)
+	var h := UiKit.hbox(10)
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var flag := TextureRect.new()
 	flag.texture = Flags.texture(fb.country_code)
@@ -493,7 +493,7 @@ func _footballer_row(fb: Footballer, used: bool, selected: bool, cb: Callable) -
 	flag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	flag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.add_child(flag)
-	var nm := UiKit.label(fb.name + ("  ·  USED" if used else ""), 26, Color.WHITE if not used else Color(1, 1, 1, 0.55))
+	var nm := UiKit.label(fb.name + ("  ·  USED" if used else ""), 24, Color.WHITE if not used else Color(1, 1, 1, 0.55))
 	nm.add_theme_font_override("font", UiKit.font_semi())
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	nm.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -502,7 +502,7 @@ func _footballer_row(fb: Footballer, used: bool, selected: bool, cb: Callable) -
 	var right := _years_text(fb)
 	if show_stats:
 		right = "%dc · %dg   %s" % [fb.caps, fb.goals, right]
-	var yr := UiKit.label(right, 22, Color(0.85, 0.92, 1.0, 0.85 if not used else 0.45), HORIZONTAL_ALIGNMENT_RIGHT)
+	var yr := UiKit.label(right, 19, Color(0.85, 0.92, 1.0, 0.85 if not used else 0.45), HORIZONTAL_ALIGNMENT_RIGHT)
 	yr.add_theme_font_override("font", UiKit.font_num())
 	yr.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	h.add_child(yr)
@@ -510,14 +510,17 @@ func _footballer_row(fb: Footballer, used: bool, selected: bool, cb: Callable) -
 	var star := Button.new()
 	star.flat = true
 	star.focus_mode = Control.FOCUS_NONE
-	star.custom_minimum_size = Vector2(56, 56)
+	star.custom_minimum_size = Vector2(48, 56)
 	star.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	for st in ["normal", "hover", "pressed", "disabled"]:
 		star.add_theme_stylebox_override(st, StyleBoxEmpty.new())
 	var si := LineIcon.make("star", 34, Color("#FFD84A") if fav else Color(1, 1, 1, 0.55))
-	si.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	si.position = Vector2(11, 11)
-	star.add_child(si)
+	si.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var star_c := CenterContainer.new()  # centres the icon in the button (was drifting to the row's bottom edge)
+	star_c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	star_c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	star_c.add_child(si)
+	star.add_child(star_c)
 	star.pressed.connect(func() -> void:
 		if App.settings.favourites.has(fb.id):
 			App.settings.favourites.erase(fb.id)

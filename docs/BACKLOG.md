@@ -43,6 +43,15 @@ To do:
 - Draft or shortlist, match play, challenge codes, online play.
 - Do NOT run hole-length simulations (owner decision); lengths are set by ranges.
 
+## Done this session (committed and pushed, NOT in an APK yet; tests pass, only the hole intro and picker were rendered)
+- Batch A: full reset between rounds (filters, sort, bands, search), picker search clears on close, Goals + Putt on the green and Caps + Approach elsewhere, swap icon on the footballer chip, smaller aim arrow near the pin and when putting.
+- Batch B: gimme measured from the cup EDGE; cup up to 72 in; Round Setup option "Footballer once per mode" (Caps and Goals).
+- Batch C: hole intro is a slim bottom bar over the bird's-eye view (camera eases to the tee on Tee off); ball sits on a tee peg; larger tee markers. Real tee box mesh still to do.
+- Batch D: trial drag up/down on the aim view changes trajectory (Settings > Audio / Visual toggle, default on).
+- Batch F: pass-and-play, furthest from the cup plays next.
+- Hold-to-fast-forward button (4x) while the ball is moving.
+- Picker star icon centred in its row; shorter name/year fonts to cut truncation.
+
 ## Done (committed and in an APK)
 - Quick wins: pin tag with white outline and pointer; vibration on shots and hole-outs (toggle in Audio / Visual); check boxes re-skinned in the shared theme; pause menu header rule; round-complete screen matches hole-complete; editable pass-and-play player names in Round Setup.
 - Favourites (star on rows, Favourites filter), dev custom caps/goals ranges, player colours (green, red, yellow, blue) and turn flash.
