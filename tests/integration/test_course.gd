@@ -162,7 +162,10 @@ func _check_generated_hole(h: HoleDefinition, par: int, yards: int) -> Dictionar
 				if (wt as HoleDefinition.Ellipse).signed_dist(x, z) < 5.0:
 					near_hazard = true
 			# tee/green terrain blends are not "playing" fairway: skip the first/last 12 m
-			if s == Surface.Type.FAIRWAY and (Vector2(x, z).distance_to(h.tee) < 12.0 or g0.signed_dist(x, z) < 12.0):
+			var near_tee := Vector2(x, z).distance_to(h.tee) < 12.0
+			for to in h.tee_options.values():  # blue / red tee boxes blend into the terrain too
+				near_tee = near_tee or Vector2(x, z).distance_to(to["pos"]) < 12.0
+			if s == Surface.Type.FAIRWAY and (near_tee or g0.signed_dist(x, z) < 12.0):
 				near_hazard = true
 			if not near_hazard and (s == Surface.Type.FAIRWAY or s == Surface.Type.GREEN):
 				var n := h.normal_at(x, z)

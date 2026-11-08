@@ -58,6 +58,7 @@ static func load_all_course_holes() -> Array:
 static func make_session(defs: Array = []) -> GameSession:
 	var s := GameSession.new(PhysicsConfig.new(), make_repo())
 	s.holeout_radius_ft = 5.0  # tests play with the old 5 ft auto hole-out; the game default is now 0 (cup only)
+	s.rules.pin_varied = false  # existing scenarios were written against the fixed (today's) pins
 	s.start_round(defs if not defs.is_empty() else load_holes(), 12345)
 	s.begin_play()
 	return s

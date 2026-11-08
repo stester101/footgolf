@@ -996,6 +996,14 @@ func _difficulty_controls(body: VBoxContainer, rc: RoundConfig, on_change: Calla
 	gimme.set_meta("ui_id", "gimme")
 	body.add_child(_setting_row("Gimme (ft from cup edge, 0 = none)", gimme))
 	body.add_child(_note("Regulation hole is about 0.35 ft (4.25 in). A ball at rest within the gimme distance of the cup edge is holed automatically (1 stroke); 0 ft means it must drop."))
+	body.add_child(_caption("TEES"))
+	body.add_child(_choice_row(["Blue (back)", "Yellow", "Red (forward)"], HoleDefinition.TEE_COLORS.find(rc.tee_color), func(i: int) -> void:
+		rc.tee_color = HoleDefinition.TEE_COLORS[i]
+		changed.call(), "tees"))
+	body.add_child(_caption("PIN POSITIONS"))
+	body.add_child(_choice_row(["Fixed", "Varied"], 1 if rc.pin_varied else 0, func(i: int) -> void:
+		rc.pin_varied = i == 1
+		changed.call(), "pin_positions"))
 	body.add_child(_caption("FOOTBALLER RULE"))
 	body.add_child(_choice_row(["Once per match", "Once per mode (Caps and Goals)"], 1 if rc.reuse_per_mode else 0, func(i: int) -> void:
 		rc.reuse_per_mode = i == 1

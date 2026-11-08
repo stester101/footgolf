@@ -102,6 +102,18 @@ var par := 3
 var yards := 0.0
 var tee := Vector2.ZERO
 var pin := Vector2(0, 100)
+## Tee boxes by colour: {"blue"|"yellow"|"red": {pos: Vector2, yards: float}}. Empty on legacy holes.
+## `tee`/`yards` always hold the CHOSEN tee (default yellow = the JSON `tee`/`yards`).
+var tee_options: Dictionary = {}
+## Alternative cup positions on the green: [{name: String, pos: Vector2}]; index 0 is the fixed JSON `pin`.
+var pin_options: Array = []
+var tee_color := "yellow"
+var pin_name := "middle"
+var _base_tee := Vector2.ZERO
+var _base_pin := Vector2(0, 100)
+var _base_yards := 0.0
+const TEE_COLORS := ["blue", "yellow", "red"]
+const TEE_DISPLAY := {"blue": Color(0.2, 0.45, 1.0), "yellow": Color(1.0, 0.85, 0.1), "red": Color(0.9, 0.15, 0.12)}
 var has_cup := true
 var flat_surface := -1
 ## Surface outside all features (rough on real holes).
@@ -187,6 +199,17 @@ func _parse(d: Dictionary) -> void:
 	yards = float(d.get("yards", 0.0))
 	tee = _v2(d.get("tee", [0, 0]))
 	pin = _v2(d.get("pin", [0, 100]))
+	_base_tee = tee
+	_base_pin = pin
+	_base_yards = yards
+	var topt: Dictionary = d.get("tee_options", {})
+	for col in TEE_COLORS:
+		if topt.get(col) is Dictionary:
+			var od: Dictionary = topt[col]
+			tee_options[col] = {"pos": _v2(od.get("pos", [tee.x, tee.y])), "yards": float(od.get("yards", yards))}
+	for po in d.get("pin_options", []):
+		if po is Dictionary:
+			pin_options.append({"name": String(po.get("name", "pin")), "pos": _v2(po.get("pos", [pin.x, pin.y]))})
 	var t: Dictionary = d.get("terrain", {})
 	base_height = float(t.get("base", 0.0))
 	var plane: Array = t.get("plane", [0.0, 0.0])
@@ -369,6 +392,41 @@ func surface_at(x: float, z: float) -> int:
 	if fairway_aabb.has_point(pt) and fairway_distance(x, z) <= 0.0:
 		return Surface.Type.FAIRWAY
 	return default_surface
+
+
+## Deterministic pin index for a round: identical on every phone and when a round is rebuilt from the same seed.
+## FNV-1a over "seed:hole_id" (no reliance on engine hash()). 0 (= the fixed pin) when there are no options.
+static func pin_index_for_seed(round_seed: int, hole_id: String, count: int) -> int:
+	if count <= 1:
+		return 0
+	var h := 2166136261
+	for b in ("%d:%s:pin" % [round_seed, hole_id]).to_utf8_buffer():
+		h = ((h ^ int(b)) * 16777619) & 0xffffffff
+	return int(h % count)
+
+
+## Applies the Round Setup choices to this hole: the chosen tee colour (falls back to yellow when the hole
+## has no such tee) and the pin (varied: one of `pin_options` picked from the round seed; fixed: the JSON pin).
+## `yards` becomes the chosen tee's length adjusted by the straight tee-to-pin distance of the chosen pin
+## relative to the default pin, so the displayed length is the real tee-to-pin distance.
+func apply_round_options(color: String, varied_pins: bool, round_seed: int) -> void:
+	tee_color = color if tee_options.has(color) else "yellow"
+	var base_tee_yards := _base_yards
+	tee = _base_tee
+	if tee_options.has(tee_color):
+		tee = tee_options[tee_color]["pos"]
+		base_tee_yards = float(tee_options[tee_color]["yards"])
+	pin = _base_pin
+	pin_name = "middle"
+	if varied_pins and pin_options.size() > 1:
+		var po: Dictionary = pin_options[pin_index_for_seed(round_seed, id, pin_options.size())]
+		pin = po["pos"]
+		pin_name = String(po["name"])
+	yards = base_tee_yards + (tee.distance_to(pin) - tee.distance_to(_base_pin)) / Units.yards_to_m(1.0)
+
+
+func tee_marker_color() -> Color:
+	return TEE_DISPLAY.get(tee_color, TEE_DISPLAY["yellow"])
 
 
 func tee_position(radius: float) -> Vector3:

@@ -25,6 +25,18 @@
       "holes": ["hole_14", "hole_15", "hole_16", "hole_17"]
     },
     {
+      "id": "jizzy",
+      "name": "Jizzy Nash Nash",
+      "blurb": "9 rolling pine and azalea holes, creeks, big greens",
+      "holes": ["hole_18", "hole_19", "hole_20", "hole_21", "hole_22", "hole_23", "hole_24", "hole_25", "hole_26"]
+    },
+    {
+      "id": "mesa",
+      "name": "Canyon Mesa",
+      "blurb": "6 desert holes, waste bunkers, steady wind",
+      "holes": ["hole_27", "hole_28", "hole_29", "hole_30", "hole_31", "hole_32"]
+    },
+    {
       "id": "full9",
       "name": "Full 9",
       "blurb": "Starter Links + Pinewood Ridge",
