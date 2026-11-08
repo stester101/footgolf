@@ -23,6 +23,24 @@ const DEFAULT_CUP_DIAMETER_IN := 12.0
 var cup_radius := DEFAULT_CUP_DIAMETER_IN * 0.0254 * 0.5
 var cup_capture_speed := 1.6
 var cup_landing_capture_speed := 7.0
+## Flagstick (thin vertical pole at the cup centre). Balls faster than pin_soft_speed that touch it
+## bounce off (horizontal normal component reflected with pin_restitution; in the air the whole
+## velocity is also scaled by pin_air_loss, so a ball hitting the pin on the way down loses most of its
+## energy and drops). Slower balls ignore it. Cups wider than pin_max_cup_radius ignore the pole.
+var pin_radius := 0.0125
+var pin_height := 2.0
+var pin_soft_speed := 1.0
+var pin_restitution := 0.35
+var pin_air_loss := 0.55
+var pin_max_cup_radius := 0.45
+## Cup rim (rolling): a ball entering the cup at lateral offset b from the centre line drops only if
+## speed <= cup_capture_speed_eff * (1 - cup_rim_lip * (b/R)^2) (landing: same factor on the landing
+## capture speed). Faster balls up to cup_lip_max_factor * capture speed lip out (path bent around the
+## rim by cup_lip_deflect_deg * b/R, speed loss cup_lip_loss); faster still skip over unchanged.
+var cup_rim_lip := 0.5
+var cup_lip_max_factor := 2.0
+var cup_lip_deflect_deg := 35.0
+var cup_lip_loss := 0.12
 var canopy_damping := 5.0
 ## Strike-point spin (flight only), s in [-1 backspin .. +1 topspin]:
 ## Magnus lift a = -s * spin_lift_k * |v_rel|^2 (perpendicular to flight, upward for backspin);
@@ -48,6 +66,10 @@ func set_cup_diameter_in(inches: float) -> void:
 ## Bigger cups also accept slightly faster rolling balls (sqrt scaling, capped).
 func cup_capture_speed_eff() -> float:
 	return cup_capture_speed * clampf(sqrt(cup_radius / REGULATION_CUP_RADIUS), 1.0, 3.0)
+
+
+func pin_active() -> bool:
+	return cup_radius <= pin_max_cup_radius and pin_radius > 0.0
 
 
 func surface(t: int) -> Dictionary:
@@ -91,6 +113,16 @@ func to_dict() -> Dictionary:
 		"cup_capture_speed": cup_capture_speed,
 		"cup_landing_capture_speed": cup_landing_capture_speed,
 		"canopy_damping": canopy_damping,
+		"pin_radius": pin_radius,
+		"pin_height": pin_height,
+		"pin_soft_speed": pin_soft_speed,
+		"pin_restitution": pin_restitution,
+		"pin_air_loss": pin_air_loss,
+		"pin_max_cup_radius": pin_max_cup_radius,
+		"cup_rim_lip": cup_rim_lip,
+		"cup_lip_max_factor": cup_lip_max_factor,
+		"cup_lip_deflect_deg": cup_lip_deflect_deg,
+		"cup_lip_loss": cup_lip_loss,
 		"trunk_restitution": trunk_restitution,
 		"spin_lift_k": spin_lift_k,
 		"spin_retention": spin_retention,
@@ -102,7 +134,8 @@ func apply_dict(d: Dictionary) -> void:
 	for key in ["gravity", "dt", "ball_radius", "launch_angle_deg", "drag_k", "bounce_soft",
 			"min_bounce_speed", "rest_speed", "rest_time", "static_factor", "max_motion_time",
 			"cup_radius", "cup_capture_speed", "cup_landing_capture_speed", "canopy_damping",
-			"trunk_restitution", "spin_lift_k", "spin_retention"]:
+			"trunk_restitution", "spin_lift_k", "spin_retention",
+			"pin_radius", "pin_height", "pin_soft_speed", "pin_restitution", "pin_air_loss", "pin_max_cup_radius", "cup_rim_lip", "cup_lip_max_factor", "cup_lip_deflect_deg", "cup_lip_loss"]:
 		if d.has(key):
 			var v = d[key]
 			if (typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT) and is_finite(float(v)):

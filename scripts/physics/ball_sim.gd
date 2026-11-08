@@ -43,6 +43,8 @@ var end_reason := ""
 var _steps := 0
 var _in_canopy: Dictionary = {}
 var _cup := Vector3.ZERO
+var _cup_decided := false
+var _pin_hit_air := false
 
 
 func _init(p_hole: HoleDefinition, p_cfg: PhysicsConfig) -> void:
@@ -70,6 +72,8 @@ func launch(start: Vector3, velocity: Vector3, airborne: bool, p_spin: float = 0
 	end_reason = ""
 	_steps = 0
 	_in_canopy = {}
+	_cup_decided = false
+	_pin_hit_air = false
 	if velocity.length() <= 0.0:
 		phase = Phase.REST
 		end_reason = "no_motion"
@@ -175,6 +179,12 @@ func _step_air() -> void:
 		var res := _collide_trees(p1, v1, true)
 		p1 = res[0]
 		v1 = res[1]
+	if hole.has_cup and not _pin_hit_air and cfg.pin_active():
+		var ph := _pin_strike(p0, p1, v1)
+		if not ph.is_empty():
+			_pin_hit_air = true
+			p1 = ph[0]
+			v1 = (ph[1] as Vector3) * cfg.pin_air_loss
 	var g1 := hole.contact_height(p1.x, p1.z)
 	if p1.y - r <= g1:
 		var g0 := hole.contact_height(p0.x, p0.z)
@@ -212,10 +222,14 @@ func _on_contact() -> void:
 	if surf == Surface.Type.WATER:
 		_set_hazard("WATER")
 		return
-	if hole.has_cup and Units.horizontal_distance(pos, _cup) <= cfg.cup_radius \
-			and vel.length() <= cfg.cup_landing_capture_speed:
-		_hole_out()
-		return
+	if hole.has_cup:
+		var dl := Units.horizontal_distance(pos, _cup)
+		if dl <= cfg.cup_radius:
+			var fl := 1.0 - cfg.cup_rim_lip * (dl / cfg.cup_radius) * (dl / cfg.cup_radius)
+			if vel.length() <= cfg.cup_landing_capture_speed * fl:
+				_hole_out()
+				return
+			_record("rim")
 	var n := hole.normal_at(pos.x, pos.z)
 	var vn := vel.dot(n)
 	if vn >= 0.0:
@@ -293,10 +307,17 @@ func _step_roll() -> void:
 		p_new = res[0]
 		vel = res[1]
 		p_new.y = hole.terrain_height(p_new.x, p_new.z) + r
-	if hole.has_cup and vel.length() <= cfg.cup_capture_speed_eff():
-		var q := Geometry3D.get_closest_point_to_segment(_cup, pos, p_new)
-		if Units.horizontal_distance(q, _cup) <= cfg.cup_radius:
-			_hole_out()
+	if hole.has_cup:
+		var pinned := -1.0
+		if cfg.pin_active() and vel.length() > cfg.pin_soft_speed:
+			var pre := vel.length()
+			var ph := _pin_strike(pos, p_new, vel)
+			if not ph.is_empty():
+				p_new = ph[0]
+				vel = ph[1]
+				p_new.y = hole.terrain_height(p_new.x, p_new.z) + r
+				pinned = pre
+		if _roll_cup(pos, p_new, pinned):
 			return
 	pos = p_new
 	if vel.length() < cfg.rest_speed:
@@ -304,9 +325,98 @@ func _step_roll() -> void:
 	else:
 		still_time = 0.0
 	if still_time >= cfg.rest_time:
+		if hole.has_cup and Units.horizontal_distance(pos, _cup) <= cfg.cup_radius:
+			_hole_out()  # stopped on the lip: it falls in
+			return
 		vel = Vector3.ZERO
 		phase = Phase.REST
 		end_reason = "rest"
+
+
+# ------------------------------------------------------------------ cup and flagstick
+
+static func _flat(v: Vector3) -> Vector3:
+	return Vector3(v.x, 0.0, v.z)
+
+
+## Closest approach of the horizontal segment a->b to the cup centre: [t, flat distance].
+func _closest_t(a: Vector3, b: Vector3) -> Array:
+	var fa := _flat(a)
+	var ab := _flat(b) - fa
+	var l2 := ab.length_squared()
+	var t := 0.0
+	if l2 > 1e-12:
+		t = clampf((_flat(_cup) - fa).dot(ab) / l2, 0.0, 1.0)
+	return [t, (fa + ab * t - _flat(_cup)).length()]
+
+
+## Flagstick contact on the segment a->b with velocity v. Returns [contact_pos, new_vel]
+## (horizontal normal component reflected with pin_restitution) or [] when the pole is missed,
+## already behind the ball, or the ball is above the top of the pole.
+func _pin_strike(a: Vector3, b: Vector3, v: Vector3) -> Array:
+	var rr := cfg.pin_radius + cfg.ball_radius
+	var c := _closest_t(a, b)
+	if float(c[1]) >= rr:
+		return []
+	var q := a.lerp(b, float(c[0]))
+	if q.y - cfg.ball_radius > _cup.y + cfg.pin_height:
+		return []
+	var n := _flat(q) - _flat(_cup)
+	var vh := _flat(v)
+	if n.length() < 1e-5:
+		if vh.length() < 1e-6:
+			return []
+		n = -vh.normalized()
+	n = n.normalized()
+	var vn := vh.dot(n)
+	if vn >= 0.0:
+		return []
+	var nv := v - n * (vn * (1.0 + cfg.pin_restitution))
+	var out := _flat(_cup) + n * (rr + 0.001)
+	out.y = q.y
+	collisions.append({"type": "pin", "pos": out, "time": time})
+	return [out, nv]
+
+
+## Rolling cup entry. The drop/lip/skip decision is made once per pass from the lateral offset of the
+## ball's line from the cup centre. Returns true when the ball dropped.
+## `pinned` >= 0 means the ball hit the flagstick this step at that pre-impact speed: the drop test uses
+## that speed (a hard strike bounces off, a moderate one loses its pace and drops).
+func _roll_cup(a: Vector3, b: Vector3, pinned: float = -1.0) -> bool:
+	var c := _closest_t(a, b)
+	if float(c[1]) > cfg.cup_radius:
+		if (_flat(b) - _flat(_cup)).length() > cfg.cup_radius * 1.25:
+			_cup_decided = false
+		return false
+	if _cup_decided:
+		return false
+	_cup_decided = true
+	var vh := _flat(vel)
+	var speed := vh.length()
+	var off := float(c[1])
+	var side := 0.0
+	if speed > 1e-6:
+		var d := vh / speed
+		var rel := _flat(_cup) - _flat(a)
+		off = absf(d.x * rel.z - d.z * rel.x)
+		side = signf(d.x * rel.z - d.z * rel.x)
+	var rn := minf(off / cfg.cup_radius, 1.0)
+	var cap := cfg.cup_capture_speed_eff()
+	if pinned < 0.0 and cfg.pin_active() and speed > cfg.pin_soft_speed \
+			and off < cfg.pin_radius + cfg.ball_radius:
+		_cup_decided = false  # the pole is still ahead: it decides first
+		return false
+	var dspeed := vel.length() if pinned < 0.0 else pinned
+	if dspeed <= cap * (1.0 - cfg.cup_rim_lip * rn * rn):
+		_hole_out()
+		return true
+	if dspeed <= cap * cfg.cup_lip_max_factor:
+		var ang := deg_to_rad(cfg.cup_lip_deflect_deg) * rn * side
+		vel = vel.rotated(Vector3.UP, -ang) * (1.0 - cfg.cup_lip_loss)
+		_record("lip")
+	else:
+		_record("skip")
+	return false
 
 
 # ------------------------------------------------------------------ trees

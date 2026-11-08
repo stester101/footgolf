@@ -14,9 +14,32 @@ except the stat conversions and the neutral-baseline definitions.
 - Rough and sand catch a ball below 0.15 m/s instead of allowing a long hillside creep.
 - **Rest:** speed < 0.02 m/s for 0.3 s. Hard timeout 60 s. Non-finite state → `ERROR`, ball restored.
 - **Trees:** trunk cylinder (restitution 0.4) and canopy ellipsoid (damping 5/s) proxies.
-- **Cup:** radius 0.054 m; rolling capture ≤ 1.6 m/s, landing capture ≤ 7 m/s.
+- **Cup:** radius 0.054 m regulation (game default 12 in diameter); rolling capture ≤ 1.6 m/s x sqrt(R/0.054) (cap 3x),
+  landing capture ≤ 7 m/s. See "Cup rim and flagstick" below.
 - **Ball radius:** 0.02135 m physically. The *visual* sphere is enlarged with camera distance
   (visual-only, documented) so it remains visible on a phone.
+
+## Cup rim and flagstick (owner-approved; all deterministic, no RNG; `tests/integration/test_cup_flag.gd`)
+Neutral calibration is unaffected (the neutral reference plane has no cup). Defaults in `PhysicsConfig`:
+`pin_radius` 0.0125 m, `pin_height` 2.0 m, `pin_soft_speed` 1.0 m/s, `pin_restitution` 0.35,
+`pin_air_loss` 0.55, `pin_max_cup_radius` 0.45 m, `cup_rim_lip` 0.5, `cup_lip_max_factor` 2.0,
+`cup_lip_deflect_deg` 35, `cup_lip_loss` 0.12. All are saved/loaded via `to_dict`/`apply_dict`.
+- **Rolling rim:** the drop decision is made once per pass, when the ball first reaches the cup radius,
+  from the lateral offset `b` of its line from the centre: drop if `v <= capture_eff * (1 - 0.5 (b/R)^2)`
+  (dead centre = the old capture speed, a ball clipping the edge must be ~half as fast). Faster up to
+  `2 x capture_eff`: lip-out, the path is bent toward the cup centre by `35 deg x b/R` and 12% of the speed is
+  lost. Faster still: skips over unchanged. A ball that stops on the lip falls in.
+- **Landing:** drops if inside the radius and `v <= 7 m/s * (1 - 0.5 (d/R)^2)` (d = landing distance from centre);
+  otherwise it bounces as before.
+- **Flagstick** (pole at the cup centre, active only when `cup_radius <= 0.45 m`, i.e. up to a ~3 ft cup; bigger cups
+  ignore it): a ball slower than 1.0 m/s ignores the pole. Faster, a ball whose path comes within
+  `pin_radius + ball_radius` reflects its horizontal normal velocity (restitution 0.35). Rolling: the drop test then
+  uses the PRE-impact speed, so a strike up to the capture speed loses its pace and drops, a harder one bounces out.
+  Airborne (below 2 m, once per flight): the velocity is also scaled by 0.55, so a ball hitting the pin on the way
+  down usually falls in (landing capture applies afterwards).
+- Collision log entries `pin`, `lip`, `skip`, `rim` (landing too fast to drop) are recorded in `BallSim.collisions`.
+- Gimme (rest within gimme distance of the cup edge) stays in `ScoringService`. The hole-out drop animation is
+  unchanged (no separate pin/rim bounce visual).
 
 ## Spin (owner-approved, docs/DECISIONS.md)
 - Strike point s in [-1 backspin, +1 topspin], 0.05 steps, flight shots only.
