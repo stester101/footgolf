@@ -76,14 +76,26 @@ var _preselect := ""
 
 func select_footballer(id: String) -> bool:
 	var ok := super.select_footballer(id)
-	if ok and not _host:
+	if ok and not _applying:  # a pick made on this phone (not the host replaying someone else's shot)
 		_preselect = id
 	return ok
 
 
 func clear_selection() -> void:
-	_preselect = ""
+	if not _applying:
+		_preselect = ""
 	super.clear_selection()
+
+
+func preselected_id() -> String:
+	return _preselect if _preselect != "" and repo.has(_preselect) and pool.is_available(_preselect, mode) else ""
+
+
+## When the turn comes back to this phone, restore its pre-pick if that footballer is still free.
+func _switch_to(i: int) -> void:
+	super._switch_to(i)
+	if room != null and room.seat == turn and _preselect != "" and repo.has(_preselect) and pool.is_available(_preselect, mode):
+		selected_id = _preselect
 
 
 func controls_turn() -> bool:

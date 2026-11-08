@@ -90,10 +90,15 @@ func setup(s: GameSession) -> void:
 		_saved_round_id = rid
 		_by_player.clear()  # new round: everything resets for every player
 	# pass-and-play: each player keeps their own filters, sort and search settings for the round
-	if not _by_player.has(session.turn):
-		_by_player[session.turn] = {"q": "", "sort": "name_az", "nations": {}, "eras": {}, "avail": false,
+	# Filters belong to the person holding this phone: online that is this phone's seat (also while waiting for
+	# someone else's turn); in pass-and-play it is whoever's turn it is.
+	var owner_key: int = session.turn
+	if session is OnlineSession and (session as OnlineSession).room != null and (session as OnlineSession).room.seat >= 0:
+		owner_key = (session as OnlineSession).room.seat
+	if not _by_player.has(owner_key):
+		_by_player[owner_key] = {"q": "", "sort": "name_az", "nations": {}, "eras": {}, "avail": false,
 			"caps_band": 0, "goals_band": 0, "limit": PAGE, "scroll": 0}
-	_saved = _by_player[session.turn]
+	_saved = _by_player[owner_key]
 	_sel_nations = (_saved["nations"] as Dictionary).duplicate()
 	_sel_eras = (_saved["eras"] as Dictionary).duplicate()
 	_avail = bool(_saved["avail"])

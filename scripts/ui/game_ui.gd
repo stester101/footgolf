@@ -976,6 +976,7 @@ func _apply_player_style() -> void:
 # ------------------------------------------------------------------ online spectator card
 
 var _watch_card: PanelContainer
+var _watch_pre: Button
 var _watch_who: Label
 var _watch_flag: TextureRect
 var _watch_name: Label
@@ -1012,6 +1013,7 @@ func _build_watch_card(col: VBoxContainer) -> void:
 	_watch_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(_watch_detail)
 	var pre := UiKit.button("PICK NEXT FOOTBALLER", func() -> void: show_picker(), 56, 20)
+	_watch_pre = pre
 	pre.set_meta("ui_id", "preselect_footballer")
 	v.add_child(pre)
 	_watch_card.add_child(v)
@@ -1020,6 +1022,10 @@ func _build_watch_card(col: VBoxContainer) -> void:
 
 ## Returns true while the card is shown (waiting phone, not on the map, shot not yet resolved).
 func _update_watch_card(overhead: bool) -> bool:
+	if _watch_pre != null and session is OnlineSession:
+		var pid := (session as OnlineSession).preselected_id()
+		var pfb := session.repo.get_by_id(pid) if pid != "" else null
+		_watch_pre.text = "YOUR NEXT: %s  ·  CHANGE" % pfb.name.to_upper() if pfb != null else "PICK NEXT FOOTBALLER"
 	var live := session is OnlineSession and (session as OnlineSession).is_spectating() \
 			and session.state in [ShotTypes.State.AIMING, ShotTypes.State.SHOT_COMMITTED,
 			ShotTypes.State.BALL_IN_MOTION, ShotTypes.State.HAZARD_RESOLUTION]
