@@ -691,7 +691,9 @@ func _open_online_lobby() -> void:
 		body.add_child(combo)
 		body.add_child(_caption("DIFFICULTY (frozen for everyone at start)"))
 		_difficulty_controls(body, online_rules, Callable())
-	body.add_child(_note("Host settings are frozen at start. Footballers are shared: each can be used once. Mulligans: %s." % ("Unlimited" if _last_mulligans < 0 else str(_last_mulligans))))
+		_mulligan_choices(body)
+		body.add_child(_note("Each player can redo their last shot from its result screen, up to this many times per round."))
+	body.add_child(_note("Host settings are frozen at start. Footballers are shared: each can be used once. Mulligans are chosen by the host."))
 	body.add_child(_note("A lost connection pauses the round for up to 60 seconds. Leaving ends the room."))
 	var status_label := UiKit.text("", 21, UiKit.C_MUTED)
 	body.add_child(status_label)
@@ -935,36 +937,7 @@ func _open_round_setup(course_id: String, season_courses: Array = []) -> void:
 	names_upd.call()
 	body.add_child(_note("Pass-and-play: each player takes one shot in turn on this phone. Footballers are shared, so each can be used once per round."))
 	# mulligans
-	body.add_child(_caption("MULLIGANS"))
-	var choices := HFlowContainer.new()
-	choices.add_theme_constant_override("h_separation", 10)
-	choices.add_theme_constant_override("v_separation", 10)
-	var btns: Array[Button] = []
-	var values := [0, 1, 3, 5, -1]
-	var names := ["Off", "1", "3", "5", "Unlimited"]
-	var refresh := func() -> void:
-		for i in btns.size():
-			var on: bool = int(values[i]) == _last_mulligans
-			btns[i].add_theme_stylebox_override("normal", UiKit.skin("lime" if on else "recess", 6, 16, 8))
-			btns[i].add_theme_stylebox_override("hover", UiKit.skin("lime" if on else "btn", 6, 16, 8))
-			btns[i].add_theme_color_override("font_color", Color("#0E2A07") if on else Color.WHITE)
-			btns[i].add_theme_color_override("font_hover_color", Color("#0E2A07") if on else Color.WHITE)
-	for i in values.size():
-		var cb := Button.new()
-		cb.text = String(names[i])
-		cb.custom_minimum_size = Vector2(0, 62)
-		cb.focus_mode = Control.FOCUS_NONE
-		cb.add_theme_font_size_override("font_size", 24)
-		cb.add_theme_font_override("font", UiKit.font_semi())
-		cb.set_meta("ui_id", "mulligan_%s" % String(names[i]).to_lower())
-		var v := int(values[i])
-		cb.pressed.connect(func() -> void:
-			_last_mulligans = v
-			refresh.call())
-		btns.append(cb)
-		choices.add_child(cb)
-	refresh.call()
-	body.add_child(choices)
+	_mulligan_choices(body)
 	body.add_child(_note("Redo the last shot from its result screen. The choice stays fixed for this round."))
 	# difficulty: pre-filled from Settings > Gameplay, frozen for the round when it starts
 	body.add_child(_caption("DIFFICULTY"))
@@ -1475,3 +1448,36 @@ func _show_export() -> void:
 	v.add_child(status)
 	v.add_child(UiKit.primary(UiKit.button("Done", func() -> void: root.queue_free(), 84, 28)))
 	_present(root)
+
+## Mulligan count buttons (Off / 1 / 3 / 5 / Unlimited), shared by Round Setup and the online host lobby.
+func _mulligan_choices(body: VBoxContainer) -> void:
+	body.add_child(_caption("MULLIGANS"))
+	var choices := HFlowContainer.new()
+	choices.add_theme_constant_override("h_separation", 10)
+	choices.add_theme_constant_override("v_separation", 10)
+	var btns: Array[Button] = []
+	var values := [0, 1, 3, 5, -1]
+	var names := ["Off", "1", "3", "5", "Unlimited"]
+	var refresh := func() -> void:
+		for i in btns.size():
+			var on: bool = int(values[i]) == _last_mulligans
+			btns[i].add_theme_stylebox_override("normal", UiKit.skin("lime" if on else "recess", 6, 16, 8))
+			btns[i].add_theme_stylebox_override("hover", UiKit.skin("lime" if on else "btn", 6, 16, 8))
+			btns[i].add_theme_color_override("font_color", Color("#0E2A07") if on else Color.WHITE)
+			btns[i].add_theme_color_override("font_hover_color", Color("#0E2A07") if on else Color.WHITE)
+	for i in values.size():
+		var cb := Button.new()
+		cb.text = String(names[i])
+		cb.custom_minimum_size = Vector2(0, 62)
+		cb.focus_mode = Control.FOCUS_NONE
+		cb.add_theme_font_size_override("font_size", 24)
+		cb.add_theme_font_override("font", UiKit.font_semi())
+		cb.set_meta("ui_id", "mulligan_%s" % String(names[i]).to_lower())
+		var v := int(values[i])
+		cb.pressed.connect(func() -> void:
+			_last_mulligans = v
+			refresh.call())
+		btns.append(cb)
+		choices.add_child(cb)
+	refresh.call()
+	body.add_child(choices)
