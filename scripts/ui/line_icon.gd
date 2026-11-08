@@ -133,6 +133,13 @@ func _draw() -> void:
 			draw_arc(P.call(0, -2), 3.2 * u, deg_to_rad(-200), deg_to_rad(40), 14, color, stroke, true)
 			_line(P.call(1.8, 0.6), P.call(0, 2.6))
 			draw_circle(P.call(0, 5.6), 1.2 * u, color)
+		"star":
+			var sp := PackedVector2Array()
+			for k in 11:
+				var r2 := 9.0 if k % 2 == 0 else 3.8
+				var an := -PI / 2.0 + PI * float(k) / 5.0
+				sp.append(P.call(r2 * cos(an), r2 * sin(an)))
+			draw_polyline(sp, color, stroke, true)
 		"chevron_left":
 			draw_polyline(PackedVector2Array([P.call(3, -6), P.call(-3, 0), P.call(3, 6)]), color, stroke, true)
 		"trophy":

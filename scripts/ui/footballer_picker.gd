@@ -28,6 +28,14 @@ var context_text := ""
 var _sel_nations: Dictionary = {}
 var _sel_eras: Dictionary = {}
 var _avail := false
+var _fav_only := false
+# dev: custom caps / goals ranges (-1 = open ended), on top of the preset bands
+var _cr: Array = [-1, -1]
+var _gr: Array = [-1, -1]
+var _t_cr: Array = [-1, -1]
+var _t_gr: Array = [-1, -1]
+var _range_edits: Array[LineEdit] = []
+var _fav_btn: Button
 var _caps_band := 0
 var _goals_band := 0
 var _sort_key := "name_az"
@@ -258,6 +266,11 @@ func _build_main_panel() -> PanelContainer:
 	var rnd := _icon_button("shuffle", 64, _on_random, "random")
 	rnd.custom_minimum_size.x = 84
 	row.add_child(rnd)
+	_fav_btn = _icon_button("star", 64, func() -> void:
+		_fav_only = not _fav_only
+		_rebuild(), "favourites")
+	_fav_btn.custom_minimum_size.x = 84
+	row.add_child(_fav_btn)
 	v.add_child(row)
 	# active filter chips (fixed, only when something is active)
 	_chips = HFlowContainer.new()
@@ -305,12 +318,40 @@ func _options(limit: int) -> Dictionary:
 	}
 
 
+static func _range_on(r: Array) -> bool:
+	return int(r[0]) >= 0 or int(r[1]) >= 0
+
+
+static func _in_range(v: int, r: Array) -> bool:
+	return (int(r[0]) < 0 or v >= int(r[0])) and (int(r[1]) < 0 or v <= int(r[1]))
+
+
+static func _range_text(name: String, r: Array) -> String:
+	if int(r[0]) >= 0 and int(r[1]) >= 0:
+		return "%s %d–%d" % [name, int(r[0]), int(r[1])]
+	return "%s %s" % [name, ("%d+" % int(r[0])) if int(r[0]) >= 0 else ("up to %d" % int(r[1]))]
+
+
+func _fav_filter(list: Array) -> Array:
+	if not _fav_only and not (show_stats and (_range_on(_cr) or _range_on(_gr))):
+		return list
+	return list.filter(func(fb: Footballer) -> bool:
+		if _fav_only and not App.settings.favourites.has(fb.id):
+			return false
+		if show_stats and (not _in_range(fb.caps, _cr) or not _in_range(fb.goals, _gr)):
+			return false
+		return true)
+
+
 func _filter_count() -> int:
 	return int(not _sel_nations.is_empty()) + int(not _sel_eras.is_empty()) + int(_avail) \
-		+ int(_caps_band > 0) + int(_goals_band > 0)
+		+ int(_caps_band > 0) + int(_goals_band > 0) + int(_fav_only) + int(_range_on(_cr)) + int(_range_on(_gr))
 
 
 func _clear_all() -> void:
+	_fav_only = false
+	_cr = [-1, -1]
+	_gr = [-1, -1]
 	_sel_nations.clear()
 	_sel_eras.clear()
 	_avail = false
@@ -366,6 +407,10 @@ func _refresh_chips() -> void:
 		_chips.add_child(_chip(String(FootballerRepository.ERAS[int(i)][0]), "", func() -> void:
 			_sel_eras.erase(i)
 			_rebuild()))
+	if _fav_only:
+		_chips.add_child(_chip("Favourites", "", func() -> void:
+			_fav_only = false
+			_rebuild()))
 	if _avail:
 		_chips.add_child(_chip("Available only", "", func() -> void:
 			_avail = false
@@ -373,6 +418,14 @@ func _refresh_chips() -> void:
 	if show_stats and _caps_band > 0:
 		_chips.add_child(_chip(String(FootballerRepository.CAPS_BANDS[_caps_band][0]), "", func() -> void:
 			_caps_band = 0
+			_rebuild()))
+	if show_stats and _range_on(_cr):
+		_chips.add_child(_chip(_range_text("Caps", _cr), "", func() -> void:
+			_cr = [-1, -1]
+			_rebuild()))
+	if show_stats and _range_on(_gr):
+		_chips.add_child(_chip(_range_text("Goals", _gr), "", func() -> void:
+			_gr = [-1, -1]
 			_rebuild()))
 	if show_stats and _goals_band > 0:
 		_chips.add_child(_chip(String(FootballerRepository.GOALS_BANDS[_goals_band][0]), "", func() -> void:
@@ -450,6 +503,28 @@ func _footballer_row(fb: Footballer, used: bool, selected: bool, cb: Callable) -
 	yr.add_theme_font_override("font", UiKit.font_num())
 	yr.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	h.add_child(yr)
+	var fav := App.settings.favourites.has(fb.id)
+	var star := Button.new()
+	star.flat = true
+	star.focus_mode = Control.FOCUS_NONE
+	star.custom_minimum_size = Vector2(56, 56)
+	star.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	for st in ["normal", "hover", "pressed", "disabled"]:
+		star.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	var si := LineIcon.make("star", 34, Color("#FFD84A") if fav else Color(1, 1, 1, 0.55))
+	si.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	si.position = Vector2(11, 11)
+	star.add_child(si)
+	star.pressed.connect(func() -> void:
+		if App.settings.favourites.has(fb.id):
+			App.settings.favourites.erase(fb.id)
+		else:
+			App.settings.favourites.append(fb.id)
+		App.settings.save()
+		si.set_color(Color("#FFD84A") if App.settings.favourites.has(fb.id) else Color(1, 1, 1, 0.55))
+		if _fav_only:
+			_render())
+	h.add_child(star)
 	var chev := LineIcon.make("chevron_right", 26, Color(1, 1, 1, 0.85))
 	chev.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(chev)
@@ -462,7 +537,7 @@ func _footballer_row(fb: Footballer, used: bool, selected: bool, cb: Callable) -
 func _render() -> void:
 	UiKit.clear(_list)
 	var o := _options(-1)
-	var results := session.repo.query(o, session.pool)
+	var results := _fav_filter(session.repo.query(o, session.pool))
 	var total := results.size()
 	for i in mini(_limit, total):
 		var fb: Footballer = results[i]
@@ -501,7 +576,7 @@ func _render() -> void:
 func _on_random() -> void:
 	var o := _options(-1)
 	o["available_only"] = true
-	var candidates := session.repo.query(o, session.pool)
+	var candidates := _fav_filter(session.repo.query(o, session.pool))
 	if candidates.is_empty():
 		return
 	var fb: Footballer = candidates[randi() % candidates.size()]
@@ -607,6 +682,9 @@ func _build_filter_panel() -> PanelContainer:
 		stat_row.add_child(_caps_opt)
 		stat_row.add_child(_goals_opt)
 		v.add_child(stat_row)
+		v.add_child(UiKit.label("Custom range (e.g. 80 to 120)", 18, UiKit.C_WARN))
+		for spec in [["Caps", _t_cr], ["Goals", _t_gr]]:
+			v.add_child(_range_row(String(spec[0]), spec[1] as Array))
 	# apply
 	var apply := UiKit.primary(Button.new())
 	apply.custom_minimum_size = Vector2(0, 72)
@@ -626,6 +704,35 @@ func _build_filter_panel() -> PanelContainer:
 	apply.add_child(ac)
 	v.add_child(apply)
 	return p
+
+
+func _range_row(label: String, r: Array) -> Control:
+	var row := UiKit.hbox(8)
+	var l := UiKit.label(label, 22, Color.WHITE)
+	l.custom_minimum_size = Vector2(90, 0)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(l)
+	for k in 2:
+		var le := LineEdit.new()
+		le.placeholder_text = "min" if k == 0 else "max"
+		le.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER
+		le.custom_minimum_size = Vector2(0, 54)
+		le.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		le.add_theme_font_size_override("font_size", 22)
+		le.text_changed.connect(func(t: String) -> void: r[k] = int(t) if t.strip_edges().is_valid_int() and int(t) >= 0 else -1)
+		le.set_meta("range", r)
+		le.set_meta("k", k)
+		_range_edits.append(le)
+		row.add_child(le)
+		if k == 0:
+			row.add_child(UiKit.label("to", 20, UiKit.C_MUTED))
+	return row
+
+
+func _sync_range_edits() -> void:
+	for le in _range_edits:
+		var v := int((le.get_meta("range") as Array)[int(le.get_meta("k"))])
+		le.text = "" if v < 0 else str(v)
 
 
 func _band_option(bands: Array, on_select: Callable) -> OptionButton:
@@ -747,6 +854,10 @@ func _open_filters() -> void:
 	_t_avail = _avail
 	_t_caps = _caps_band
 	_t_goals = _goals_band
+	_t_cr[0] = _cr[0]
+	_t_cr[1] = _cr[1]
+	_t_gr[0] = _gr[0]
+	_t_gr[1] = _gr[1]
 	_country_search.text = ""
 	# selected countries first (then alphabetical), only on open so rows don't jump while tapping
 	var order: Array = session.repo.nationalities()
@@ -802,6 +913,7 @@ func _refresh_filter_widgets() -> void:
 	if _caps_opt != null:
 		_caps_opt.selected = _t_caps
 		_goals_opt.selected = _t_goals
+		_sync_range_edits()
 
 
 func _filter_country_rows() -> void:
@@ -816,6 +928,10 @@ func _reset_temp() -> void:
 	_t_avail = false
 	_t_caps = 0
 	_t_goals = 0
+	_t_cr[0] = -1
+	_t_cr[1] = -1
+	_t_gr[0] = -1
+	_t_gr[1] = -1
 	_country_search.text = ""
 	_filter_country_rows()
 	_refresh_filter_widgets()
@@ -827,6 +943,8 @@ func _apply_filters() -> void:
 	_avail = _t_avail
 	_caps_band = _t_caps
 	_goals_band = _t_goals
+	_cr = _t_cr.duplicate()
+	_gr = _t_gr.duplicate()
 	_filter_panel.visible = false
 	_main_panel.visible = true
 	_rebuild()

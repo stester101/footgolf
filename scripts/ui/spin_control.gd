@@ -6,6 +6,8 @@ extends Control
 signal spin_changed(value: float)
 
 var spin := 0.0
+## Marker colour (changes with the active player).
+var accent := Color("#A0F344")
 var _dragging := false
 var _last_tap_ms := 0
 var _touch_index := -1
@@ -107,11 +109,11 @@ func _draw() -> void:
 		draw_line(c + dir * (r - 7.0), c + dir * (r + 1.0), Color(1, 1, 1, 0.7), 2.0, true)
 	var up := PackedVector2Array([c + Vector2(0, -r + 6.0), c + Vector2(-8, -r + 18.0), c + Vector2(8, -r + 18.0)])
 	var dn := PackedVector2Array([c + Vector2(0, r - 6.0), c + Vector2(-8, r - 18.0), c + Vector2(8, r - 18.0)])
-	draw_colored_polygon(up, UiKit.C_ACCENT)
-	draw_colored_polygon(dn, UiKit.C_ACCENT)
+	draw_colored_polygon(up, accent)
+	draw_colored_polygon(dn, accent)
 	# strike-point guides on the ball
 	draw_line(c + Vector2(0, -br * 0.9), c + Vector2(0, br * 0.9), Color(0.04, 0.12, 0.25, 0.45), 1.5, true)
 	draw_line(c + Vector2(-br * 0.16, 0), c + Vector2(br * 0.16, 0), Color(0.04, 0.12, 0.25, 0.45), 1.5, true)
 	var dot := c + Vector2(0, -spin * br * 0.8)
 	draw_circle(dot, 10.0, Color(0.04, 0.12, 0.25, 0.9))
-	draw_circle(dot, 7.5, UiKit.C_ACCENT)
+	draw_circle(dot, 7.5, accent)

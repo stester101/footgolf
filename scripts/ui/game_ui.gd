@@ -78,6 +78,12 @@ var _pin_value: Label
 var _toast: Label
 var _toast_t := 0.0
 var _card_dist: Label
+var _turn_label: Label
+var _turn_banner: Label
+var _last_turn_key := ""
+const PLAYER_COLS := [Color("#A0F344"), Color("#FF5A5A"), Color("#FFD84A"), Color("#52AAFF")]
+const PLAYER_DARK_TEXT := [true, false, true, false]
+var _tint_cache := {}
 var _change_btn: Button
 var _shot_text: Label
 var _hole_strip: HBoxContainer
@@ -338,7 +344,7 @@ func _refresh_hole_strip() -> void:
 	UiKit.clear(_hole_strip)
 	var cur := session.current_hole_state().raw_total() + 1
 	if _shot_text != null:
-		_shot_text.text = ("P%d · SHOT %d" % [session.turn + 1, cur]) if session.player_count() > 1 else "SHOT %d" % cur
+		_shot_text.text = String(session.active_name()).to_upper() if session.player_count() > 1 else "SHOT %d" % cur
 	var first := maxi(1, cur - 1)
 	for k in 4:
 		var n := first + k
@@ -489,6 +495,9 @@ func _build_shot_controls() -> VBoxContainer:
 	_lie_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_lie_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hdr.add_child(_lie_label)
+	_turn_label = _tag("", 20, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	_turn_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hdr.add_child(_turn_label)
 	# chosen footballer (tap to change); hidden until one is picked
 	_change_btn = Button.new()
 	_change_btn.custom_minimum_size = Vector2(190, 40)
@@ -802,6 +811,7 @@ func refresh() -> void:
 	_spin.mouse_filter = Control.MOUSE_FILTER_STOP if (flight and not moving) else Control.MOUSE_FILTER_IGNORE
 	_traj_btn.disabled = moving or not flight
 	_spin.set_spin(session.spin if flight else 0.0)
+	_apply_player_style()
 	_traj_btn.text = "%s\n%d°" % [ShotTypes.trajectory_name(session.trajectory), int(round(session.launch_angle_for(session.trajectory)))]
 	_spin_label.text = "NO SPIN" if (not flight or absf(session.spin) < 0.025) else "%s %d%%" % ["TOP" if session.spin > 0.0 else "BACK", int(round(absf(session.spin) * 100.0))]
 	# one action button: Choose footballer -> Take shot -> Skip while the ball is moving
@@ -870,6 +880,56 @@ func _refresh_result_distances() -> void:
 		var label: Label = entry["label"]
 		if is_instance_valid(label):
 			label.text = Units.fmt_len(float(entry["metres"]))
+
+
+## Player colours: P1 green, P2 red, P3 yellow, P4 blue. Tints the spin markers and the selected
+## stat / shot buttons, labels whose shot it is, and flashes a short "your shot" message on a turn change.
+func _apply_player_style() -> void:
+	var multi := session.player_count() > 1
+	var i := clampi(session.turn, 0, 3) if multi else 0
+	var col: Color = PLAYER_COLS[i]
+	_spin.accent = col
+	_spin.queue_redraw()
+	if not _tint_cache.has(i):
+		var k: UiSkin = UiKit.skin("lime", 4, 4, 4).duplicate()
+		k.top = col.lightened(0.25)
+		k.bottom = col.darkened(0.12)
+		_tint_cache[i] = k
+	var txt := Color("#0E2A07") if PLAYER_DARK_TEXT[i] else Color.WHITE
+	for b in [_caps_btn, _goals_btn, _flight_btn, _roll_btn]:
+		b.add_theme_stylebox_override("pressed", _tint_cache[i])
+		b.add_theme_stylebox_override("hover_pressed", _tint_cache[i])
+		b.add_theme_color_override("font_pressed_color", txt)
+		b.add_theme_color_override("font_hover_pressed_color", txt)
+	_turn_label.text = String(session.active_name()).to_upper() if multi else ""
+	_turn_label.add_theme_color_override("font_color", col)
+	if multi and session.state == ShotTypes.State.AIMING:
+		var key := "%d:%d:%d" % [session.turn, session.round_state.current_index, session.shot_counter]
+		if key != _last_turn_key:
+			_last_turn_key = key
+			_flash_turn(String(session.active_name()).to_upper() + " · YOUR SHOT", col)
+
+
+func _flash_turn(text: String, col: Color) -> void:
+	if _turn_banner == null:
+		_turn_banner = UiKit.label("", 54, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		_turn_banner.add_theme_font_override("font", UiKit.font_semi())
+		_turn_banner.add_theme_constant_override("outline_size", 10)
+		_turn_banner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+		_turn_banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+		_turn_banner.anchor_left = 0.0
+		_turn_banner.anchor_right = 1.0
+		_turn_banner.offset_left = 0.0
+		_turn_banner.offset_right = 0.0
+		_turn_banner.offset_top = 360.0
+		add_child(_turn_banner)
+	_turn_banner.text = text
+	_turn_banner.add_theme_color_override("font_color", col)
+	_turn_banner.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(_turn_banner, "modulate:a", 1.0, 0.3)
+	tw.tween_interval(0.9)
+	tw.tween_property(_turn_banner, "modulate:a", 0.0, 0.5)
 
 
 func _on_action_pressed() -> void:
