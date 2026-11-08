@@ -25,7 +25,13 @@ jobs:
         run: |
           mkdir -p "$HOME/.android" "$HOME/.config/godot" builds
           keytool -genkeypair -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          python3 -c 'import os,pathlib; h=pathlib.Path.home(); lines=["[gd_resource type=\\"EditorSettings\\" format=3]","","[resource]",f"export/android/android_sdk_path = \\"{os.environ[\\"ANDROID_HOME\\"]}\\"",f"export/android/java_sdk_path = \\"{os.environ[\\"JAVA_HOME\\"]}\\"",f"export/android/debug_keystore = \\"{h}/.android/debug.keystore\\"","export/android/debug_keystore_user = \\"androiddebugkey\\"","export/android/debug_keystore_pass = \\"android\\""]; (h/".config/godot/editor_settings-4.7.tres").write_text("\\n".join(lines)+"\\n")'
+          echo '[gd_resource type="EditorSettings" format=3]' > "$HOME/.config/godot/editor_settings-4.7.tres"
+          echo '[resource]' >> "$HOME/.config/godot/editor_settings-4.7.tres"
+          echo "export/android/android_sdk_path = \\"$ANDROID_HOME\\"" >> "$HOME/.config/godot/editor_settings-4.7.tres"
+          echo "export/android/java_sdk_path = \\"$JAVA_HOME\\"" >> "$HOME/.config/godot/editor_settings-4.7.tres"
+          echo "export/android/debug_keystore = \\"$HOME/.android/debug.keystore\\"" >> "$HOME/.config/godot/editor_settings-4.7.tres"
+          echo 'export/android/debug_keystore_user = "androiddebugkey"' >> "$HOME/.config/godot/editor_settings-4.7.tres"
+          echo 'export/android/debug_keystore_pass = "android"' >> "$HOME/.config/godot/editor_settings-4.7.tres"
       - name: Import Godot resources
         run: "$HOME/godot/godot" --headless --path . --editor --import --quit
       - name: Export latest debug APK
