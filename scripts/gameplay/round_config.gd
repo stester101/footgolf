@@ -65,6 +65,28 @@ func apply_dict(d: Dictionary) -> void:
 	show_aim_arrow = bool(d.get("show_aim_arrow", show_aim_arrow))
 
 
+## Complete, JSON-safe encoding (online setup: the host freezes this and every phone decodes it).
+func to_dict() -> Dictionary:
+	return {
+		"cup_diameter_ft": cup_diameter_ft, "gimme_ft": gimme_ft, "reuse_per_mode": reuse_per_mode,
+		"wind_mode": wind_mode, "wind_scale": wind_scale, "max_score_mode": max_score_mode,
+		"max_over_par_custom": max_over_par_custom, "show_aim_arrow": show_aim_arrow,
+		"show_trail": show_trail, "lie_exact": lie_exact, "show_stats": show_stats,
+	}
+
+
+## Decodes to_dict() with the same clamps as the Round Setup controls; missing keys keep defaults.
+static func from_dict(d: Dictionary) -> RoundConfig:
+	var rc := RoundConfig.new()
+	rc.cup_diameter_ft = clampf(float(d.get("cup_diameter_ft", rc.cup_diameter_ft)), MIN_CUP_FT, MAX_CUP_FT)
+	rc.gimme_ft = ScoringService.clamp_radius_ft(float(d.get("gimme_ft", rc.gimme_ft)))
+	rc.show_trail = bool(d.get("show_trail", rc.show_trail))
+	rc.lie_exact = bool(d.get("lie_exact", rc.lie_exact))
+	rc.show_stats = bool(d.get("show_stats", rc.show_stats))
+	rc.apply_dict(d)
+	return rc
+
+
 func duplicate_config() -> RoundConfig:
 	var c := RoundConfig.new()
 	c.cup_diameter_ft = cup_diameter_ft

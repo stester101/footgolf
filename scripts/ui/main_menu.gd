@@ -641,6 +641,7 @@ func _open_online_lobby() -> void:
 	(pg.root as Control).set_meta("online_page", true)
 	var body: VBoxContainer = pg.body
 	var is_host := App.online.seat == 0
+	var online_rules := RoundConfig.from_settings(App.settings)  # host's saved defaults, editable here
 	var code_card := _online_card("select")
 	var cv: VBoxContainer = code_card[1]
 	cv.add_child(_caption("ROOM CODE"))
@@ -665,6 +666,8 @@ func _open_online_lobby() -> void:
 	if is_host:
 		body.add_child(_caption("COURSE"))
 		body.add_child(courses)
+		body.add_child(_caption("DIFFICULTY (frozen for everyone at start)"))
+		_difficulty_controls(body, online_rules, Callable())
 	body.add_child(_note("Host settings are frozen at start. Footballers are shared: each can be used once. Mulligans: %s." % ("Unlimited" if _last_mulligans < 0 else str(_last_mulligans))))
 	body.add_child(_note("A lost connection pauses the round for up to 60 seconds. Leaving ends the room."))
 	var status_label := UiKit.text("", 21, UiKit.C_MUTED)
@@ -675,7 +678,7 @@ func _open_online_lobby() -> void:
 	ready.toggled.connect(func(value: bool) -> void: App.online.set_ready(value))
 	(pg.footer as VBoxContainer).add_child(ready)
 	var start := _primary_button("Start online round", func() -> void:
-		App.online.start_game(String(course_list[courses.selected].id), _last_mulligans), "online_start")
+		App.online.start_game(String(course_list[courses.selected].id), _last_mulligans, online_rules), "online_start")
 	start.visible = is_host
 	(pg.footer as VBoxContainer).add_child(start)
 	var update := func() -> void:

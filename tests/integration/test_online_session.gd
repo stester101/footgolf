@@ -62,3 +62,45 @@ func test_online_authority_duplicate_pool_and_mulligan() -> void:
 	host_room.free()
 	guest_room.free()
 	TestHelpers.cleanup_repo(repo)
+
+
+## The host's RoundConfig + physics travel through JSON; two phones end with identical rules.
+func test_online_setup_freezes_round_config_and_physics() -> void:
+	var rc := RoundConfig.new()
+	rc.cup_diameter_ft = 2.5
+	rc.gimme_ft = 3.5
+	rc.reuse_per_mode = true
+	rc.wind_mode = RoundConfig.WindMode.SCALED
+	rc.wind_scale = 0.5
+	rc.max_score_mode = RoundConfig.MaxScore.CUSTOM
+	rc.max_over_par_custom = 2
+	rc.show_aim_arrow = false
+	rc.show_trail = false
+	rc.lie_exact = true
+	rc.show_stats = false
+	var host_cfg := PhysicsConfig.new()
+	host_cfg.cup_sink_fraction = 0.37
+	host_cfg.pin_restitution = 0.21
+	host_cfg.cup_lip_loss = 0.33
+	host_cfg.cup_lip_deflect_deg = 12.0
+	host_cfg.set_cup_diameter_in(rc.cup_diameter_ft * 12.0)
+	var setup: Dictionary = JSON.parse_string(JSON.stringify({"physics": host_cfg.to_dict(), "rules": rc.to_dict(),
+		"wind_custom": false, "wind_speed": 0.0, "wind_bearing": 0.0}))
+	var repo := TestHelpers.make_repo()
+	for i in 2:
+		var s := OnlineSession.new(PhysicsConfig.new(), repo)
+		var got := OnlineSession.apply_setup(s, setup)
+		assert_eq(JSON.stringify(got.to_dict()), JSON.stringify(rc.to_dict()), "rules decode identically")
+		assert_eq(JSON.stringify(s.cfg.to_dict()), JSON.stringify(host_cfg.to_dict()), "physics decode identically")
+		assert_true(is_equal_approx(s.cfg.cup_sink_fraction, 0.37), "cup_sink_fraction travels")
+		assert_true(is_equal_approx(s.cfg.cup_radius, 2.5 * 12.0 * 0.0254 * 0.5), "cup size from rules")
+		assert_true(is_equal_approx(s.holeout_radius_ft, 3.5))
+		assert_true(is_equal_approx(s.wind_scale, 0.5))
+		var hole := HoleDefinition.make_flat(Surface.Type.FAIRWAY)
+		hole.par = 3
+		s.start_round([hole], 7, got.pool_rule(), 0, 2)
+		assert_eq(s.pool.reuse_rule, FootballerPool.ReuseRule.ONCE_PER_MODE)
+		assert_eq(s.current_hole_state().max_score, 5, "par 3 + 2")
+		assert_false(s.rules.show_stats)
+		assert_true(s.rules.lie_exact)
+	TestHelpers.cleanup_repo(repo)

@@ -87,7 +87,18 @@ func _lobby(c: Client) -> void:
 		if not bool(room.players[room.seat].ready):
 			room.set_ready(true)
 		if c.is_host and room.players.size() == 2 and room.players.all(func(p: Dictionary) -> bool: return bool(p.ready)):
-			room.start_game("starter", 1)
+			room.start_game("starter", 1, _rules())
+
+func _rules() -> RoundConfig:
+	var rc := RoundConfig.new()
+	rc.cup_diameter_ft = 1.5
+	rc.gimme_ft = 5.0
+	rc.reuse_per_mode = true
+	rc.max_score_mode = RoundConfig.MaxScore.CUSTOM
+	rc.max_over_par_custom = 3
+	rc.wind_mode = RoundConfig.WindMode.NONE
+	rc.show_stats = false
+	return rc
 
 func _start(c: Client) -> void:
 	var repo := FootballerRepository.new()
@@ -101,8 +112,9 @@ func _start(c: Client) -> void:
 	h.has_cup = true
 	c.session = OnlineSession.new(PhysicsConfig.new(), repo)
 	c.session.configure(c.room)
-	c.session.holeout_radius_ft = 5.0  # fixture relies on the auto hole-out radius (game default is 0 ft)
-	c.session.start_round([h], int(c.room.setup.seed), 0, 1, 2)
+	# The host's frozen RoundConfig + physics arrive in the setup; both phones apply them the same way.
+	var rc := OnlineSession.apply_setup(c.session, c.room.setup)
+	c.session.start_round([h], int(c.room.setup.seed), rc.pool_rule(), 1, 2)
 	if c.is_host: c.session.begin_play()
 
 func _process(delta: float) -> bool:
@@ -122,6 +134,12 @@ func _process(delta: float) -> bool:
 	phase = "host %s t%d r%d / guest %s t%d r%d" % [host.session.state, host.session.turn, host.session.revision,
 		guest.session.state, guest.session.turn, guest.session.revision]
 	if host.session.state == ShotTypes.State.ROUND_COMPLETE and guest.session.state == ShotTypes.State.ROUND_COMPLETE and done_at == 0:
+		_check(JSON.stringify(host.session.rules.to_dict()) == JSON.stringify(_rules().to_dict()), "host rules")
+		_check(JSON.stringify(guest.session.rules.to_dict()) == JSON.stringify(_rules().to_dict()), "guest rules")
+		_check(JSON.stringify(host.session.cfg.to_dict()) == JSON.stringify(guest.session.cfg.to_dict()), "physics equal")
+		_check(is_equal_approx(guest.session.cfg.cup_radius, 1.5 * 12.0 * 0.0254 * 0.5), "guest cup size from host rules")
+		_check(guest.session.pool.reuse_rule == FootballerPool.ReuseRule.ONCE_PER_MODE and host.session.pool.reuse_rule == guest.session.pool.reuse_rule, "once-per-mode on both")
+		_check(guest.session.current_hole_state().max_score > 0 and guest.session.current_hole_state().max_score == host.session.current_hole_state().max_score, "max score equal")
 		_check(host.session.pool.used_count() == 2, "host shared pool")
 		_check(guest.session.pool.used_count() == 2, "guest shared pool")
 		_check(guest.disconnected, "reconnect not exercised")

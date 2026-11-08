@@ -113,6 +113,7 @@ func to_dict() -> Dictionary:
 		"max_motion_time": max_motion_time,
 		"cup_radius": cup_radius,
 		"cup_capture_speed": cup_capture_speed,
+		"cup_sink_fraction": cup_sink_fraction,
 		"cup_landing_capture_speed": cup_landing_capture_speed,
 		"canopy_damping": canopy_damping,
 		"pin_radius": pin_radius,
@@ -135,7 +136,7 @@ func to_dict() -> Dictionary:
 func apply_dict(d: Dictionary) -> void:
 	for key in ["gravity", "dt", "ball_radius", "launch_angle_deg", "drag_k", "bounce_soft",
 			"min_bounce_speed", "rest_speed", "rest_time", "static_factor", "max_motion_time",
-			"cup_radius", "cup_capture_speed", "cup_landing_capture_speed", "canopy_damping",
+			"cup_radius", "cup_capture_speed", "cup_sink_fraction", "cup_landing_capture_speed", "canopy_damping",
 			"trunk_restitution", "spin_lift_k", "spin_retention",
 			"pin_radius", "pin_height", "pin_soft_speed", "pin_restitution", "pin_air_loss", "pin_max_cup_radius", "cup_rim_lip", "cup_lip_max_factor", "cup_lip_deflect_deg", "cup_lip_loss"]:
 		if d.has(key):

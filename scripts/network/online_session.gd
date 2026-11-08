@@ -30,6 +30,25 @@ func refresh_state() -> void:
 	message.emit("Refreshing...")
 
 
+## Applies the host's frozen setup dictionary to a session (identically on every phone) and returns the
+## decoded RoundConfig. Call before start_round; use rules.pool_rule() for the footballer reuse rule.
+static func apply_setup(net: GameSession, setup: Dictionary) -> RoundConfig:
+	var rc: RoundConfig
+	if setup.get("rules") is Dictionary:
+		rc = RoundConfig.from_dict(setup.rules)
+	else:  # setup from an older host build
+		rc = RoundConfig.new()
+		rc.show_stats = bool(setup.get("show_stats", false))
+		rc.gimme_ft = ScoringService.clamp_radius_ft(float(setup.get("holeout", rc.gimme_ft)))
+	if setup.get("physics") is Dictionary:
+		net.cfg.apply_dict(setup.physics)
+	net.apply_rules(rc)  # gimme, wind multiplier, cup size (cup also arrives in the physics dict)
+	net.wind_custom = bool(setup.get("wind_custom", false))
+	net.wind_custom_speed = float(setup.get("wind_speed", net.wind_custom_speed))
+	net.wind_custom_bearing = float(setup.get("wind_bearing", net.wind_custom_bearing))
+	return rc
+
+
 func configure(value: OnlineRoom) -> void:
 	room = value
 	_host = room.seat == 0

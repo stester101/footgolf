@@ -1347,14 +1347,14 @@ func _on_shot_resolved(r: ShotResult) -> void:
 	_result_box.add_child(auto_bar)
 	_cancel_auto_continue(null)
 	# auto-continue: offline only (online turns are acknowledged through the host), never for a hole-out
-	if App.settings.auto_continue and not (session is OnlineSession) and not holed_done:
+	if App.settings.auto_continue and not holed_done and _may_auto_continue():
 		auto_bar.visible = true
 		auto_bar.value = 0.0
 		_auto_tween = create_tween()
 		_auto_tween.tween_interval(0.6)  # let the reveal finish first
 		_auto_tween.tween_property(auto_bar, "value", 1.0, AUTO_CONTINUE_SECS)
 		_auto_tween.tween_callback(func() -> void:
-			if session.state == ShotTypes.State.SHOT_RESULT and _overlays.is_empty():
+			if session.state == ShotTypes.State.SHOT_RESULT and _overlays.is_empty() and _may_auto_continue():
 				session.acknowledge_result())
 	refresh()
 	# --- reveal animation: count the stat up, then fade the breakdown in (tap the card to skip it)
@@ -1384,6 +1384,11 @@ func _on_shot_resolved(r: ShotResult) -> void:
 	for n in later:
 		if n != null:
 			tw.tween_property(n, "modulate:a", 1.0, 0.18)
+
+
+## Online: only the player whose turn it is acknowledges (through the host); a waiting phone sends nothing.
+func _may_auto_continue() -> bool:
+	return not (session is OnlineSession) or session.controls_turn()
 
 
 func _cancel_auto_continue(bar: ProgressBar) -> void:

@@ -118,17 +118,9 @@ func _ready() -> void:
 	if App.online.started:
 		var net := OnlineSession.new(PhysicsConfig.new(), App.repo)
 		net.configure(App.online)
-		net.cfg.apply_dict(App.online.setup.physics)
-		net.holeout_radius_ft = float(App.online.setup.holeout)
-		net.wind_custom = bool(App.online.setup.wind_custom)
-		net.wind_custom_speed = float(App.online.setup.wind_speed)
-		net.wind_custom_bearing = float(App.online.setup.wind_bearing)
+		# the host's frozen setup (RoundConfig rules, physics incl. cup, wind) is applied identically on every phone
+		rules = OnlineSession.apply_setup(net, App.online.setup)
 		session = net
-		# online keeps the host's frozen setup (physics incl. cup, gimme, wind, stats); aids stay local
-		rules = RoundConfig.from_settings(App.settings)
-		rules.show_stats = bool(App.online.setup.get("show_stats", false))
-		rules.gimme_ft = net.holeout_radius_ft
-		session.rules = rules
 	else:
 		# Non-developer rounds get a private physics copy so the frozen cup size never edits Settings.
 		var round_cfg := App.settings.physics
@@ -168,7 +160,7 @@ func _ready() -> void:
 			h.par = int(App.online.setup.pars.get(h.id, h.par))
 	else:
 		App.telemetry.attach(session, course_id, String(App.course_info(course_id).get("name", course_id)))
-	session.start_round(defs, seed_value, (rules.pool_rule() if not App.online.started else FootballerPool.ReuseRule.ONCE_PER_ROUND), mulligans, players)
+	session.start_round(defs, seed_value, rules.pool_rule(), mulligans, players)
 	for i in mini(players, MainMenu.player_names.size()):
 		session.player_names[i] = String(MainMenu.player_names[i])
 		session.profile_ids.append(String(MainMenu.player_profile_ids[i]))

@@ -163,15 +163,19 @@ func leave() -> void:
 func set_ready(value: bool) -> void:
 	transport.send({"type": "ready", "ready": value})
 
-func start_game(course_id: String, mulligans: int) -> void:
+func start_game(course_id: String, mulligans: int, rules: RoundConfig = null) -> void:
 	if seat != 0: return
+	if rules == null: rules = RoundConfig.from_settings(app.settings)
+	# Frozen physics = the host's physics with the round's cup size; every phone applies it unchanged.
+	var phys: PhysicsConfig = app.settings.physics.copy()
+	phys.set_cup_diameter_in(rules.cup_diameter_ft * 12.0)
 	var pars := {}
 	for h in app.load_holes(course_id): pars[h.id] = h.par
 	transport.send({"type": "start", "setup": {"course": course_id, "mulligans": mulligans,
-		"seed": randi() & 0x7fffffff, "physics": app.settings.physics.to_dict(),
-		"holeout": app.settings.holeout_radius_ft, "wind_custom": app.settings.wind_custom,
+		"seed": randi() & 0x7fffffff, "physics": phys.to_dict(), "rules": rules.to_dict(),
+		"holeout": rules.gimme_ft, "wind_custom": app.settings.wind_custom,
 		"wind_speed": app.settings.wind_speed, "wind_bearing": app.settings.wind_bearing,
-		"show_stats": app.settings.show_stats, "pars": pars}})
+		"show_stats": rules.show_stats, "pars": pars}})
 
 func request_resync() -> void:
 	if active and started:
