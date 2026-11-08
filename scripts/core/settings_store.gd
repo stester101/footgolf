@@ -79,6 +79,7 @@ var vibration := true
 ## Graphics quality: 0 = Low (original look/cost), 1 = High (sky shader, ground variation, per-hole sun).
 var graphics_quality := 1
 var lie_effect_exact := false  # spin-ball lie read-out: false = range (-10 to -20%), true = this shot's exact value
+var auto_continue := true  # result card continues by itself after a few seconds (progress bar); tap to skip
 var drag_trajectory := true  # trial: drag up/down on the aim view to change trajectory
 ## Favourite footballer ids (starred in the picker). Global for now; per-profile later.
 ## LEGACY: only read once to migrate into the first profile (PlayerProfileStore); no longer used in play.
@@ -118,6 +119,7 @@ func load_settings() -> void:
 	graphics_quality = clampi(int(d.get("graphics_quality", 1)), 0, 1)
 	lie_effect_exact = bool(d.get("lie_effect_exact", false))
 	drag_trajectory = bool(d.get("drag_trajectory", true))
+	auto_continue = bool(d.get("auto_continue", true))
 	favourites = (d.get("favourites", []) as Array).duplicate() if typeof(d.get("favourites")) == TYPE_ARRAY else []
 	show_stats = bool(d.get("show_stats", true))
 	if typeof(d.get("round_defaults")) == TYPE_DICTIONARY:
@@ -165,6 +167,7 @@ func save() -> void:
 		"graphics_quality": graphics_quality,
 		"lie_effect_exact": lie_effect_exact,
 		"drag_trajectory": drag_trajectory,
+		"auto_continue": auto_continue,
 		"favourites": favourites,
 		"round_defaults": round_defaults,
 		"show_stats": show_stats,

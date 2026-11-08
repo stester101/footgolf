@@ -57,6 +57,8 @@ var _lie_effect_label: Label
 var _traj_btn: Button
 var _skip_btn: Button
 var _fast_btn: Button
+var _auto_tween: Tween
+const AUTO_CONTINUE_SECS := 4.0
 ## True while the player holds the fast-forward button (shot animation runs faster).
 var fast_forward := false
 var _shot_btn: Button
@@ -828,6 +830,8 @@ func refresh() -> void:
 	# --- shot state
 	var moving := session.is_ball_moving()
 	var aiming := session.state == ShotTypes.State.AIMING
+	if session.state != ShotTypes.State.SHOT_RESULT and _auto_tween != null and _auto_tween.is_valid():
+		_auto_tween.kill()
 	if session.state != ShotTypes.State.SHOT_RESULT and _reveal != null and _reveal.is_valid():
 		_reveal.kill()
 		_result_box.modulate.a = 1.0
@@ -1304,7 +1308,16 @@ func _on_shot_resolved(r: ShotResult) -> void:
 	var details := UiKit.text(r.diagnostic_text(), 16, UiKit.C_MUTED)
 	details.visible = false
 	var row := UiKit.hbox(10)
-	row.add_child(UiKit.button("Details", func() -> void: details.visible = not details.visible, 76, 22))
+	var auto_bar := ProgressBar.new()
+	auto_bar.show_percentage = false
+	auto_bar.min_value = 0.0
+	auto_bar.max_value = 1.0
+	auto_bar.custom_minimum_size = Vector2(0, 8)
+	auto_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	auto_bar.visible = false
+	row.add_child(UiKit.button("Details", func() -> void:
+		details.visible = not details.visible
+		_cancel_auto_continue(auto_bar), 76, 22))
 	if session.can_mulligan():
 		var left := session.round_state.mulligans_remaining()
 		var retry := UiKit.button("Mulligan%s" % ("" if left < 0 else " · %d" % left),
@@ -1322,6 +1335,18 @@ func _on_shot_resolved(r: ShotResult) -> void:
 	row.add_child(cont)
 	_result_box.add_child(details)
 	_result_box.add_child(row)
+	_result_box.add_child(auto_bar)
+	_cancel_auto_continue(null)
+	# auto-continue: offline only (online turns are acknowledged through the host), never for a hole-out
+	if App.settings.auto_continue and not (session is OnlineSession) and not holed_done:
+		auto_bar.visible = true
+		auto_bar.value = 0.0
+		_auto_tween = create_tween()
+		_auto_tween.tween_interval(0.6)  # let the reveal finish first
+		_auto_tween.tween_property(auto_bar, "value", 1.0, AUTO_CONTINUE_SECS)
+		_auto_tween.tween_callback(func() -> void:
+			if session.state == ShotTypes.State.SHOT_RESULT and _overlays.is_empty():
+				session.acknowledge_result())
 	refresh()
 	# --- reveal animation: count the stat up, then fade the breakdown in (tap the card to skip it)
 	var later: Array = [sub, grid, extra_l, banner]
@@ -1350,6 +1375,13 @@ func _on_shot_resolved(r: ShotResult) -> void:
 	for n in later:
 		if n != null:
 			tw.tween_property(n, "modulate:a", 1.0, 0.18)
+
+
+func _cancel_auto_continue(bar: ProgressBar) -> void:
+	if _auto_tween != null and _auto_tween.is_valid():
+		_auto_tween.kill()
+	if bar != null and is_instance_valid(bar):
+		bar.visible = false
 
 
 func _divider() -> VSeparator:

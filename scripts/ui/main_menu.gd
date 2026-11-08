@@ -1125,6 +1125,9 @@ func _open_settings_visual() -> void:
 		HoleAtmosphere.high_quality = on
 		st.save()))
 	body.add_child(_note("Graphics changes apply from the next round."))
+	body.add_child(_toggle("Auto-continue after each shot (progress bar)", st.auto_continue, func(on: bool) -> void:
+		st.auto_continue = on
+		st.save()))
 	body.add_child(_toggle("Drag up/down to change trajectory (trial)", st.drag_trajectory, func(on: bool) -> void:
 		st.drag_trajectory = on
 		st.save()))
