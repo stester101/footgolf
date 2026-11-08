@@ -5,6 +5,7 @@ var room: OnlineRoom
 var revision := 0
 var pending := false
 var _applying := false
+var _pending_ms := 0  # when the current request was sent; a reply that never arrives must not lock this phone forever
 var _host := false
 var _remote_mulligan_available := false
 ## Live view of the active player's pre-shot choices (spectators only). Cosmetic and non-authoritative:
@@ -65,6 +66,7 @@ func _request(action: String, args: Dictionary = {}) -> bool:
 		message.emit("Waiting for host" if owner == 0 else "Waiting for %s" % active_name())
 		return false
 	pending = true
+	_pending_ms = Time.get_ticks_msec()
 	room.send_intent({"action": action, "revision": revision, "args": args})
 	return true
 
@@ -95,7 +97,13 @@ func use_mulligan() -> bool:
 func can_mulligan() -> bool:
 	return (_applying or controls_turn()) and (super.can_mulligan() if _host else _remote_mulligan_available)
 
+## Every frame: if a request got no answer for 4 s (dropped or ignored reply) release the lock and ask for the
+## state again, the same recovery as leaving to the menu and coming back.
 func advance(delta: float, speed_mult: float = 1.0) -> void:
+	if pending and room != null and room.active and Time.get_ticks_msec() - _pending_ms > 4000:
+		pending = false
+		refresh_state()
+		selection_changed.emit()
 	if room.paused: return
 	super.advance(delta, speed_mult)
 	_send_preview()
