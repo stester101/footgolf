@@ -338,7 +338,7 @@ func _refresh_hole_strip() -> void:
 	UiKit.clear(_hole_strip)
 	var cur := session.current_hole_state().raw_total() + 1
 	if _shot_text != null:
-		_shot_text.text = "SHOT %d" % cur
+		_shot_text.text = ("P%d · SHOT %d" % [session.turn + 1, cur]) if session.player_count() > 1 else "SHOT %d" % cur
 	var first := maxi(1, cur - 1)
 	for k in 4:
 		var n := first + k
@@ -791,7 +791,7 @@ func refresh() -> void:
 	var show_result := session.state == ShotTypes.State.SHOT_RESULT
 	var between := session.state == ShotTypes.State.HOLE_COMPLETE or session.state == ShotTypes.State.ROUND_COMPLETE
 	_shot_controls.visible = not show_result and not overhead and not between
-	_utility_row.visible = (_scorecard_root == null or not is_instance_valid(_scorecard_root)) and not between
+	_utility_row.visible = not between  # never hidden for a modal: that collapsed the layout and made the HUD jump
 	_result_card.visible = show_result and not overhead
 	_map_controls.visible = overhead
 	_right_shot.visible = not overhead
@@ -826,7 +826,15 @@ func refresh() -> void:
 	_flight_btn.disabled = moving
 	_roll_btn.disabled = moving
 	_map_hint.text = "Tap to measure  •  Drag to pan  •  Pinch to zoom"
-	markers.visible = not ((show_result or between) and not overhead)
+	var modal_hides := _modal_hides_hud()
+	markers.visible = not ((show_result or between) and not overhead) and not modal_hides
+	# A modal hides the HUD by fading it out; the layout underneath stays exactly where it was.
+	_margin.modulate.a = 0.0 if modal_hides else 1.0
+	# Only the top-most menu is visible; menus beneath it are hidden (not freed), so their state is
+	# exactly as left when the top one closes, and nothing shows through a translucent modal.
+	for i in _overlays.size():
+		if is_instance_valid(_overlays[i]):
+			_overlays[i].visible = i == _overlays.size() - 1
 
 
 func _sync_shot_units() -> void:
@@ -882,6 +890,15 @@ func _on_take_shot() -> void:
 
 
 # ------------------------------------------------------------------ overlays
+
+## True while a menu or modal is open that should cover the HUD. Overlays marked "keep_hud"
+## (hole intro, hole complete, round complete) sit under the banner and leave it visible.
+func _modal_hides_hud() -> bool:
+	for o in _overlays:
+		if is_instance_valid(o) and not bool(o.get_meta("keep_hud", false)):
+			return true
+	return false
+
 
 func has_overlay() -> bool:
 	return not _overlays.is_empty()
@@ -949,6 +966,7 @@ func show_hole_intro() -> void:
 	var h := session.hole
 	var parts := _centered_card()
 	var root: Control = parts[0]
+	root.set_meta("keep_hud", true)
 	var v: VBoxContainer = parts[1]
 	v.add_child(UiKit.text("HOLE %d OF %d" % [session.round_state.current_index + 1, session.round_state.holes.size()], 30, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UiKit.text(h.display_name, 44, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
@@ -1105,6 +1123,7 @@ func _on_hole_completed(hs: HoleState) -> void:
 	var root := Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_STOP
+	root.set_meta("keep_hud", true)
 	var scrim := ColorRect.new()
 	scrim.color = Color(0.03, 0.06, 0.12, 0.40)
 	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1153,6 +1172,8 @@ func _on_hole_completed(hs: HoleState) -> void:
 	var board_panel := _plate(14, 14)
 	board_panel.add_child(_scorecard_board())
 	col.add_child(board_panel)
+	if session.player_count() > 1:
+		col.add_child(_standings_panel())
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1234,6 +1255,7 @@ func _on_round_completed() -> void:
 	close_all_overlays()
 	var parts := _centered_card()
 	var root: Control = parts[0]
+	root.set_meta("keep_hud", true)
 	var v: VBoxContainer = parts[1]
 	var rs := session.round_state
 	var rc := UiKit.label("ROUND COMPLETE", 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
@@ -1243,10 +1265,12 @@ func _on_round_completed() -> void:
 	v.add_child(rc)
 	v.add_child(UiKit.text("Total %d · %s (par %d)" % [rs.total_score(), RoundState.fmt_relative(rs.relative_to_par()), rs.total_par()], 32, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(_scorecard_grid())
+	if session.player_count() > 1:
+		v.add_child(_standings_panel())
 	v.add_child(UiKit.text("%d footballers used" % session.pool.used_count(), 22, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UiKit.primary(UiKit.button("Play again", func() -> void:
 		_remove_overlay(root)
-		session.start_round(session.hole_defs, -1, session.pool.reuse_rule, session.round_state.mulligans_allowed), 88, 30)))
+		session.start_round(session.hole_defs, -1, session.pool.reuse_rule, session.round_state.mulligans_allowed, session.player_count()), 88, 30)))
 	v.add_child(UiKit.button("Main menu", func() -> void: main_menu_requested.emit(), 76, 26))
 	push_overlay(root)
 
@@ -1396,93 +1420,128 @@ func _board_chunk(start: int, end: int) -> Control:
 	return g
 
 
-## Inset matte scorecard over the live game (no full-screen replacement, no camera change).
+const SC_LINE := Color(0.72, 0.88, 1.0, 0.22)
+const SC_MUTED := Color(0.72, 0.82, 0.95, 0.55)
+const SC_ROW_H := 58
+
+
+func _sc_cell(text: String, size: int, color: Color, fill: Color, header: bool = false) -> Control:
+	var pc := PanelContainer.new()
+	var sb := StyleBoxFlat.new()  # own instance: the shared skins must never be mutated
+	sb.bg_color = fill
+	sb.border_width_right = 1
+	sb.border_width_bottom = 1
+	sb.border_color = SC_LINE
+	pc.add_theme_stylebox_override("panel", sb)
+	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pc.custom_minimum_size = Vector2(0, SC_ROW_H)
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var l := _num(text, size, color, HORIZONTAL_ALIGNMENT_CENTER)
+	l.add_theme_font_override("font", UiKit.font_caps() if header else UiKit.font_semi())
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	pc.add_child(l)
+	return pc
+
+
+## Hole / Par / Score / To par. The hole in play shows its live strokes in muted text (no
+## brackets); completed holes show the final score in white; future holes show dashes.
+func _scorecard_table() -> Control:
+	var rs := session.round_state
+	var g := GridContainer.new()
+	g.columns = 4
+	g.add_theme_constant_override("h_separation", 0)
+	g.add_theme_constant_override("v_separation", 0)
+	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for t in ["HOLE", "PAR", "SCORE", "TO PAR"]:
+		g.add_child(_sc_cell(t, 20, Color.WHITE, Color(0.16, 0.36, 0.66, 0.55), true))
+	for i in rs.holes.size():
+		var hs: HoleState = rs.holes[i]
+		var current := i == rs.current_index
+		var fill := Color(UiKit.C_CYAN, 0.16) if current else Color(0, 0, 0, 0)
+		var score_txt := "—"
+		var rel_txt := "—"
+		var col := Color(SC_MUTED, 0.5)
+		if hs.complete:
+			score_txt = str(hs.score())
+			rel_txt = RoundState.fmt_relative(hs.relative_to_par())
+			col = Color.WHITE
+		elif current and hs.raw_total() > 0:
+			score_txt = str(hs.raw_total())
+			rel_txt = RoundState.fmt_relative(hs.raw_total() - hs.par)
+			col = SC_MUTED
+		g.add_child(_sc_cell(str(i + 1), 30, Color.WHITE, fill))
+		g.add_child(_sc_cell(str(hs.par), 30, Color.WHITE, fill))
+		g.add_child(_sc_cell(score_txt, 30, col, fill))
+		g.add_child(_sc_cell(rel_txt, 30, col, fill))
+	var any_done := rs.holes_completed() > 0
+	var tot_fill := Color(1, 1, 1, 0.07)
+	g.add_child(_sc_cell("TOTAL", 20, Color.WHITE, tot_fill, true))
+	g.add_child(_sc_cell(str(rs.total_par_played()), 30, Color.WHITE, tot_fill))
+	g.add_child(_sc_cell(str(rs.total_score()) if any_done else "—", 30, Color.WHITE if any_done else Color(SC_MUTED, 0.5), tot_fill))
+	g.add_child(_sc_cell(RoundState.fmt_relative(rs.relative_to_par()) if any_done else "—", 30, Color.WHITE if any_done else Color(SC_MUTED, 0.5), tot_fill))
+	var frame := PanelContainer.new()
+	frame.add_theme_stylebox_override("panel", UiKit.skin("recess", 6, 0, 0))
+	frame.clip_contents = true
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(g)
+	return frame
+
+
+## Near-full-screen modal: fixed header and Back button, a table that scrolls on its own (many
+## holes) and a shot history that scrolls on its own. The HUD behind it is hidden by refresh().
 func show_scorecard() -> void:
 	var rs := session.round_state
-	var root := Control.new()  # transparent: the game stays visible; blocks gestures behind it
-	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.mouse_filter = Control.MOUSE_FILTER_STOP
-	var scrim := ColorRect.new()
-	scrim.color = Color(0.09, 0.10, 0.09, 0.30)
-	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(scrim)
+	var root := UiKit.overlay(0.58)  # dims the course; blocks gestures behind it
 	var sm := UiKit.safe_margins(get_viewport()) if is_inside_tree() else [32.0, 32.0, 32.0, 32.0]
 	var m := MarginContainer.new()
 	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	m.add_theme_constant_override("margin_left", int(sm[0]))
 	m.add_theme_constant_override("margin_right", int(sm[2]))
-	m.add_theme_constant_override("margin_top", int(sm[1]) + 136)
-	m.add_theme_constant_override("margin_bottom", int(sm[3]))
+	m.add_theme_constant_override("margin_top", int(sm[1]) + 8)
+	m.add_theme_constant_override("margin_bottom", int(sm[3]) + 8)
 	root.add_child(m)
-	var col := UiKit.vbox(GAP + 4)
-	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	m.add_child(col)
-	var panel := _plate(24, 20)
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	col.add_child(panel)
+	var panel := _plate(18, 16)
+	m.add_child(panel)
 	var v := UiKit.vbox(12)
 	panel.add_child(v)
-	# header: title, course, close
-	var head := UiKit.hbox(12)
+	# header (fixed)
+	var head := UiKit.hbox(14)
+	var tro := LineIcon.make("trophy", 56, Color("#E9F4FF"))
+	tro.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(tro)
 	var hv := UiKit.vbox(0)
 	UiKit.expand(hv)
-	var title := UiKit.label("Scorecard", 40)
+	hv.alignment = BoxContainer.ALIGNMENT_CENTER
+	var title := UiKit.label("Scorecard", 40, Color.WHITE)
 	title.add_theme_font_override("font", UiKit.font_semi())
 	hv.add_child(title)
-	hv.add_child(UiKit.label(session.hole.display_name if session.hole != null else "", 22, UiKit.C_MUTED))
+	hv.add_child(UiKit.label(session.hole.display_name if session.hole != null else "", 22, UiKit.C_CYAN))
 	head.add_child(hv)
-	var close := _icon_btn("close", "", func() -> void: _remove_overlay(root), "close_scorecard", 72, 72)
-	head.add_child(close)
+	head.add_child(_icon_btn("close", "", func() -> void: _remove_overlay(root), "close_scorecard", 72, 72))
 	v.add_child(head)
-	v.add_child(_rule())
-	# summary: round score | strokes + holes completed (completed holes only)
-	var sum := UiKit.hbox(16)
-	var big := _num(RoundState.fmt_relative(rs.relative_to_par()), 56, Color("#FBF6E9"))
-	big.add_theme_font_override("font", UiKit.font_semi())
-	sum.add_child(big)
-	var d1 := ColorRect.new()
-	d1.color = UiKit.C_DIVIDER
-	d1.custom_minimum_size = Vector2(2, 52)
-	d1.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	sum.add_child(d1)
-	var pen_txt := "  •  %d PEN" % rs.total_penalties() if rs.total_penalties() > 0 else ""
-	var st := _num("%d STROKES  •  THRU %d%s" % [rs.total_score(), rs.holes_completed(), pen_txt], 22, UiKit.C_TEXT)
-	st.add_theme_font_override("font", UiKit.font_semi())
-	st.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	st.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UiKit.expand(st)
-	sum.add_child(st)
-	v.add_child(sum)
-	v.add_child(_rule())
-	# scrollable body: table + history
-	var sc := ScrollContainer.new()
-	sc.scroll_deadzone = 14
-	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	v.add_child(sc)
-	var body := UiKit.vbox(6)
+	# table (scrolls on its own when the round is long)
+	var tsc := ScrollContainer.new()
+	tsc.scroll_deadzone = 14
+	tsc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var vh := get_viewport_rect().size.y
+	var table_h := float((rs.holes.size() + 2) * SC_ROW_H + 2)
+	tsc.custom_minimum_size = Vector2(0, minf(table_h, vh * 0.42))
+	var table := _scorecard_table()
+	table.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tsc.add_child(table)
+	v.add_child(tsc)
+	# shot history (scrolls on its own), current hole first then newest holes
+	var hsc := ScrollContainer.new()
+	hsc.scroll_deadzone = 14
+	hsc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	hsc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(hsc)
+	var body := UiKit.vbox(8)
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sc.add_child(body)
-	body.add_child(_score_row("HOLE", "PAR", "SCORE", "+/-", true, false))
-	body.add_child(_rule())
-	for i in rs.holes.size():
-		var hs: HoleState = rs.holes[i]
-		var played := hs.complete
-		var in_prog := not hs.complete and hs.raw_total() > 0
-		var score_txt := str(hs.score()) if played else ("(%d)" % hs.raw_total() if in_prog else "—")
-		var rel_txt := RoundState.fmt_relative(hs.relative_to_par()) if played else "—"
-		body.add_child(_score_row(str(i + 1), str(hs.par), score_txt, rel_txt, false, i == rs.current_index))
-	body.add_child(_rule())
-	body.add_child(_score_row("TOTAL", str(rs.total_par_played()), str(rs.total_score()) if rs.holes_completed() > 0 else "—",
-		RoundState.fmt_relative(rs.relative_to_par()) if rs.holes_completed() > 0 else "—", true, false))
-	var gap := Control.new()
-	gap.custom_minimum_size = Vector2(0, 8)
-	body.add_child(gap)
-	# per-hole shot history (newest hole first), nothing hidden
+	hsc.add_child(body)
 	if session.history.is_empty():
-		body.add_child(_tag("SHOT HISTORY", 20, UiKit.C_TEXT))
+		body.add_child(_history_title("Shot History"))
 		body.add_child(UiKit.text("No shots yet.", 22, UiKit.C_MUTED))
 	var order: Array = []
 	for i in rs.holes.size():
@@ -1497,30 +1556,64 @@ func show_scorecard() -> void:
 		var hs2: HoleState = rs.holes[hi]
 		if hs2.shots.is_empty():
 			continue
-		body.add_child(_tag("SHOT HISTORY  •  HOLE %d" % (hi + 1), 20, UiKit.C_TEXT))
-		body.add_child(_rule())
+		body.add_child(_history_title("Shot History  •  Hole %d" % (hi + 1)))
 		for r in hs2.shots:
 			body.add_child(_history_row(r))
-	# bottom action (outside the panel, like the reference)
+	# bottom action (fixed)
 	var back := UiKit.primary(Button.new())
-	back.custom_minimum_size = Vector2(0, 100)
+	back.custom_minimum_size = Vector2(0, 90)
 	back.set_meta("ui_id", "back_to_round")
 	back.set("accessibility_name", "Back to round")
 	back.pressed.connect(func() -> void: _remove_overlay(root))
 	var cc := CenterContainer.new()
 	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var h := UiKit.hbox(12)
+	var h := UiKit.hbox(14)
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var bl := UiKit.label("Back to round", 32, UiKit.C_ACTION_TEXT)
+	h.add_child(LineIcon.make("chevron_left", 34, Color.WHITE))
+	var bl := UiKit.label("Back to round", 32, Color.WHITE)
 	bl.add_theme_font_override("font", UiKit.font_semi())
 	h.add_child(bl)
-	h.add_child(LineIcon.make("arrow_right", 34, UiKit.C_ACTION_TEXT))
 	cc.add_child(h)
 	back.add_child(cc)
-	col.add_child(back)
+	v.add_child(back)
 	_scorecard_root = root
 	push_overlay(root)
+
+
+## Pass-and-play standings: each player's total strokes and score to par (completed holes), leader first.
+func _standings_panel() -> Control:
+	var pc := _plate(16, 10)
+	var v := UiKit.vbox(4)
+	v.add_child(_tag("STANDINGS", 16, UiKit.C_CYAN))
+	var order: Array = []
+	for i in session.player_count():
+		order.append(i)
+	order.sort_custom(func(a: int, b: int) -> bool:
+		return session.slot_round_state(a).relative_to_par() < session.slot_round_state(b).relative_to_par())
+	for i in order:
+		var rs := session.slot_round_state(i)
+		var row := UiKit.hbox(10)
+		var nm := UiKit.label(String(session.player_names[i]) + ("  •  to play" if i == session.turn and session.state != ShotTypes.State.HOLE_COMPLETE and session.state != ShotTypes.State.ROUND_COMPLETE else ""), 22, Color.WHITE)
+		nm.add_theme_font_override("font", UiKit.font_semi())
+		nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(nm)
+		row.add_child(_num("%d  (%s)" % [rs.total_score(), RoundState.fmt_relative(rs.relative_to_par())], 22, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT))
+		v.add_child(row)
+	pc.add_child(v)
+	return pc
+
+
+func _history_title(text: String) -> Control:
+	var h := UiKit.hbox(12)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fi := LineIcon.make("flag", 34, Color("#E9F4FF"))
+	fi.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(fi)
+	var l := UiKit.label(text, 28, Color.WHITE)
+	l.add_theme_font_override("font", UiKit.font_semi())
+	h.add_child(l)
+	return h
 
 
 func _rule() -> ColorRect:
@@ -1567,23 +1660,26 @@ func _score_row(a: String, b: String, c: String, d: String, header: bool, curren
 
 ## History row: plain shot number, player + mode, right-aligned distance (HOLED / penalty tags).
 func _history_row(r: ShotResult) -> Control:
-	var row := UiKit.hbox(14)
-	row.custom_minimum_size = Vector2(0, 84)
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", UiKit.skin("btn", 6, 16, 10))
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var row := UiKit.hbox(16)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var n := _num(str(r.shot_id), 28, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
-	n.custom_minimum_size.x = 44
+	var n := _num(str(r.shot_id), 34, Color(0.62, 0.85, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
+	n.custom_minimum_size.x = 46
 	n.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(n)
 	var mid := UiKit.vbox(0)
 	UiKit.expand(mid)
 	mid.alignment = BoxContainer.ALIGNMENT_CENTER
 	mid.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var nm := UiKit.label(r.footballer_name, 26)
+	var nm := UiKit.label(r.footballer_name, 28, Color.WHITE)
+	nm.add_theme_font_override("font", UiKit.font_semi())
 	nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS  # long names truncate, never cover the distance
 	nm.clip_text = true
 	mid.add_child(nm)
 	var mode_txt := "CAPS" if r.mode == ShotTypes.Mode.CAPS else "GOALS"
-	mid.add_child(_tag("%s  •  %d  •  %s" % [mode_txt, r.stat_value, ShotTypes.style_name(r.style)], 16, UiKit.C_MUTED))
+	mid.add_child(_tag("%s  •  %d  •  %s" % [mode_txt, r.stat_value, ShotTypes.style_name(r.style)], 17, Color(0.62, 0.85, 1.0, 0.9)))
 	row.add_child(mid)
 	var dv := UiKit.vbox(2)
 	dv.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -1591,17 +1687,16 @@ func _history_row(r: ShotResult) -> Control:
 	dv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var measured := r.carry_m if r.style == ShotTypes.Style.FLIGHT else r.total_m
 	var dist := ("%d yd" % int(round(Units.m_to_yards(measured)))) if r.mode == ShotTypes.Mode.CAPS else ("%.1f ft" % Units.m_to_feet(measured))
-	dv.add_child(_num(dist, 28, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_RIGHT))
+	var dl := _num(dist, 30, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	dl.add_theme_font_override("font", UiKit.font_semi())
+	dv.add_child(dl)
 	if r.holed:
 		dv.add_child(_status_tag("HOLED", UiKit.C_ACCENT))
 	elif r.penalty > 0:
 		dv.add_child(_status_tag("+%d PEN · %s" % [r.penalty, r.hazard], UiKit.C_WARN))
 	row.add_child(dv)
-	var wrap := VBoxContainer.new()
-	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	wrap.add_child(row)
-	wrap.add_child(_rule())
-	return wrap
+	card.add_child(row)
+	return card
 
 
 ## Small muted status label (e.g. HOLED in sage) right-aligned under a value.
@@ -1637,7 +1732,7 @@ func show_pause() -> void:
 		_remove_overlay(root)
 		confirm("Restart the round?", "Your score and used footballers for this round will be lost.", "Restart", func() -> void:
 			close_all_overlays()
-			session.start_round(session.hole_defs, -1, session.pool.reuse_rule, session.round_state.mulligans_allowed)), 80, 26))
+			session.start_round(session.hole_defs, -1, session.pool.reuse_rule, session.round_state.mulligans_allowed, session.player_count())), 80, 26))
 	# developer tools stay reachable from the secondary menu
 	var dev := UiKit.button("Developer panel", func() -> void:
 		_remove_overlay(root)

@@ -454,3 +454,24 @@ func test_bigger_cup_default_and_setting() -> void:
 	assert_near(cfg.cup_capture_speed_eff(), cfg.cup_capture_speed, 0.01, "regulation cup: base capture speed")
 	cfg.set_cup_diameter_in(100.0)
 	assert_near(cfg.cup_diameter_in(), 40.0, 1e-6, "clamped to 40 in")
+
+
+func test_pass_and_play_alternates_turns_with_separate_scores() -> void:
+	var s := TestHelpers.make_session()
+	s.start_round(TestHelpers.load_holes(), 12345, FootballerPool.ReuseRule.ONCE_PER_ROUND, 0, 2)
+	s.begin_play()
+	assert_eq(s.player_count(), 2)
+	assert_eq(s.turn, 0)
+	var p0 := s.round_state
+	var first := TestHelpers.shoot(s, ShotTypes.Mode.CAPS, 30, 0)
+	assert_true(first != null)
+	assert_eq(s.turn, 1, "turn passes straight to player 2 after acknowledge")
+	assert_true(s.round_state != p0, "player 2 has their own round state")
+	assert_eq(s.current_hole_state().strokes, 0, "player 2 has not shot yet")
+	assert_eq(s.slot_round_state(0).current().strokes, 1, "player 1 keeps their stroke")
+	var tee := s.hole.tee_position(s.cfg.ball_radius)
+	assert_true(s.ball_pos.distance_to(tee) < 0.01, "player 2 plays from the tee, not player 1's ball")
+	TestHelpers.shoot(s, ShotTypes.Mode.GOALS, 0, 1)
+	assert_eq(s.turn, 0, "back to player 1")
+	assert_eq(s.slot_round_state(1).current().strokes, 1)
+	TestHelpers.cleanup_repo(s.repo)

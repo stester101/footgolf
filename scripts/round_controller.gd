@@ -43,6 +43,7 @@ static func _drop_pos(cup: Vector3, dir: Vector3, cup_r: float, t: float) -> Vec
 var open_dev_on_start := false
 var course_id := "starter"
 var mulligans := 0
+var players := 1
 var _marker: MeshInstance3D
 var _marker_pos := Vector3.INF
 var _shown_cup_r := -1.0
@@ -118,7 +119,7 @@ func _ready() -> void:
 	session.hole_completed.connect(func(_hs: HoleState) -> void: _start_preload())
 	DisplayServer.screen_set_keep_on(true)
 	App.telemetry.attach(session, course_id, String(App.course_info(course_id).get("name", course_id)))
-	session.start_round(App.load_holes(course_id), -1, FootballerPool.ReuseRule.ONCE_PER_ROUND, mulligans)
+	session.start_round(App.load_holes(course_id), -1, FootballerPool.ReuseRule.ONCE_PER_ROUND, mulligans, players)
 	if open_dev_on_start:
 		toggle_dev_panel()
 

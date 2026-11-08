@@ -1,7 +1,9 @@
 class_name FootballerPicker
 extends Control
-## Footballer selector: live search, sort, country chips with live counts, era filters,
-## "available only", Random, section headers, paged results.
+## Footballer selector. Main sheet: fixed search + Filters / Sort / Random controls, removable filter
+## chips, a count line, and a scrolling list of compact single-line rows (flag, name, career years,
+## chevron). A separate Filters panel holds searchable multi-select countries, multi-select birth
+## decades and availability. Random respects the active filters and never picks a used footballer.
 ## Normal play: never shows or sorts/filters by caps/goals. TEST MODE (show_stats) additionally
 ## shows stats and unlocks stat sorting/filtering (a testing aid; see docs/DECISIONS.md).
 
@@ -9,36 +11,58 @@ signal picked(id: String)
 signal closed
 
 const PAGE := 50
+const SELECT_BLUE := Color("#52AAFF")
 
 ## Remembered between openings within a round (you reopen the picker every shot): search text,
 ## sort, filters, page size and scroll position. A new round clears the search and scroll.
 static var _saved := {"q": "", "sort": "name_az", "nations": {}, "eras": {}, "avail": false,
-	"caps_band": 0, "goals_band": 0, "filters_open": false, "limit": PAGE, "scroll": 0}
+	"caps_band": 0, "goals_band": 0, "limit": PAGE, "scroll": 0}
 static var _saved_round_id := -1
 
 var session: GameSession
 var show_stats := false
-var _search: LineEdit
-var _sort: OptionButton
-var _sort_keys: Array[String] = []
-var _avail_btn: Button
-var _filters_btn: Button
-var _filters_box: VBoxContainer
-var _clear_btn: Button
-var _summary: Label
-var _chips_row: HBoxContainer
-var _chip_btns: Dictionary = {}     # nationality -> Button
-var _codes: Dictionary = {}         # nationality -> country code
-var _era_btns: Array[Button] = []
-var _caps_opt: OptionButton
-var _goals_opt: OptionButton
-var _sc: ScrollContainer
 ## Shown in the header, e.g. the ball-to-pin distance.
 var context_text := ""
+
+# live state (mirrors _saved)
+var _sel_nations: Dictionary = {}
+var _sel_eras: Dictionary = {}
+var _avail := false
+var _caps_band := 0
+var _goals_band := 0
+var _sort_key := "name_az"
+var _sort_keys: Array[String] = []
+var _codes: Dictionary = {}         # nationality -> country code
+
+# main sheet widgets
+var _main_panel: PanelContainer
+var _search: LineEdit
+var _filters_label: Label
+var _sort_label: Label
+var _sort_popup: PopupMenu
+var _chips: HFlowContainer
+var _summary: Label
+var _sc: ScrollContainer
 var _list: VBoxContainer
-var _press_scroll := 0
-var _limit := PAGE
 var _debounce: Timer
+var _limit := PAGE
+var _press_scroll := 0
+
+# filter panel
+var _filter_panel: PanelContainer
+var _t_nations: Dictionary = {}
+var _t_eras: Dictionary = {}
+var _t_avail := false
+var _t_caps := 0
+var _t_goals := 0
+var _country_search: LineEdit
+var _country_rows: Dictionary = {}  # nationality -> Button
+var _country_summary: Label
+var _era_btns: Array[Button] = []
+var _any_era_btn: Button
+var _avail_rows: Array[Button] = []
+var _caps_opt: OptionButton
+var _goals_opt: OptionButton
 
 
 func setup(s: GameSession) -> void:
@@ -49,143 +73,33 @@ func setup(s: GameSession) -> void:
 		_saved["q"] = ""
 		_saved["limit"] = PAGE
 		_saved["scroll"] = 0
+	_sel_nations = (_saved["nations"] as Dictionary).duplicate()
+	_sel_eras = (_saved["eras"] as Dictionary).duplicate()
+	_avail = bool(_saved["avail"])
+	_caps_band = int(_saved["caps_band"])
+	_goals_band = int(_saved["goals_band"])
+	_sort_key = String(_saved["sort"])
+	for fb in session.repo.all_sorted():
+		if not _codes.has(fb.nationality):
+			_codes[fb.nationality] = fb.country_code if fb.country_code != "" else fb.nationality.substr(0, 3).to_upper()
 	theme = UiKit.make_theme()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(UiKit.overlay(0.6))
 	var m := MarginContainer.new()
 	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	m.anchor_top = 0.14  # tall sheet: the banner and pin distance stay visible above it
+	m.anchor_top = 0.10  # tall sheet: the banner stays visible above it
 	var sm := UiKit.safe_margins(get_viewport()) if is_inside_tree() else [16.0, 16.0, 16.0, 16.0]
 	m.add_theme_constant_override("margin_left", int(sm[0]) + 8)
 	m.add_theme_constant_override("margin_right", int(sm[2]) + 8)
 	m.add_theme_constant_override("margin_top", int(sm[1]) + 24)
 	m.add_theme_constant_override("margin_bottom", int(sm[3]) + 16)
 	add_child(m)
-	var p := UiKit.panel(UiKit.C_PANEL_SOLID)
-	m.add_child(p)
-	var v := UiKit.vbox(10)
-	p.add_child(v)
-	# ---- header
-	var head := UiKit.hbox()
-	head.add_child(UiKit.expand(UiKit.label("Choose footballer", 32)))
-	if context_text != "":
-		head.add_child(UiKit.label(context_text, 20, UiKit.C_MUTED))
-	head.add_child(UiKit.button("Close", func() -> void: closed.emit(), 60, 22))
-	v.add_child(head)
-	if show_stats:
-		v.add_child(UiKit.text("TEST MODE: caps & goals shown; stat sorting/filters unlocked (off in Settings)", 18, UiKit.C_WARN))
-	# ---- search + random
-	var srow := UiKit.hbox(8)
-	_search = LineEdit.new()
-	_search.placeholder_text = "Search %d players…" % session.repo.count()
-	_search.custom_minimum_size = Vector2(0, 60)
-	_search.clear_button_enabled = true
-	_search.text = String(_saved.get("q", ""))
-	# Run after the focus click positions the caret, so typing replaces the query.
-	_search.focus_entered.connect(func() -> void: _search.call_deferred("select_all"))
-	_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_debounce = Timer.new()
-	_debounce.one_shot = true
-	_debounce.wait_time = 0.18
-	_debounce.timeout.connect(_rebuild)
-	add_child(_debounce)
-	_search.text_changed.connect(func(t: String) -> void:
-		_saved["q"] = t
-		_debounce.start())
-	srow.add_child(_search)
-	var rnd := UiKit.button("Random", _on_random, 60, 20)
-	rnd.custom_minimum_size.x = 130
-	srow.add_child(rnd)
-	v.add_child(srow)
-	# ---- sort + available only + filters toggle
-	var row2 := UiKit.hbox(8)
-	_sort = OptionButton.new()
-	_sort.custom_minimum_size = Vector2(0, 56)
-	_sort.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_sort.add_theme_font_size_override("font_size", 20)
-	var labels: Array = FootballerRepository.SORT_LABELS.duplicate()
-	if show_stats:
-		labels.append_array(FootballerRepository.STAT_SORT_LABELS)
-	for pair in labels:
-		_sort_keys.append(String(pair[0]))
-		_sort.add_item(String(pair[1]))
-	_sort.selected = maxi(_sort_keys.find(String(_saved["sort"])), 0)
-	_sort.item_selected.connect(func(_i: int) -> void: _rebuild())
-	row2.add_child(_sort)
-	_avail_btn = UiKit.button("Available only", func() -> void: _rebuild(), 56, 19)
-	_avail_btn.toggle_mode = true
-	_avail_btn.button_pressed = bool(_saved["avail"])
-	_avail_btn.add_theme_stylebox_override("pressed", UiKit.box(UiKit.C_ACCENT_DARK, 14, 12))
-	row2.add_child(_avail_btn)
-	_filters_btn = UiKit.button("Filters", _toggle_filters, 56, 19)
-	row2.add_child(_filters_btn)
-	v.add_child(row2)
-	# ---- country chips (horizontal scroll)
-	var chips_sc := ScrollContainer.new()
-	chips_sc.custom_minimum_size = Vector2(0, 68)
-	chips_sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	chips_sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	chips_sc.scroll_deadzone = 12
-	_chips_row = UiKit.hbox(8)
-	chips_sc.add_child(_chips_row)
-	v.add_child(chips_sc)
-	for fb in session.repo.all_sorted():
-		if not _codes.has(fb.nationality):
-			_codes[fb.nationality] = fb.country_code if fb.country_code != "" else fb.nationality.substr(0, 3).to_upper()
-	for nat in session.repo.nationalities():
-		var b := UiKit.button(nat, func() -> void: _rebuild(), 56, 18)
-		b.toggle_mode = true
-		b.icon = Flags.texture(String(_codes[nat]))
-		b.add_theme_constant_override("h_separation", 8)
-		b.add_theme_stylebox_override("pressed", UiKit.box(UiKit.C_ACCENT_DARK, 14, 10))
-		b.mouse_filter = Control.MOUSE_FILTER_PASS
-		b.button_pressed = (_saved["nations"] as Dictionary).has(nat)
-		_chip_btns[nat] = b
-		_chips_row.add_child(b)
-	# ---- collapsible filters
-	_filters_box = UiKit.vbox(8)
-	_filters_box.visible = bool(_saved["filters_open"])
-	v.add_child(_filters_box)
-	_filters_box.add_child(UiKit.label("Born", 18, UiKit.C_MUTED))
-	var eras := HFlowContainer.new()
-	eras.add_theme_constant_override("h_separation", 8)
-	eras.add_theme_constant_override("v_separation", 8)
-	for i in FootballerRepository.ERAS.size():
-		var eb := UiKit.button(String(FootballerRepository.ERAS[i][0]), func() -> void: _rebuild(), 52, 19)
-		eb.toggle_mode = true
-		eb.custom_minimum_size.x = 100
-		eb.add_theme_stylebox_override("pressed", UiKit.box(UiKit.C_ACCENT_DARK, 14, 10))
-		eb.button_pressed = (_saved["eras"] as Dictionary).has(i)
-		_era_btns.append(eb)
-		eras.add_child(eb)
-	_filters_box.add_child(eras)
-	if show_stats:
-		_filters_box.add_child(UiKit.label("Test mode: stat filters", 18, UiKit.C_WARN))
-		var stat_row := UiKit.hbox(8)
-		_caps_opt = _band_option(FootballerRepository.CAPS_BANDS, int(_saved["caps_band"]))
-		_goals_opt = _band_option(FootballerRepository.GOALS_BANDS, int(_saved["goals_band"]))
-		stat_row.add_child(_caps_opt)
-		stat_row.add_child(_goals_opt)
-		_filters_box.add_child(stat_row)
-	# ---- summary / clear
-	var srow2 := UiKit.hbox(8)
-	_summary = UiKit.label("", 19, UiKit.C_MUTED)
-	_summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_summary.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	srow2.add_child(_summary)
-	_clear_btn = UiKit.button("Clear filters", _clear_filters, 48, 18)
-	srow2.add_child(_clear_btn)
-	v.add_child(srow2)
-	# ---- results
-	_sc = ScrollContainer.new()
-	_sc.scroll_deadzone = 14
-	_sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	v.add_child(_sc)
-	_list = UiKit.vbox(8)
-	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_sc.add_child(_list)
+	_main_panel = _build_main_panel()
+	m.add_child(_main_panel)
+	_filter_panel = _build_filter_panel()
+	_filter_panel.visible = false
+	m.add_child(_filter_panel)
 	var keep_limit := maxi(int(_saved.get("limit", PAGE)), PAGE)
 	var keep_scroll := int(_saved.get("scroll", 0))
 	_rebuild()
@@ -196,6 +110,177 @@ func setup(s: GameSession) -> void:
 	_sc.get_v_scroll_bar().value_changed.connect(func(val: float) -> void: _saved["scroll"] = int(val))
 	if keep_scroll > 0:
 		_restore_scroll(keep_scroll)
+
+
+# ------------------------------------------------------------------ shared widgets
+
+func _icon_button(kind: String, size_px: int, cb: Callable, ui_id: String) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(size_px, size_px)
+	b.focus_mode = Control.FOCUS_ALL
+	b.set_meta("ui_id", ui_id)
+	b.add_theme_stylebox_override("normal", UiKit.skin("btn", 6, 0, 0))
+	b.add_theme_stylebox_override("hover", UiKit.skin("btn_hover", 6, 0, 0))
+	b.add_theme_stylebox_override("pressed", UiKit.skin("btn_press", 6, 0, 0))
+	b.pressed.connect(cb)
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.add_child(LineIcon.make(kind, 32))
+	b.add_child(c)
+	return b
+
+
+## Button with a leading icon, a label and an optional chevron. Returns [button, label].
+func _control_button(kind: String, text: String, chevron: bool, cb: Callable) -> Array:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(0, 64)
+	b.focus_mode = Control.FOCUS_ALL
+	b.add_theme_stylebox_override("normal", UiKit.skin("btn", 6, 0, 0))
+	b.add_theme_stylebox_override("hover", UiKit.skin("btn_hover", 6, 0, 0))
+	b.add_theme_stylebox_override("pressed", UiKit.skin("btn_press", 6, 0, 0))
+	b.pressed.connect(cb)
+	var mc := MarginContainer.new()
+	mc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mc.add_theme_constant_override("margin_left", 14)
+	mc.add_theme_constant_override("margin_right", 12)
+	var h := UiKit.hbox(10)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var ic := LineIcon.make(kind, 30)
+	ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(ic)
+	var l := UiKit.label(text, 22, Color.WHITE)
+	l.add_theme_font_override("font", UiKit.font_semi())
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	h.add_child(l)
+	if chevron:
+		var ch := LineIcon.make("chevron_down", 22)
+		ch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(ch)
+	mc.add_child(h)
+	b.add_child(mc)
+	return [b, l]
+
+
+## Recessed search field with a leading magnifier. Returns [container, LineEdit].
+func _search_field(placeholder: String) -> Array:
+	var pc := PanelContainer.new()
+	pc.add_theme_stylebox_override("panel", UiKit.skin("recess", 6, 14, 6))
+	pc.custom_minimum_size = Vector2(0, 60)
+	var h := UiKit.hbox(12)
+	var ic := LineIcon.make("search", 32, UiKit.C_MUTED)
+	ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(ic)
+	var le := LineEdit.new()
+	le.placeholder_text = placeholder
+	le.clear_button_enabled = true
+	le.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	le.add_theme_font_size_override("font_size", 26)
+	le.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	le.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	# Run after the focus click positions the caret, so typing replaces the query.
+	le.focus_entered.connect(func() -> void: le.call_deferred("select_all"))
+	h.add_child(le)
+	pc.add_child(h)
+	return [pc, le]
+
+
+func _rule() -> ColorRect:
+	var r := ColorRect.new()
+	r.color = Color(0.72, 0.88, 1.0, 0.22)
+	r.custom_minimum_size = Vector2(0, 2)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return r
+
+
+# ------------------------------------------------------------------ main sheet
+
+func _build_main_panel() -> PanelContainer:
+	var p := UiKit.panel(UiKit.C_PANEL_SOLID)
+	var v := UiKit.vbox(12)
+	p.add_child(v)
+	# header
+	var head := UiKit.hbox(12)
+	var title := UiKit.label("Choose footballer", 34, Color.WHITE)
+	title.add_theme_font_override("font", UiKit.font_semi())
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(title)
+	if context_text != "":
+		var ctx := UiKit.label(context_text, 19, UiKit.C_MUTED)
+		ctx.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		head.add_child(ctx)
+	head.add_child(_icon_button("close", 64, func() -> void: closed.emit(), "picker_close"))
+	v.add_child(head)
+	v.add_child(_rule())
+	if show_stats:
+		v.add_child(UiKit.text("TEST MODE: caps & goals shown; stat sorting/filters unlocked (off in Settings)", 17, UiKit.C_WARN))
+	# search (fixed)
+	var sf := _search_field("Search footballers…")
+	_search = sf[1] as LineEdit
+	_search.text = String(_saved.get("q", ""))
+	_debounce = Timer.new()
+	_debounce.one_shot = true
+	_debounce.wait_time = 0.18
+	_debounce.timeout.connect(_rebuild)
+	add_child(_debounce)
+	_search.text_changed.connect(func(t: String) -> void:
+		_saved["q"] = t
+		_debounce.start())
+	v.add_child(sf[0])
+	# Filters / Sort / Random (fixed)
+	var row := UiKit.hbox(10)
+	var fbtn := _control_button("sliders", "Filters", true, _open_filters)
+	(fbtn[0] as Button).custom_minimum_size.x = 214
+	_filters_label = fbtn[1] as Label
+	(fbtn[0] as Button).set_meta("ui_id", "filters")
+	row.add_child(fbtn[0])
+	var labels: Array = FootballerRepository.SORT_LABELS.duplicate()
+	if show_stats:
+		labels.append_array(FootballerRepository.STAT_SORT_LABELS)
+	_sort_popup = PopupMenu.new()
+	for i in labels.size():
+		_sort_keys.append(String(labels[i][0]))
+		_sort_popup.add_radio_check_item(String(labels[i][1]), i)
+	_sort_popup.id_pressed.connect(func(id: int) -> void:
+		_sort_key = _sort_keys[id]
+		_rebuild())
+	add_child(_sort_popup)
+	var sbtn := _control_button("sort", "", true, func() -> void:
+		_sort_popup.popup(Rect2i(Vector2i(((sbtn_ref[0] as Button).global_position + Vector2(0, (sbtn_ref[0] as Button).size.y)).round()), Vector2i(int((sbtn_ref[0] as Button).size.x), 0))))
+	sbtn_ref.append(sbtn[0])
+	_sort_label = sbtn[1] as Label
+	(sbtn[0] as Button).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(sbtn[0])
+	var rnd := _icon_button("shuffle", 64, _on_random, "random")
+	rnd.custom_minimum_size.x = 84
+	row.add_child(rnd)
+	v.add_child(row)
+	# active filter chips (fixed, only when something is active)
+	_chips = HFlowContainer.new()
+	_chips.add_theme_constant_override("h_separation", 10)
+	_chips.add_theme_constant_override("v_separation", 8)
+	v.add_child(_chips)
+	v.add_child(_rule())
+	_summary = UiKit.label("", 20, UiKit.C_MUTED)
+	_summary.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	v.add_child(_summary)
+	# scrolling results
+	_sc = ScrollContainer.new()
+	_sc.scroll_deadzone = 14
+	_sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(_sc)
+	_list = UiKit.vbox(8)
+	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_sc.add_child(_list)
+	return p
+
+
+var sbtn_ref: Array = []
 
 
 ## The list has no size until it has been laid out, so wait a couple of frames before scrolling.
@@ -211,120 +296,184 @@ func _restore_scroll(px: int) -> void:
 			return
 
 
-func _band_option(bands: Array, selected: int) -> OptionButton:
-	var o := OptionButton.new()
-	o.custom_minimum_size = Vector2(0, 54)
-	o.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	o.add_theme_font_size_override("font_size", 20)
-	for b in bands:
-		o.add_item(String(b[0]))
-	o.selected = selected
-	o.item_selected.connect(func(_i: int) -> void: _rebuild())
-	return o
-
-
-func _toggle_filters() -> void:
-	_filters_box.visible = not _filters_box.visible
-	_saved["filters_open"] = _filters_box.visible
-	_update_filter_labels()
-
-
 func _options(limit: int) -> Dictionary:
-	var nations := {}
-	for nat in _chip_btns.keys():
-		if (_chip_btns[nat] as Button).button_pressed:
-			nations[nat] = true
-	var eras := {}
-	for i in _era_btns.size():
-		if _era_btns[i].button_pressed:
-			eras[i] = true
 	return {
-		"q": _search.text, "nations": nations, "eras": eras,
-		"mode": session.mode,
-		"available_only": _avail_btn.button_pressed,
-		"caps_band": _caps_opt.selected if _caps_opt != null else 0,
-		"goals_band": _goals_opt.selected if _goals_opt != null else 0,
-		"sort": _sort_keys[maxi(_sort.selected, 0)], "limit": limit,
+		"q": _search.text, "nations": _sel_nations.duplicate(), "eras": _sel_eras.duplicate(),
+		"mode": session.mode, "available_only": _avail,
+		"caps_band": _caps_band, "goals_band": _goals_band,
+		"sort": _sort_key, "limit": limit,
 	}
 
 
-func _active_filter_count(o: Dictionary) -> int:
-	var n := 0
-	n += 1 if not (o["nations"] as Dictionary).is_empty() else 0
-	n += 1 if not (o["eras"] as Dictionary).is_empty() else 0
-	n += 1 if int(o["caps_band"]) > 0 else 0
-	n += 1 if int(o["goals_band"]) > 0 else 0
-	n += 1 if bool(o["available_only"]) else 0
-	n += 1 if String(o["q"]).strip_edges() != "" else 0
-	return n
+func _filter_count() -> int:
+	return int(not _sel_nations.is_empty()) + int(not _sel_eras.is_empty()) + int(_avail) \
+		+ int(_caps_band > 0) + int(_goals_band > 0)
 
 
-func _clear_filters() -> void:
-	_search.text = ""
-	for b in _chip_btns.values():
-		(b as Button).set_pressed_no_signal(false)
-	for b in _era_btns:
-		b.set_pressed_no_signal(false)
-	_avail_btn.set_pressed_no_signal(false)
-	if _caps_opt != null:
-		_caps_opt.selected = 0
-		_goals_opt.selected = 0
+func _clear_all() -> void:
+	_sel_nations.clear()
+	_sel_eras.clear()
+	_avail = false
+	_caps_band = 0
+	_goals_band = 0
 	_rebuild()
-
-
-func _update_filter_labels(o: Dictionary = {}) -> void:
-	if o.is_empty():
-		o = _options(-1)
-	var narrow := int(not (o["eras"] as Dictionary).is_empty()) + int(int(o["caps_band"]) > 0) + int(int(o["goals_band"]) > 0)
-	_filters_btn.text = "Filters%s %s" % [(" (%d)" % narrow) if narrow > 0 else "", "▴" if _filters_box.visible else "▾"]
 
 
 func _rebuild() -> void:
 	_limit = PAGE
-	var o := _options(-1)
-	# Keep the live LineEdit text while sorts and filters rebuild the result list.
-	_saved["q"] = o["q"]
+	_saved["q"] = _search.text  # keep the live text while filters and sorts rebuild the list
 	_saved["limit"] = PAGE
 	_saved["scroll"] = 0
 	_sc.scroll_vertical = 0
-	_saved["sort"] = o["sort"]
-	_saved["nations"] = o["nations"]
-	_saved["eras"] = o["eras"]
-	_saved["avail"] = o["available_only"]
-	_saved["caps_band"] = o["caps_band"]
-	_saved["goals_band"] = o["goals_band"]
+	_saved["sort"] = _sort_key
+	_saved["nations"] = _sel_nations.duplicate()
+	_saved["eras"] = _sel_eras.duplicate()
+	_saved["avail"] = _avail
+	_saved["caps_band"] = _caps_band
+	_saved["goals_band"] = _goals_band
 	_render()
 
 
-## Only the first _limit matches become buttons (the real database has ~10k players).
+func _chip(text: String, code: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = text + "  ×"
+	if code != "":
+		b.icon = Flags.texture(code)
+		b.expand_icon = false
+	b.custom_minimum_size = Vector2(0, 52)
+	b.focus_mode = Control.FOCUS_NONE
+	b.add_theme_font_size_override("font_size", 21)
+	b.add_theme_font_override("font", UiKit.font_semi())
+	b.add_theme_constant_override("h_separation", 10)
+	b.add_theme_stylebox_override("normal", UiKit.skin("btn", 10, 16, 4))
+	b.add_theme_stylebox_override("hover", UiKit.skin("btn_hover", 10, 16, 4))
+	b.add_theme_stylebox_override("pressed", UiKit.skin("btn_press", 10, 16, 4))
+	b.pressed.connect(cb)
+	return b
+
+
+func _refresh_chips() -> void:
+	UiKit.clear(_chips)
+	var nats := _sel_nations.keys()
+	nats.sort()
+	for nat in nats:
+		_chips.add_child(_chip(String(nat), String(_codes.get(nat, "")), func() -> void:
+			_sel_nations.erase(nat)
+			_rebuild()))
+	var eras := _sel_eras.keys()
+	eras.sort()
+	for i in eras:
+		_chips.add_child(_chip(String(FootballerRepository.ERAS[int(i)][0]), "", func() -> void:
+			_sel_eras.erase(i)
+			_rebuild()))
+	if _avail:
+		_chips.add_child(_chip("Available only", "", func() -> void:
+			_avail = false
+			_rebuild()))
+	if show_stats and _caps_band > 0:
+		_chips.add_child(_chip(String(FootballerRepository.CAPS_BANDS[_caps_band][0]), "", func() -> void:
+			_caps_band = 0
+			_rebuild()))
+	if show_stats and _goals_band > 0:
+		_chips.add_child(_chip(String(FootballerRepository.GOALS_BANDS[_goals_band][0]), "", func() -> void:
+			_goals_band = 0
+			_rebuild()))
+	_chips.visible = _filter_count() > 0
+	if _chips.visible:
+		var clear := Button.new()
+		clear.text = "Clear all"
+		clear.flat = true
+		clear.focus_mode = Control.FOCUS_NONE
+		clear.add_theme_font_size_override("font_size", 22)
+		clear.add_theme_color_override("font_color", UiKit.C_CYAN)
+		clear.add_theme_color_override("font_hover_color", Color.WHITE)
+		clear.add_theme_color_override("font_pressed_color", Color.WHITE)
+		clear.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+		clear.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+		clear.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+		clear.custom_minimum_size = Vector2(0, 52)
+		clear.pressed.connect(_clear_all)
+		_chips.add_child(clear)
+
+
+## "2001–2007" -> "2001–07" (same century); a single year stays; birth year is the fallback.
+static func _years_text(fb: Footballer) -> String:
+	if fb.career_years != "":
+		var parts := fb.career_years.split("–")
+		if parts.size() == 2:
+			if parts[0] == parts[1]:
+				return parts[0]
+			if parts[0].length() == 4 and parts[1].length() == 4 and parts[0].substr(0, 2) == parts[1].substr(0, 2):
+				return "%s–%s" % [parts[0], parts[1].substr(2)]
+		return fb.career_years
+	return ("b. %d" % fb.birth_year) if fb.birth_year > 0 else ""
+
+
+## One compact row: flag, name, career years (right), chevron. Stores meta "footballer_id".
+func _footballer_row(fb: Footballer, used: bool, selected: bool, cb: Callable) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(0, 68)
+	b.focus_mode = Control.FOCUS_ALL
+	b.set_meta("footballer_id", fb.id)
+	var kind := "select" if selected else "btn"
+	b.add_theme_stylebox_override("normal", UiKit.skin(kind, 6, 0, 0))
+	b.add_theme_stylebox_override("hover", UiKit.skin("select" if selected else "btn_hover", 6, 0, 0))
+	b.add_theme_stylebox_override("pressed", UiKit.skin("btn_press", 6, 0, 0))
+	b.add_theme_stylebox_override("disabled", UiKit.skin("disabled", 6, 0, 0))
+	b.disabled = used
+	b.pressed.connect(cb)
+	var mc := MarginContainer.new()
+	mc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mc.add_theme_constant_override("margin_left", 16)
+	mc.add_theme_constant_override("margin_right", 14)
+	var h := UiKit.hbox(16)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var flag := TextureRect.new()
+	flag.texture = Flags.texture(fb.country_code)
+	flag.custom_minimum_size = Vector2(50, 34)
+	flag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	flag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	flag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	flag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(flag)
+	var nm := UiKit.label(fb.name + ("  ·  USED" if used else ""), 26, Color.WHITE if not used else Color(1, 1, 1, 0.55))
+	nm.add_theme_font_override("font", UiKit.font_semi())
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nm.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	h.add_child(nm)
+	var right := _years_text(fb)
+	if show_stats:
+		right = "%dc · %dg   %s" % [fb.caps, fb.goals, right]
+	var yr := UiKit.label(right, 22, Color(0.85, 0.92, 1.0, 0.85 if not used else 0.45), HORIZONTAL_ALIGNMENT_RIGHT)
+	yr.add_theme_font_override("font", UiKit.font_num())
+	yr.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	h.add_child(yr)
+	var chev := LineIcon.make("chevron_right", 26, Color(1, 1, 1, 0.85))
+	chev.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(chev)
+	mc.add_child(h)
+	b.add_child(mc)
+	return b
+
+
+## Only the first _limit matches become rows (the real database has ~10k players).
 func _render() -> void:
 	UiKit.clear(_list)
 	var o := _options(-1)
 	var results := session.repo.query(o, session.pool)
 	var total := results.size()
-	# live counts on country chips: what each chip would give under the OTHER filters
-	var counts := session.repo.facet_counts(o, session.pool)
-	for nat in _chip_btns.keys():
-		var b: Button = _chip_btns[nat]
-		var n := int(counts.get(nat, 0))
-		b.text = "%s  %d" % [_codes[nat], n]
-		b.disabled = n == 0 and not b.button_pressed
-	var key := String(o["sort"])
-	var last_header := ""
 	for i in mini(_limit, total):
 		var fb: Footballer = results[i]
-		var header := _header_for(fb, key)
-		if header != "" and header != last_header:
-			last_header = header
-			_list.add_child(UiKit.label(header, 20, UiKit.C_ACCENT.lightened(0.25)))
 		var used := session.pool.is_used(fb.id, session.mode)
-		var b := UiKit.player_button(fb, show_stats, used, fb.id == session.selected_id, func() -> void: _on_pick(fb.id))
+		var b := _footballer_row(fb, used, fb.id == session.selected_id, func() -> void: _on_pick(fb.id))
 		# Let drags reach the ScrollContainer (touch scrolling); a press only picks if the list didn't scroll.
 		b.mouse_filter = Control.MOUSE_FILTER_PASS
 		b.button_down.connect(func() -> void: _press_scroll = _sc.scroll_vertical)
 		_list.add_child(b)
 	if total == 0:
-		_list.add_child(UiKit.text("No players match. Try clearing a filter.", 24, UiKit.C_MUTED))
+		_list.add_child(UiKit.text("No footballers match. Try clearing a filter.", 24, UiKit.C_MUTED))
 	if total > _limit:
 		var more := UiKit.button("Show more (%d of %d shown)" % [_limit, total], func() -> void:
 			_limit += PAGE
@@ -338,20 +487,14 @@ func _render() -> void:
 	for fb in results:
 		if not session.pool.is_used(fb.id, session.mode):
 			avail += 1
-	_summary.text = "%d match · %d available · %d used" % [total, avail, session.pool.used_count()]
-	_clear_btn.visible = _active_filter_count(o) > 0
-	_update_filter_labels(o)
-
-
-func _header_for(fb: Footballer, key: String) -> String:
-	match key:
-		"name_az", "name_za":
-			return fb.name.substr(0, 1).to_upper() if fb.name != "" else ""
-		"country":
-			return fb.nationality
-		"born_old", "born_new":
-			return ("%ds" % (fb.birth_year / 10 * 10)) if fb.birth_year > 0 else "Unknown birth year"
-	return ""
+	_summary.text = "%d footballers available" % avail if avail == total else "%d footballers available · %d used" % [avail, total - avail]
+	var n := _filter_count()
+	_filters_label.text = "Filters (%d)" % n if n > 0 else "Filters"
+	var idx := maxi(_sort_keys.find(_sort_key), 0)
+	_sort_label.text = String(((FootballerRepository.SORT_LABELS + (FootballerRepository.STAT_SORT_LABELS if show_stats else []))[idx])[1])
+	for i in _sort_popup.item_count:
+		_sort_popup.set_item_checked(i, i == idx)
+	_refresh_chips()
 
 
 ## Random pick among the AVAILABLE players matching the current filters (stats stay hidden).
@@ -370,3 +513,320 @@ func _on_pick(id: String, force: bool = false) -> void:
 		return
 	if session.select_footballer(id):
 		picked.emit(id)
+
+
+# ------------------------------------------------------------------ filter panel
+
+func _section_title(text: String) -> Label:
+	var l := UiKit.label(text, 28, Color.WHITE)
+	l.add_theme_font_override("font", UiKit.font_semi())
+	return l
+
+
+func _build_filter_panel() -> PanelContainer:
+	var p := UiKit.panel(UiKit.C_PANEL_SOLID)
+	var v := UiKit.vbox(9)
+	p.add_child(v)
+	# header: funnel, title, Reset all
+	var head := UiKit.hbox(12)
+	var fi := LineIcon.make("funnel", 40)
+	fi.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(fi)
+	var title := UiKit.label("Filters", 34, Color.WHITE)
+	title.add_theme_font_override("font", UiKit.font_semi())
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+	var reset := _control_button("refresh", "Reset all", false, _reset_temp)
+	(reset[0] as Button).custom_minimum_size = Vector2(210, 60)
+	head.add_child(reset[0])
+	v.add_child(head)
+	v.add_child(_rule())
+	# country
+	var ch := UiKit.hbox(10)
+	ch.add_child(_section_title("Country"))
+	_country_summary = UiKit.label("", 21, UiKit.C_CYAN, HORIZONTAL_ALIGNMENT_RIGHT)
+	_country_summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_country_summary.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	ch.add_child(_country_summary)
+	v.add_child(ch)
+	var cs := _search_field("Search countries…")
+	_country_search = cs[1] as LineEdit
+	_country_search.text_changed.connect(func(_t: String) -> void: _filter_country_rows())
+	v.add_child(cs[0])
+	var csc := ScrollContainer.new()
+	csc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	csc.custom_minimum_size = Vector2(0, 150)
+	csc.scroll_deadzone = 14
+	csc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var cl := UiKit.vbox(6)
+	cl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	csc.add_child(cl)
+	for nat in session.repo.nationalities():
+		var row := _country_row(String(nat))
+		_country_rows[nat] = row
+		cl.add_child(row)
+	v.add_child(csc)
+	v.add_child(_rule())
+	# born
+	v.add_child(_section_title("Born"))
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	_any_era_btn = _era_button("Any", func() -> void:
+		_t_eras.clear()
+		_refresh_filter_widgets())
+	grid.add_child(_any_era_btn)
+	_era_btns.clear()
+	for i in FootballerRepository.ERAS.size():
+		var eb := _era_button(String(FootballerRepository.ERAS[i][0]), func() -> void:
+			if _t_eras.has(i):
+				_t_eras.erase(i)
+			else:
+				_t_eras[i] = true
+			_refresh_filter_widgets())
+		_era_btns.append(eb)
+		grid.add_child(eb)
+	v.add_child(grid)
+	v.add_child(_rule())
+	# availability (radio)
+	v.add_child(_section_title("Availability"))
+	_avail_rows.clear()
+	for spec in [["Available only", true], ["All footballers, including used", false]]:
+		var on_avail: bool = spec[1]
+		var rb := _radio_row(String(spec[0]), func() -> void:
+			_t_avail = on_avail
+			_refresh_filter_widgets())
+		_avail_rows.append(rb)
+		v.add_child(rb)
+	if show_stats:
+		v.add_child(UiKit.label("Test mode: stat filters", 18, UiKit.C_WARN))
+		var stat_row := UiKit.hbox(8)
+		_caps_opt = _band_option(FootballerRepository.CAPS_BANDS, func(i: int) -> void: _t_caps = i)
+		_goals_opt = _band_option(FootballerRepository.GOALS_BANDS, func(i: int) -> void: _t_goals = i)
+		stat_row.add_child(_caps_opt)
+		stat_row.add_child(_goals_opt)
+		v.add_child(stat_row)
+	# apply
+	var apply := UiKit.primary(Button.new())
+	apply.custom_minimum_size = Vector2(0, 72)
+	apply.focus_mode = Control.FOCUS_ALL
+	apply.set_meta("ui_id", "apply_filters")
+	apply.pressed.connect(_apply_filters)
+	var ac := CenterContainer.new()
+	ac.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ac.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var ah := UiKit.hbox(12)
+	ah.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ah.add_child(LineIcon.make("check", 34))
+	var al := UiKit.label("Apply Filters", 30, Color.WHITE)
+	al.add_theme_font_override("font", UiKit.font_semi())
+	ah.add_child(al)
+	ac.add_child(ah)
+	apply.add_child(ac)
+	v.add_child(apply)
+	return p
+
+
+func _band_option(bands: Array, on_select: Callable) -> OptionButton:
+	var o := OptionButton.new()
+	o.custom_minimum_size = Vector2(0, 54)
+	o.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	o.add_theme_font_size_override("font_size", 20)
+	for b in bands:
+		o.add_item(String(b[0]))
+	o.item_selected.connect(on_select)
+	return o
+
+
+func _era_button(text: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.custom_minimum_size = Vector2(0, 54)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.focus_mode = Control.FOCUS_NONE
+	b.add_theme_font_size_override("font_size", 22)
+	b.add_theme_font_override("font", UiKit.font_semi())
+	b.pressed.connect(cb)
+	return b
+
+
+func _style_toggle(b: Button, on: bool, outline_when_on: bool = false) -> void:
+	var kind := "select" if on and not outline_when_on else ("btn_press" if on else "btn")
+	b.add_theme_stylebox_override("normal", UiKit.skin(kind, 6, 8, 4))
+	b.add_theme_stylebox_override("hover", UiKit.skin(kind if on else "btn_hover", 6, 8, 4))
+	b.add_theme_stylebox_override("pressed", UiKit.skin(kind, 6, 8, 4))
+
+
+func _country_row(nat: String) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(0, 56)
+	b.focus_mode = Control.FOCUS_NONE
+	b.set_meta("nation", nat)
+	b.pressed.connect(func() -> void:
+		if _t_nations.has(nat):
+			_t_nations.erase(nat)
+		else:
+			_t_nations[nat] = true
+		_refresh_filter_widgets())
+	var mc := MarginContainer.new()
+	mc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mc.add_theme_constant_override("margin_left", 16)
+	mc.add_theme_constant_override("margin_right", 16)
+	var h := UiKit.hbox(16)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var flag := TextureRect.new()
+	flag.texture = Flags.texture(String(_codes.get(nat, "")))
+	flag.custom_minimum_size = Vector2(50, 34)
+	flag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	flag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	flag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	flag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(flag)
+	var l := UiKit.label(nat, 25, Color.WHITE)
+	l.add_theme_font_override("font", UiKit.font_semi())
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	h.add_child(l)
+	var tick := LineIcon.make("check", 30)
+	tick.name = "Tick"
+	tick.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(tick)
+	mc.add_child(h)
+	b.add_child(mc)
+	return b
+
+
+func _radio_row(text: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(0, 54)
+	b.focus_mode = Control.FOCUS_NONE
+	b.add_theme_stylebox_override("normal", UiKit.skin("recess", 6, 0, 0))
+	b.add_theme_stylebox_override("hover", UiKit.skin("recess", 6, 0, 0))
+	b.add_theme_stylebox_override("pressed", UiKit.skin("recess", 6, 0, 0))
+	b.pressed.connect(cb)
+	var mc := MarginContainer.new()
+	mc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mc.add_theme_constant_override("margin_left", 16)
+	var h := UiKit.hbox(16)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var dot := PanelContainer.new()
+	dot.name = "Dot"
+	dot.custom_minimum_size = Vector2(36, 36)
+	dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(dot)
+	var l := UiKit.label(text, 24, Color.WHITE)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	h.add_child(l)
+	mc.add_child(h)
+	b.add_child(mc)
+	return b
+
+
+func _radio_dot_style(on: bool) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0, 0, 0, 0)
+	sb.set_border_width_all(3 if on else 2)
+	sb.border_color = SELECT_BLUE if on else Color(1, 1, 1, 0.7)
+	sb.set_corner_radius_all(18)
+	if on:
+		sb.set_expand_margin_all(0)
+		sb.content_margin_left = 8
+		sb.content_margin_right = 8
+		sb.content_margin_top = 8
+		sb.content_margin_bottom = 8
+	return sb
+
+
+func _open_filters() -> void:
+	_t_nations = _sel_nations.duplicate()
+	_t_eras = _sel_eras.duplicate()
+	_t_avail = _avail
+	_t_caps = _caps_band
+	_t_goals = _goals_band
+	_country_search.text = ""
+	# selected countries first (then alphabetical), only on open so rows don't jump while tapping
+	var order: Array = session.repo.nationalities()
+	order.sort_custom(func(a: String, b: String) -> bool:
+		var sa := _t_nations.has(a)
+		var sb := _t_nations.has(b)
+		if sa != sb:
+			return sa
+		return a < b)
+	for i in order.size():
+		(_country_rows[order[i]] as Button).get_parent().move_child(_country_rows[order[i]], i)
+	_refresh_filter_widgets()
+	_main_panel.visible = false
+	_filter_panel.visible = true
+
+
+func _refresh_filter_widgets() -> void:
+	for nat in _country_rows.keys():
+		var b: Button = _country_rows[nat]
+		var on := _t_nations.has(nat)
+		b.add_theme_stylebox_override("normal", UiKit.skin("select" if on else "btn", 6, 0, 0))
+		b.add_theme_stylebox_override("hover", UiKit.skin("select" if on else "btn_hover", 6, 0, 0))
+		b.add_theme_stylebox_override("pressed", UiKit.skin("btn_press", 6, 0, 0))
+		(b.find_child("Tick", true, false) as Control).visible = on
+	var names := _t_nations.keys()
+	names.sort()
+	_country_summary.text = "" if names.is_empty() else (String(names[0]) + ("  +%d" % (names.size() - 1) if names.size() > 1 else ""))
+	_style_toggle(_any_era_btn, _t_eras.is_empty(), true)
+	for i in _era_btns.size():
+		_style_toggle(_era_btns[i], _t_eras.has(i))
+	for i in _avail_rows.size():
+		var on_row := (i == 0) == _t_avail
+		(_avail_rows[i].find_child("Dot", true, false) as PanelContainer).add_theme_stylebox_override("panel", _radio_dot_style(on_row))
+		var fill := _avail_rows[i].find_child("Fill", true, false)
+		if fill != null:
+			fill.queue_free()
+		if on_row:
+			var inner := PanelContainer.new()
+			inner.name = "Fill"
+			var isb := StyleBoxFlat.new()
+			isb.bg_color = SELECT_BLUE
+			isb.set_corner_radius_all(9)
+			inner.add_theme_stylebox_override("panel", isb)
+			inner.custom_minimum_size = Vector2(18, 18)
+			inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var dot := _avail_rows[i].find_child("Dot", true, false) as PanelContainer
+			var cc := CenterContainer.new()
+			cc.name = "Fill"
+			cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			cc.add_child(inner)
+			dot.add_child(cc)
+			# the CenterContainer is named Fill; the inner panel keeps its own name inside it
+	if _caps_opt != null:
+		_caps_opt.selected = _t_caps
+		_goals_opt.selected = _t_goals
+
+
+func _filter_country_rows() -> void:
+	var q := FootballerRepository.fold(_country_search.text.strip_edges())
+	for nat in _country_rows.keys():
+		(_country_rows[nat] as Button).visible = q == "" or FootballerRepository.fold(String(nat)).contains(q)
+
+
+func _reset_temp() -> void:
+	_t_nations.clear()
+	_t_eras.clear()
+	_t_avail = false
+	_t_caps = 0
+	_t_goals = 0
+	_country_search.text = ""
+	_filter_country_rows()
+	_refresh_filter_widgets()
+
+
+func _apply_filters() -> void:
+	_sel_nations = _t_nations.duplicate()
+	_sel_eras = _t_eras.duplicate()
+	_avail = _t_avail
+	_caps_band = _t_caps
+	_goals_band = _t_goals
+	_filter_panel.visible = false
+	_main_panel.visible = true
+	_rebuild()

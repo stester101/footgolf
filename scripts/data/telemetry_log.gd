@@ -343,7 +343,7 @@ static func summary_text(records: Array, include_csv: bool = true) -> String:
 			holes_by_round[rid] = []
 		holes_by_round[rid].append(d)
 	var lines := PackedStringArray()
-	lines.append("Football Golf data summary (%s)" % _now_iso())
+	lines.append("Foot Golf data summary (%s)" % _now_iso())
 	if records.is_empty():
 		lines.append("No data recorded yet.")
 		return "\n".join(lines) + "\n"

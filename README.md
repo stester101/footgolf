@@ -1,4 +1,4 @@
-# Football Golf (V0.1 prototype)
+# Foot Golf (V0.1 prototype)
 
 A 3D golf game where every shot is a footballer: pick **Caps** (aerial — 1 senior international
 cap = 1 yard of neutral carry) or **Goals** (ground — 1 goal = 1 foot of neutral roll), choose a

@@ -11,6 +11,7 @@ var _stop_after := ""
 var _log: Array[String] = []
 var _shot_no := 0
 var _picker_shot_done := false
+var _card_done := false
 var _last_pos := Vector3.INF
 var _stuck := 0
 
@@ -54,7 +55,7 @@ func _fail(msg: String) -> void:
 func _find_button(root: Node, text_prefix: String) -> Button:
 	for c in root.find_children("*", "Button", true, false):
 		var b := c as Button
-		if b.is_visible_in_tree() and not b.disabled and b.text.begins_with(text_prefix):
+		if b.is_visible_in_tree() and not b.disabled and (b.text.to_lower().begins_with(text_prefix.to_lower()) or String(b.get_meta("press_text", "")).to_lower().begins_with(text_prefix.to_lower())):
 			return b
 	return null
 
@@ -90,9 +91,28 @@ func _run() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--smoke-course="):
 			course_name = a.substr(15)
+	if OS.get_cmdline_user_args().has("--smoke-tour"):
+		for step in [["Settings", "settings"], ["Gameplay", "settings_gameplay"], ["BACK", ""], ["Developer", "settings_developer"], ["BACK", ""], ["BACK", ""],
+				["Statistics", "statistics"], ["Overview", "stats_overview"], ["BACK", ""], ["BACK", ""]]:
+			if step[0] == "BACK":
+				_press_id("back")
+			elif not _press(String(step[0])):
+				return _fail("tour: no button '%s'" % step[0])
+			await _frames(3)
+			if step[1] != "":
+				await _shot(String(step[1]))
+		await _shot("tour_end")
+	if not _press("Single Player"):
+		return _fail("no Single Player button")
+	await _frames(3)
+	await _shot("course_select")
 	if not _press(course_name):
 		return _fail("no course button '%s'" % course_name)
-	await _frames(2)
+	await _frames(3)
+	await _shot("round_setup")
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--smoke-players="):
+			_press_id("players_%s" % a.substr(16))
 	if not _press("Start round"):
 		return _fail("no Start round button")
 	await _frames(10)
@@ -112,6 +132,15 @@ func _run() -> void:
 				await _frames(3)
 				await _shot("hole%d_aim" % (session.round_state.current_index + 1))
 			ShotTypes.State.AIMING:
+				if OS.get_cmdline_user_args().has("--smoke-card") and session.shot_counter >= 2 and not _card_done:
+					_card_done = true
+					await _shot("before_card")
+					if _press_id("card"):
+						await _frames(3)
+						await _shot("scorecard")
+						_press_id("back_to_round")
+						await _frames(3)
+						await _shot("after_card")
 				var d := session.distance_to_pin_m()
 				session.aim_at_pin()
 				var want_goals := d < 22.0 or session.current_lie() == Surface.Type.GREEN
@@ -141,6 +170,17 @@ func _run() -> void:
 				if not _picker_shot_done:
 					_picker_shot_done = true
 					await _shot("picker")
+					if OS.get_cmdline_user_args().has("--smoke-filters") and _press_id("filters"):
+						await _frames(2)
+						for c in get_tree().root.find_children("*", "Button", true, false):
+							var fbn := c as Button
+							if fbn.is_visible_in_tree() and ((fbn.has_meta("nation") and String(fbn.get_meta("nation")) == "England") or fbn.text == "1980s"):
+								fbn.pressed.emit()
+						await _frames(2)
+						await _shot("filters")
+						_press_id("apply_filters")
+						await _frames(3)
+						await _shot("picker_filtered")
 				var picker := get_tree().root.find_children("*", "FootballerPicker", true, false)
 				if picker.is_empty():
 					return _fail("picker did not open")
@@ -169,7 +209,7 @@ func _run() -> void:
 				if not picked:
 					# first page is all used by now: use the picker's Random button (also covers that feature)
 					for c in (picker[0] as Node).find_children("*", "Button", true, false):
-						if (c as Button).text == "Random" and not (c as Button).disabled:
+						if ((c as Button).text == "Random" or String((c as Button).get_meta("ui_id", "")) == "random") and not (c as Button).disabled:
 							(c as Button).pressed.emit()
 							picked = true
 							break

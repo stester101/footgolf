@@ -5,39 +5,31 @@ Single list of what the owner has asked for. Keep it short. Move items between s
 Last updated: 2026-11-08
 
 ## In progress
-- Nothing building right now.
+- Nothing building. Waiting for feedback from the phone.
 
-## Next (agreed)
-- Restyle remaining screens in the same system once the owner reviews the hole-complete screen on the phone.
-- Restyle the in-round Scorecard menu (Card button) to match the Option B board.
-- Check the round-complete screen in the new style.
-- Commit, run the full test suite once, build the APK (only when the owner says so).
+## Next (owner ticked these, in this order)
+1. Round-complete screen check in the new style (the scorecard menu is done, waiting for approval).
+2. Restyle settings, tutorial, pause menu and developer panel in the new system.
+3. Cup and flag physics (physics update): the ball can hit the flagstick if it arrives too fast, bounce off it, and be affected by the hole (rim, lip-out, drop in). Needs ball_sim and cup changes, calibration tests and a matching drop animation.
+4. Trajectory bar on the right edge (from the mockup).
 
-## Planned: physics update (owner request, not started)
-- Cup and flag physics: the ball can hit the flagstick if it arrives too fast, bounce off it, be affected by the hole (rim, lip-out, drop in). Should behave like a real flag and cup. Needs ball_sim and cup changes, new calibration tests, and a drop animation that matches.
+## Planned: game features (owner ticked, after the above)
+- Round setup with a frozen difficulty configuration: cup size, hole-out radius, wind range, numeric values on/off, filter and sort switches, max score (par+5 default, other cap, or none), trail and aim aids on/off. Footballer reuse rule: once per round or once per mode.
+- Local profiles with names, favourites tab and stars (pass-and-play itself is done, with default player names).
+- Save and resume (several unfinished rounds), History, personal bests, statistics. No duplicate telemetry after resume.
+- Sound and vibration.
 
-## Planned: UI and graphics
-- Pin tag styling per the mockup (white outline with a pointer).
-- Slope on the green (text was removed; "we'll come back to it"). Needs a visual treatment.
-- Real font for numbers and headings.
-- Restyle remaining plain screens: settings pages, tutorial, pause, developer panel.
-- Trajectory bar on the right edge (mockup idea, parked).
-- Spin ball: check dragging on the owner's phone.
-
-## Planned: game features (from the handover brief)
-- Round setup screen with a frozen difficulty configuration: cup size, hole-out radius, wind range, numeric values on/off, filter and sort switches, max score (par+5 default, other cap, or none), trail and aim aids on/off.
-- Footballer reuse rule at setup: once per round, or once per mode.
-- Local profiles, favourites tab and stars in the picker.
-- Pass-and-play, 2 to 4 local players, one shot each in turn.
-- Save and resume, several unfinished rounds, History, personal bests, statistics.
-- Telemetry check: no duplicate events after resume.
-
-## Later / parked
+## Later / not ticked
+- Pin tag restyle (white outline with a pointer), slope on the green (visual treatment), real font for numbers and headings.
 - An Augusta-inspired course.
-- Sound and vibration, draft or shortlist, match play, challenge codes, online play.
+- Check the spin ball dragging on the owner's phone (needs a device).
+- Draft or shortlist, match play, challenge codes, online play.
 - Do NOT run hole-length simulations (owner decision); lengths are set by ranges.
 
 ## Done (committed and in an APK)
+- Pass-and-play (v1): 2 to 4 local players on one phone, one shot each in turn, per-player ball, strokes and scorecard, shared footballer pool and wind, standings on hole-complete and round-complete. Players are "Player 1..4" (named profiles are still planned).
+- Main menu and navigation redesign: Foot Golf branding and FG logo, new menu, Course Select, Round Setup, Settings sub-pages, Statistics (overview real, history and records placeholders), consistent Back.
+- Picker redesign: compact rows, Filters panel, removable chips. Scorecard redesign and modal fix (menus no longer move or show through the HUD).
 - Hole-complete screen, Option B: summary strip, scorecard board (only the holes in the round), "Up next" tile with loading bar pinned to the bottom. Headline uses the app font.
 - No maximum score, editable pars. Caps or Goals from any lie. Trajectory options (Punch, Low, Standard, High).
 - Whole visible course in play. New courses: Coastal Links, Lakeside, Grand Tour. Hole lengths set to the owner's ranges.

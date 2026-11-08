@@ -96,6 +96,81 @@ func _draw() -> void:
 		"search":
 			draw_arc(P.call(-2, -2), 6.0 * u, 0, TAU, 28, color, stroke, true)
 			_line(P.call(2.4, 2.4), P.call(8, 8))
+		"player":
+			draw_arc(P.call(1, -7), 2.4 * u, 0, TAU, 16, color, stroke, true)
+			_line(P.call(1, -4.5), P.call(0, 2))
+			_line(P.call(0, 2), P.call(-4, 8))
+			_line(P.call(0, 2), P.call(5, 5))
+			_line(P.call(5, 5), P.call(7, 8))
+			_line(P.call(1, -3), P.call(-4, -1))
+			_line(P.call(1, -3), P.call(6, -1))
+		"people":
+			draw_arc(P.call(-3.5, -4.5), 2.6 * u, 0, TAU, 16, color, stroke, true)
+			draw_arc(P.call(4, -3.5), 2.2 * u, 0, TAU, 16, color, stroke, true)
+			draw_arc(P.call(-3.5, 8), 5.5 * u, PI, TAU, 16, color, stroke, true)
+			draw_arc(P.call(4, 7.5), 4.5 * u, PI, TAU, 16, color, stroke, true)
+		"course":
+			_line(P.call(0, -9), P.call(0, 3))
+			draw_polyline(PackedVector2Array([P.call(0, -9), P.call(7, -6), P.call(0, -3)]), color, stroke, true)
+			var ell := PackedVector2Array()
+			for k in 25:
+				var ang2 := TAU * float(k) / 24.0
+				ell.append(P.call(9.0 * cos(ang2), 6.5 + 2.5 * sin(ang2)))
+			draw_polyline(ell, color, stroke, true)
+		"gear":
+			draw_arc(P.call(0, 0), 3.2 * u, 0, TAU, 20, color, stroke, true)
+			draw_arc(P.call(0, 0), 6.0 * u, 0, TAU, 28, color, stroke, true)
+			for k in 8:
+				var ang3 := TAU * float(k) / 8.0
+				_line(P.call(6.0 * cos(ang3), 6.0 * sin(ang3)), P.call(8.8 * cos(ang3), 8.8 * sin(ang3)))
+		"bars":
+			for k in 3:
+				var bx := -6.0 + 6.0 * k
+				var bh := 5.0 + 5.0 * k
+				draw_polyline(PackedVector2Array([P.call(bx - 2, 8), P.call(bx - 2, 8 - bh), P.call(bx + 2, 8 - bh), P.call(bx + 2, 8)]), color, stroke, true)
+		"help":
+			draw_arc(P.call(0, 0), 8.5 * u, 0, TAU, 32, color, stroke, true)
+			draw_arc(P.call(0, -2), 3.2 * u, deg_to_rad(-200), deg_to_rad(40), 14, color, stroke, true)
+			_line(P.call(1.8, 0.6), P.call(0, 2.6))
+			draw_circle(P.call(0, 5.6), 1.2 * u, color)
+		"chevron_left":
+			draw_polyline(PackedVector2Array([P.call(3, -6), P.call(-3, 0), P.call(3, 6)]), color, stroke, true)
+		"trophy":
+			draw_polyline(PackedVector2Array([P.call(-5, -7), P.call(5, -7), P.call(5, -2), P.call(2.5, 2), P.call(-2.5, 2), P.call(-5, -2), P.call(-5, -7)]), color, stroke, true)
+			draw_polyline(PackedVector2Array([P.call(-5, -5.5), P.call(-8.5, -5.5), P.call(-7.5, -1), P.call(-4.5, -0.5)]), color, stroke, true)
+			draw_polyline(PackedVector2Array([P.call(5, -5.5), P.call(8.5, -5.5), P.call(7.5, -1), P.call(4.5, -0.5)]), color, stroke, true)
+			_line(P.call(0, 2), P.call(0, 6))
+			_line(P.call(-4, 7), P.call(4, 7))
+		"chevron_right":
+			draw_polyline(PackedVector2Array([P.call(-3, -6), P.call(3, 0), P.call(-3, 6)]), color, stroke, true)
+		"chevron_down":
+			draw_polyline(PackedVector2Array([P.call(-6, -3), P.call(0, 3), P.call(6, -3)]), color, stroke, true)
+		"check":
+			draw_polyline(PackedVector2Array([P.call(-7, 0), P.call(-2, 5), P.call(7, -5)]), color, stroke, true)
+		"sliders":
+			for row in [[-6.0, -3.0], [0.0, 3.0], [6.0, -1.0]]:
+				_line(P.call(-8, row[0]), P.call(8, row[0]))
+				draw_circle(P.call(row[1], row[0]), 2.2 * u, color)
+		"sort":
+			_line(P.call(-4, 7), P.call(-4, -7))
+			_line(P.call(-4, -7), P.call(-7, -4))
+			_line(P.call(-4, -7), P.call(-1, -4))
+			_line(P.call(5, -7), P.call(5, 7))
+			_line(P.call(5, 7), P.call(2, 4))
+			_line(P.call(5, 7), P.call(8, 4))
+		"shuffle":
+			draw_polyline(PackedVector2Array([P.call(-8, -5), P.call(-3, -5), P.call(3, 5), P.call(7, 5)]), color, stroke, true)
+			draw_polyline(PackedVector2Array([P.call(-8, 5), P.call(-3, 5), P.call(3, -5), P.call(7, -5)]), color, stroke, true)
+			_line(P.call(7, 5), P.call(4, 2))
+			_line(P.call(7, 5), P.call(4, 8))
+			_line(P.call(7, -5), P.call(4, -8))
+			_line(P.call(7, -5), P.call(4, -2))
+		"refresh":
+			draw_arc(P.call(0, 0), 6.5 * u, deg_to_rad(-40), deg_to_rad(250), 24, color, stroke, true)
+			_line(P.call(5, -4.2), P.call(8.5, -4.5))
+			_line(P.call(5, -4.2), P.call(5.5, -8))
+		"funnel":
+			draw_polyline(PackedVector2Array([P.call(-8, -7), P.call(8, -7), P.call(2, 0), P.call(2, 7), P.call(-2, 5), P.call(-2, 0), P.call(-8, -7)]), color, stroke, true)
 		"flag":
 			_line(P.call(-5, -9), P.call(-5, 9))
 			draw_polyline(PackedVector2Array([P.call(-5, -9), P.call(7, -5), P.call(-5, -1)]), color, stroke, true)

@@ -58,6 +58,63 @@ var _accum := 0.0
 var _hole_start_pool: Dictionary = {}
 
 
+## Pass-and-play: one slot per local player (a single player is one slot). The session variables
+## round_state / ball_pos / last_safe_pos / aim_bearing_deg always describe the ACTIVE player; the slot
+## holds the others while they wait. Footballer pool, hole wind and the hole itself are shared.
+class PlayerSlot extends RefCounted:
+	var round_state: RoundState
+	var ball_pos := Vector3.ZERO
+	var last_safe_pos := Vector3.ZERO
+	var aim := 0.0
+
+var slots: Array = []
+var turn := 0
+var player_names: Array[String] = []
+
+
+func player_count() -> int:
+	return maxi(slots.size(), 1)
+
+
+func active_name() -> String:
+	return player_names[turn] if turn < player_names.size() else "Player 1"
+
+
+func slot_round_state(i: int) -> RoundState:
+	return (slots[i] as PlayerSlot).round_state if i < slots.size() else round_state
+
+
+func _save_active() -> void:
+	if slots.is_empty():
+		return
+	var sl: PlayerSlot = slots[turn]
+	sl.round_state = round_state
+	sl.ball_pos = ball_pos
+	sl.last_safe_pos = last_safe_pos
+	sl.aim = aim_bearing_deg
+
+
+func _switch_to(i: int) -> void:
+	turn = i
+	var sl: PlayerSlot = slots[i]
+	round_state = sl.round_state
+	ball_pos = sl.ball_pos
+	last_safe_pos = sl.last_safe_pos
+	aim_bearing_deg = sl.aim
+	selected_id = ""
+	undo_stack.clear()
+
+
+## Next player after the current one who has not finished this hole, or -1 when everyone has.
+func _next_unfinished() -> int:
+	var n := slots.size()
+	for k in range(1, n + 1):
+		var i := (turn + k) % n
+		if not ((slots[i] as PlayerSlot).round_state.current() as HoleState).complete:
+			return i
+	return -1
+
+
 func _init(p_cfg: PhysicsConfig, p_repo: FootballerRepository) -> void:
 	cfg = p_cfg
 	repo = p_repo
@@ -67,22 +124,32 @@ func _init(p_cfg: PhysicsConfig, p_repo: FootballerRepository) -> void:
 
 func start_round(defs: Array, round_seed: int = -1,
 		pool_rule: int = FootballerPool.ReuseRule.ONCE_PER_ROUND,
-		mulligans: int = 0) -> void:
+		mulligans: int = 0, players: int = 1) -> void:
 	hole_defs = defs
 	pool.reset()
 	if not pool.set_reuse_rule(pool_rule):
 		pool.set_reuse_rule(FootballerPool.ReuseRule.ONCE_PER_ROUND)
-	round_state = RoundState.new()
-	round_state.mulligans_allowed = clampi(mulligans, -1, 99)
-	round_state.round_seed = round_seed if round_seed >= 0 else int(Time.get_unix_time_from_system()) & 0x7fffffff
-	for d in defs:
-		var hd: HoleDefinition = d
-		var hs := HoleState.new()
-		hs.hole_id = hd.id
-		hs.hole_name = hd.display_name
-		hs.par = hd.par
-		round_state.holes.append(hs)
-		round_state.hole_ids.append(hd.id)
+	var seed_val := round_seed if round_seed >= 0 else int(Time.get_unix_time_from_system()) & 0x7fffffff
+	slots.clear()
+	player_names.clear()
+	for p in clampi(players, 1, 4):
+		var rs := RoundState.new()
+		rs.mulligans_allowed = clampi(mulligans, -1, 99)
+		rs.round_seed = seed_val
+		for d in defs:
+			var hd: HoleDefinition = d
+			var hs := HoleState.new()
+			hs.hole_id = hd.id
+			hs.hole_name = hd.display_name
+			hs.par = hd.par
+			rs.holes.append(hs)
+			rs.hole_ids.append(hd.id)
+		var sl := PlayerSlot.new()
+		sl.round_state = rs
+		slots.append(sl)
+		player_names.append("Player %d" % (p + 1))
+	turn = 0
+	round_state = (slots[0] as PlayerSlot).round_state
 	history.clear()
 	shot_counter = 0
 	last_result = null
@@ -94,11 +161,20 @@ func start_round(defs: Array, round_seed: int = -1,
 func start_hole(index: int) -> void:
 	if index < 0 or index >= hole_defs.size():
 		return
+	if not slots.is_empty():
+		turn = 0  # every hole starts with the first player
+		round_state = (slots[0] as PlayerSlot).round_state
+		for sl in slots:
+			(sl as PlayerSlot).round_state.current_index = index
 	round_state.current_index = index
 	hole = hole_defs[index]
 	ball_pos = hole.tee_position(cfg.ball_radius)
 	last_safe_pos = ball_pos
 	aim_at_pin()
+	for sl in slots:  # all players start on the tee
+		(sl as PlayerSlot).ball_pos = ball_pos
+		(sl as PlayerSlot).last_safe_pos = ball_pos
+		(sl as PlayerSlot).aim = aim_bearing_deg
 	style = ShotTypes.Style.FLIGHT
 	undo_stack.clear()
 	sim = null
@@ -471,6 +547,22 @@ func acknowledge_result() -> void:
 	var hs := current_hole_state()
 	if selected_id != "" and not pool.is_available(selected_id, mode):
 		selected_id = ""
+	if slots.size() > 1:
+		# pass-and-play: one shot each, then the next player who is still on this hole
+		_save_active()
+		var nxt := _next_unfinished()
+		if nxt < 0:
+			_set_state(ShotTypes.State.HOLE_COMPLETE)
+			hole_completed.emit(hs)
+			return
+		_switch_to(nxt)
+		aim_at_pin()
+		style = suggested_style()
+		_set_state(ShotTypes.State.AIMING)
+		ball_placed.emit()
+		selection_changed.emit()
+		message.emit("%s to play" % active_name())
+		return
 	if hs.complete:
 		_set_state(ShotTypes.State.HOLE_COMPLETE)
 		hole_completed.emit(hs)
