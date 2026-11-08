@@ -16,6 +16,10 @@ uniform float stripe_width = 9.0;
 uniform float green_stripe_width = 2.4;
 // 0 = Low graphics (original look, no extra texture taps); 1 = High (macro variation).
 uniform float macro_amt = 0.0;
+// High graphics only: drifting cloud shadows (0 = off, no extra texture tap). cloud_drift is metres/second.
+uniform float cloud_shadow = 0.0;
+uniform float cloud_thr = 0.60;
+uniform vec2 cloud_drift = vec2(3.0, 1.0);
 
 vec4 turf_noise(vec2 p, float tile) {
 	return texture(noise_tex, p / tile);
@@ -97,6 +101,13 @@ vec3 turf_albedo(vec2 p, vec3 to_cam, out float rough_w, out float sand_w) {
 		float dist = length(to_cam);
 		vec4 mot = turf_noise(p, 2.9);
 		c *= 1.0 + (mot.a - 0.5) * 0.30 * smoothstep(25.0, 90.0, dist) * (1.0 - sand) * (1.0 - green) * macro_amt * mix(1.0, 0.4, mown);
+	}
+	// High graphics only: slow soft cloud shadows (1 tap), bluish, weaker on the green so slope
+	// reading is never disturbed, none on sand highlights beyond a gentle dim.
+	if (cloud_shadow > 0.0) {
+		vec4 cs = turf_noise(p - cloud_drift * TIME, 1300.0);
+		float s = smoothstep(cloud_thr, cloud_thr + 0.16, cs.r * 0.7 + cs.g * 0.3);
+		c *= 1.0 - s * cloud_shadow * (1.0 - green * 0.6) * vec3(1.0, 0.93, 0.80);
 	}
 	return c;
 }

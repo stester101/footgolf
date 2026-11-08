@@ -63,6 +63,7 @@ var _pending_t0 := 0
 
 func _ready() -> void:
 	HoleAtmosphere.high_quality = App.settings.graphics_quality == 1
+	HoleAtmosphere.glow = HoleAtmosphere.high_quality and App.settings.graphics_glow
 	_build_environment()
 	course = CourseView.new()
 	add_child(course)
@@ -217,6 +218,14 @@ func _build_environment() -> void:
 	if HoleAtmosphere.high_quality:
 		env.fog_density = 0.0007
 		env.fog_sky_affect = 0.15
+	if HoleAtmosphere.glow:
+		# optional subtle bloom (one extra post pass): only the brightest highlights bleed a little
+		env.glow_enabled = true
+		env.glow_intensity = 0.35
+		env.glow_strength = 0.8
+		env.glow_bloom = 0.0
+		env.glow_hdr_threshold = 1.15
+		env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	world_env.environment = env
 	add_child(world_env)
 	sun = DirectionalLight3D.new()
@@ -246,8 +255,14 @@ func _apply_atmosphere(hole: HoleDefinition) -> void:
 	sun.basis = Basis.looking_at(-sd, Vector3.UP)
 	sun.light_color = a["light"]
 	sun.light_energy = a["energy"]
-	var fog: Color = (a["horizon"] as Color).lerp(Color(0.7, 0.82, 0.94), 0.25)
-	world_env.environment.fog_light_color = fog
+	world_env.environment.fog_light_color = a["fog"]
+
+
+## Visual-only wind (flag, trees, grass, cloud shadows) follows the same wind as the HUD chip.
+func _apply_wind() -> void:
+	if course != null and session != null and session.hole != null:
+		var w := session.wind_vector()
+		course.set_wind(Vector2(w.x, w.z))
 
 
 func _hole_key(index: int) -> String:
@@ -311,6 +326,7 @@ func _on_hole_started(_i: int) -> void:
 		course.build(session.hole, session.cfg.cup_radius)
 		_built_hole_id = key
 	_apply_atmosphere(session.hole)
+	_apply_wind()
 	rig.set_hole(session.hole)
 	_set_overhead(true)
 	trail_line.clear()
@@ -321,6 +337,8 @@ func _on_hole_started(_i: int) -> void:
 
 
 func _on_state_changed(s: int) -> void:
+	if s == ShotTypes.State.AIMING and HoleAtmosphere.high_quality:
+		_apply_wind()  # the developer panel can change the wind between shots
 	if session is OnlineSession and ui != null and s in [ShotTypes.State.AIMING, ShotTypes.State.ROUND_COMPLETE]:
 		ui.close_all_overlays()
 	if s == ShotTypes.State.AIMING and rig.mode == CameraRig.Mode.OVERHEAD and ui.overhead and not _tap_place:

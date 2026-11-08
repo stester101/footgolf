@@ -1120,9 +1120,12 @@ func _open_settings_visual() -> void:
 	body.add_child(_toggle("Vibration on shots and hole-outs", st.vibration, func(on: bool) -> void:
 		st.vibration = on
 		st.save()))
-	body.add_child(_toggle("High graphics (sky, ground variation, per-hole sun)", st.graphics_quality == 1, func(on: bool) -> void:
+	body.add_child(_toggle("High graphics (sky, hills, birds, cloud shadows, wind sway)", st.graphics_quality == 1, func(on: bool) -> void:
 		st.graphics_quality = 1 if on else 0
 		HoleAtmosphere.high_quality = on
+		st.save()))
+	body.add_child(_toggle("Glow (subtle bloom, High only)", st.graphics_glow, func(on: bool) -> void:
+		st.graphics_glow = on
 		st.save()))
 	body.add_child(_note("Graphics changes apply from the next round."))
 	body.add_child(_toggle("Auto-continue after each shot (progress bar)", st.auto_continue, func(on: bool) -> void:
