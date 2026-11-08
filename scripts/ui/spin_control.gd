@@ -12,7 +12,7 @@ var _touch_index := -1
 
 
 func _init() -> void:
-	custom_minimum_size = Vector2(96, 96)
+	custom_minimum_size = Vector2(150, 150)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	tooltip_text = "Strike point: up = topspin, down = backspin"
 

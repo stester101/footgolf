@@ -7,6 +7,7 @@ extends Node
 
 var main: Node
 var shots_dir := ""
+var _stop_after := ""
 var _log: Array[String] = []
 var _shot_no := 0
 var _picker_shot_done := false
@@ -18,6 +19,8 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--screenshots="):
 			shots_dir = a.substr(14)
+		if a.begins_with("--smoke-stop="):
+			_stop_after = a.substr(13)
 	_run.call_deferred()
 
 
@@ -39,6 +42,8 @@ func _shot(name: String) -> void:
 	DirAccess.make_dir_recursive_absolute(shots_dir)
 	img.save_png("%s/%02d_%s.png" % [shots_dir, _shot_no, name])
 	_shot_no += 1
+	if _stop_after != "" and name == _stop_after:
+		get_tree().quit(0)
 
 
 func _fail(msg: String) -> void:
