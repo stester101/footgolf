@@ -175,7 +175,7 @@ func start_hole(index: int) -> void:
 		(sl as PlayerSlot).ball_pos = ball_pos
 		(sl as PlayerSlot).last_safe_pos = ball_pos
 		(sl as PlayerSlot).aim = aim_bearing_deg
-	style = ShotTypes.Style.FLIGHT
+	apply_lie_defaults()
 	undo_stack.clear()
 	sim = null
 	_hole_start_pool = pool.snapshot()
@@ -226,6 +226,14 @@ func set_style(s: int) -> void:
 		return
 	style = s
 	selection_changed.emit()
+
+
+## Owner defaults for each new shot: on the green Goals + Putt (feet); anywhere else Caps + Approach (yards).
+func apply_lie_defaults() -> void:
+	style = suggested_style()
+	mode = ShotTypes.Mode.GOALS if current_lie() == Surface.Type.GREEN else ShotTypes.Mode.CAPS
+	if selected_id != "" and not pool.is_available(selected_id, mode):
+		selected_id = ""
 
 
 func suggested_style() -> int:
@@ -557,7 +565,7 @@ func acknowledge_result() -> void:
 			return
 		_switch_to(nxt)
 		aim_at_pin()
-		style = suggested_style()
+		apply_lie_defaults()
 		_set_state(ShotTypes.State.AIMING)
 		ball_placed.emit()
 		selection_changed.emit()
@@ -568,7 +576,7 @@ func acknowledge_result() -> void:
 		hole_completed.emit(hs)
 	else:
 		aim_at_pin()
-		style = suggested_style()
+		apply_lie_defaults()
 		_set_state(ShotTypes.State.AIMING)
 		selection_changed.emit()
 

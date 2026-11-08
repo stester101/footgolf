@@ -365,12 +365,14 @@ func _update_aim_guide(bpos: Vector3) -> void:
 	var k := clampf(rig.cam.size / 70.0, 1.0, 8.0) if over else 1.0
 	var d := session.aim_dir()
 	var start := bpos + Vector3.UP * (0.06 * k)
-	var finish := bpos + d * AIM_GUIDE_LEN * k
+	# smaller when putting and as the ball nears the pin
+	var g := 0.5 if session.style == ShotTypes.Style.ROLL else clampf(session.distance_to_pin_m() / 40.0, 0.55, 1.0)
+	var finish := bpos + d * AIM_GUIDE_LEN * g * k
 	if session.style == ShotTypes.Style.FLIGHT:
-		finish.y = start.y + minf(AIM_GUIDE_LEN * tan(deg_to_rad(session.launch_angle_for(session.trajectory))), AIM_GUIDE_LEN) * k
+		finish.y = start.y + minf(AIM_GUIDE_LEN * g * tan(deg_to_rad(session.launch_angle_for(session.trajectory))), AIM_GUIDE_LEN * g) * k
 	else:
 		finish.y = session.hole.contact_height(finish.x, finish.z) + 0.08 * k
-	aim_line.draw_arrow(start, finish, rig.cam.global_position, 0.35 * k,
+	aim_line.draw_arrow(start, finish, rig.cam.global_position, 0.35 * g * k,
 		Color(UiKit.C_TEXT, 0.45))
 
 

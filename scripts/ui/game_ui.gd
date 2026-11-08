@@ -500,7 +500,7 @@ func _build_shot_controls() -> VBoxContainer:
 	hdr.add_child(_turn_label)
 	# chosen footballer (tap to change); hidden until one is picked
 	_change_btn = Button.new()
-	_change_btn.custom_minimum_size = Vector2(190, 40)
+	_change_btn.custom_minimum_size = Vector2(220, 40)
 	_change_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	_change_btn.focus_mode = Control.FOCUS_ALL
 	_change_btn.set_meta("ui_id", "change_footballer")
@@ -526,6 +526,9 @@ func _build_shot_controls() -> VBoxContainer:
 	_player_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_player_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ch.add_child(_player_name)
+	var swap_icon := LineIcon.make("swap", 22, UiKit.C_TEXT)
+	swap_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ch.add_child(swap_icon)
 	cm.add_child(ch)
 	_change_btn.add_child(cm)
 	hdr.add_child(_change_btn)

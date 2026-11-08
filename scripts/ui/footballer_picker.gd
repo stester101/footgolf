@@ -14,7 +14,7 @@ const PAGE := 50
 const SELECT_BLUE := Color("#52AAFF")
 
 ## Remembered between openings within a round (you reopen the picker every shot): search text,
-## sort, filters, page size and scroll position. A new round clears the search and scroll.
+## sort, filters, page size and scroll position. Closing clears the search; a new round resets all.
 static var _saved := {"q": "", "sort": "name_az", "nations": {}, "eras": {}, "avail": false,
 	"caps_band": 0, "goals_band": 0, "limit": PAGE, "scroll": 0}
 static var _saved_round_id := -1
@@ -73,14 +73,17 @@ var _caps_opt: OptionButton
 var _goals_opt: OptionButton
 
 
+func _exit_tree() -> void:
+	_saved["q"] = ""  # the text search clears when the picker closes; filters and sort stay
+
+
 func setup(s: GameSession) -> void:
 	session = s
 	var rid := session.round_state.get_instance_id()
 	if rid != _saved_round_id:
 		_saved_round_id = rid
-		_saved["q"] = ""
-		_saved["limit"] = PAGE
-		_saved["scroll"] = 0
+		_saved = {"q": "", "sort": "name_az", "nations": {}, "eras": {}, "avail": false,
+			"caps_band": 0, "goals_band": 0, "limit": PAGE, "scroll": 0}  # new round: everything resets
 	_sel_nations = (_saved["nations"] as Dictionary).duplicate()
 	_sel_eras = (_saved["eras"] as Dictionary).duplicate()
 	_avail = bool(_saved["avail"])
