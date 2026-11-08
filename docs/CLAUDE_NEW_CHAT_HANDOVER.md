@@ -1,6 +1,6 @@
 # Foot Golf: handover for a new Claude chat
 
-Date: 8 November 2026. The previous chat's context was full. Read this first, then `CLAUDE.md`, `docs/BACKLOG.md` and the Codex handover. **Nothing in this file has been acted on yet**: it is a status report and a plan, not a record of finished work.
+Date: 8 November 2026. The previous chat's context was full. Read this first, then `docs/CLAUDE_HANDOVER_ADDENDUM.md` (verified answers; it supersedes this file where they differ), then `CLAUDE.md`, `docs/BACKLOG.md` and the Codex handover. **Nothing in this file has been acted on yet**: it is a status report and a plan, not a record of finished work.
 
 > **Update (end of this chat):** everything below was done: my uncommitted work committed, the Codex multiplayer patch applied cleanly (no conflicts) and committed, items 1 to 6 done and committed, all pushed, one APK built. Remaining work is the deployment steps in section 4 (relay, phones) and the other backlog items.
 
@@ -18,7 +18,7 @@ Date: 8 November 2026. The previous chat's context was full. Read this first, th
 | Item | Observed |
 |---|---|
 | Local branch | `claude/new-chat-handover-docs-k0mlnq`, HEAD `ec3974a`, working tree clean |
-| Remote | `git fetch origin claude/new-chat-handover-docs-k0mlnq` fails: **ref not found on origin**, so HEAD is not confirmed pushed. The local `origin/...` tracking ref is stale. Push only when the owner says so |
+| Remote | `git fetch origin claude/new-chat-handover-docs-k0mlnq` fails: **ref not found on origin**, at that time. Per the addendum the code was on `ccr-1f62a11c-rk743j` at the same `ec3974a`; this branch was later pushed with the same commits plus doc edits |
 | Commits on top of `5702ab2` | `230c31c` player names/colours, favourites, custom ranges, handover docs; `a11fc68` relay multiplayer from the Codex package; `ec3974a` quick wins 1 to 6 |
 | In code | `Input.vibrate_handheld` (game_ui.gd), `PLAYER_COLS`, `player_names` in GameSession, `scripts/network/*`, `relay/`, `tests/network/`, `permissions/internet=true` in export_presets.cfg |
 
