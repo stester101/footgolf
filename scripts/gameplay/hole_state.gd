@@ -10,6 +10,8 @@ var penalties := 0
 var complete := false
 var completion := ""
 var shots: Array = []  # Array[ShotResult]
+## Maximum score for this hole (frozen at round start); 0 = none. The recorded score never exceeds it.
+var max_score := 0
 var used_footballer_ids: Array[String] = []
 
 
@@ -18,9 +20,9 @@ func raw_total() -> int:
 	return strokes + penalties
 
 
-## Recorded hole score = strokes + penalties (no cap).
+## Recorded hole score = strokes + penalties, capped at max_score when one is set.
 func score() -> int:
-	return raw_total()
+	return mini(raw_total(), max_score) if max_score > 0 else raw_total()
 
 
 func relative_to_par() -> int:
@@ -36,6 +38,7 @@ func copy() -> HoleState:
 	h.penalties = penalties
 	h.complete = complete
 	h.completion = completion
+	h.max_score = max_score
 	h.shots = shots.duplicate()
 	h.used_footballer_ids = used_footballer_ids.duplicate()
 	return h

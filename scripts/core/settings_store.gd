@@ -79,7 +79,10 @@ var vibration := true
 var lie_effect_exact := false  # spin-ball lie read-out: false = range (-10 to -20%), true = this shot's exact value
 var drag_trajectory := true  # trial: drag up/down on the aim view to change trajectory
 ## Favourite footballer ids (starred in the picker). Global for now; per-profile later.
+## LEGACY: only read once to migrate into the first profile (PlayerProfileStore); no longer used in play.
 var favourites: Array = []
+## Round Setup defaults beyond the legacy fields (see RoundConfig.write_defaults).
+var round_defaults: Dictionary = {}
 ## TEST MODE: show caps/goals in the picker before the shot (developer/testing aid; off = normal rules).
 var show_stats := true
 ## "real" = bundled Wikidata snapshot, "test" = synthetic test players.
@@ -114,6 +117,8 @@ func load_settings() -> void:
 	drag_trajectory = bool(d.get("drag_trajectory", true))
 	favourites = (d.get("favourites", []) as Array).duplicate() if typeof(d.get("favourites")) == TYPE_ARRAY else []
 	show_stats = bool(d.get("show_stats", true))
+	if typeof(d.get("round_defaults")) == TYPE_DICTIONARY:
+		round_defaults = d["round_defaults"]
 	tutorial_seen = bool(d.get("tutorial_seen", false))
 	last_course = String(d.get("last_course", "starter"))
 	if typeof(d.get("par_overrides")) == TYPE_DICTIONARY:
@@ -157,6 +162,7 @@ func save() -> void:
 		"lie_effect_exact": lie_effect_exact,
 		"drag_trajectory": drag_trajectory,
 		"favourites": favourites,
+		"round_defaults": round_defaults,
 		"show_stats": show_stats,
 		"dataset": dataset,
 		"tutorial_seen": tutorial_seen,

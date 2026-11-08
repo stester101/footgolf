@@ -1,7 +1,7 @@
 class_name ScoringService
 extends RefCounted
 ## Stroke-play rules: 1 stroke per committed shot, +1 penalty for water/OOB,
-## automatic maximum of par + 5, hole-out only for a ball AT REST inside the radius
+## optional maximum score (default none), hole-out only for a ball AT REST inside the radius
 ## (or physically in the cup).
 
 const MAX_OVER_PAR := 5
@@ -10,9 +10,10 @@ const MIN_HOLEOUT_FT := 0.0
 const MAX_HOLEOUT_FT := 10.0
 
 
-## Owner decision (docs/DECISIONS.md): there is NO maximum score. A hole ends only when holed.
-static func max_score_for_par(_par: int) -> int:
-	return 999999
+## Owner decision (docs/DECISIONS.md): there is NO maximum score by default. An optional round rule
+## (Round Setup) ends a hole at par + max_over_par strokes. Returns 0 = no maximum.
+static func max_score_for_par(par: int, max_over_par: int = -1) -> int:
+	return 0 if max_over_par < 0 else maxi(1, par + max_over_par)
 
 
 static func clamp_radius_ft(ft: float) -> float:
@@ -42,4 +43,7 @@ static func apply_shot(hs: HoleState, penalty: int, holed: bool) -> String:
 	if holed:
 		hs.complete = true
 		hs.completion = ShotTypes.COMPLETION_HOLED
+	elif hs.max_score > 0 and hs.raw_total() >= hs.max_score:
+		hs.complete = true  # hole ends at the maximum score; HoleState.score() records the cap
+		hs.completion = ShotTypes.COMPLETION_MAX_SCORE
 	return hs.completion

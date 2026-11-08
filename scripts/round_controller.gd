@@ -47,6 +47,8 @@ var open_dev_on_start := false
 var course_id := "starter"
 var mulligans := 0
 var players := 1
+## Frozen Round Setup rules (set by Main before the scene is added).
+var rules: RoundConfig
 var _marker: MeshInstance3D
 var _marker_pos := Vector3.INF
 var _shown_cup_r := -1.0
@@ -120,9 +122,21 @@ func _ready() -> void:
 		net.wind_custom_speed = float(App.online.setup.wind_speed)
 		net.wind_custom_bearing = float(App.online.setup.wind_bearing)
 		session = net
+		# online keeps the host's frozen setup (physics incl. cup, gimme, wind, stats); aids stay local
+		rules = RoundConfig.from_settings(App.settings)
+		rules.show_stats = bool(App.online.setup.get("show_stats", false))
+		rules.gimme_ft = net.holeout_radius_ft
+		session.rules = rules
 	else:
-		session = GameSession.new(App.settings.physics, App.repo)
+		# Non-developer rounds get a private physics copy so the frozen cup size never edits Settings.
+		var round_cfg := App.settings.physics
+		if not open_dev_on_start:
+			round_cfg = PhysicsConfig.new()
+			round_cfg.apply_dict(App.settings.physics.to_dict())
+		session = GameSession.new(round_cfg, App.repo)
 		App.settings.apply_to(session)
+		session.cfg = round_cfg
+		session.apply_rules(rules)
 	session.hole_started.connect(_on_hole_started)
 	session.shot_started.connect(func(_r: ShotRequest) -> void: _on_shot_started())
 	session.state_changed.connect(_on_state_changed)
@@ -152,9 +166,10 @@ func _ready() -> void:
 			h.par = int(App.online.setup.pars.get(h.id, h.par))
 	else:
 		App.telemetry.attach(session, course_id, String(App.course_info(course_id).get("name", course_id)))
-	session.start_round(defs, seed_value, (FootballerPool.ReuseRule.ONCE_PER_MODE if (MainMenu.reuse_per_mode and not App.online.started) else FootballerPool.ReuseRule.ONCE_PER_ROUND), mulligans, players)
+	session.start_round(defs, seed_value, (rules.pool_rule() if not App.online.started else FootballerPool.ReuseRule.ONCE_PER_ROUND), mulligans, players)
 	for i in mini(players, MainMenu.player_names.size()):
 		session.player_names[i] = String(MainMenu.player_names[i])
+		session.profile_ids.append(String(MainMenu.player_profile_ids[i]))
 	if App.online.started:
 		for i in App.online.players.size():
 			session.player_names[i] = String(App.online.players[i].name)
@@ -382,7 +397,7 @@ func _process(delta: float) -> void:
 
 
 func _update_aim_guide(bpos: Vector3) -> void:
-	var show := session.state == ShotTypes.State.AIMING
+	var show := session.state == ShotTypes.State.AIMING and session.rules.show_aim_arrow
 	aim_line.visible = show
 	if not show:
 		return
@@ -402,7 +417,7 @@ func _update_aim_guide(bpos: Vector3) -> void:
 
 
 func _update_trail(bpos: Vector3, moving: bool) -> void:
-	if not App.settings.show_trail:
+	if not session.rules.show_trail:
 		trail_line.clear()
 		return
 	if moving and session.sim != null:

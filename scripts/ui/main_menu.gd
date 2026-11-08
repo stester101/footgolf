@@ -11,7 +11,7 @@ extends Control
 ##     How to Play (tutorial)
 ## Only features that exist are functional; the rest are clearly labelled placeholders.
 
-signal play_requested(course_id: String, dev: bool, mulligans: int, players: int)
+signal play_requested(course_id: String, dev: bool, mulligans: int, players: int, rules: RoundConfig)
 
 const WORD_GREEN := Color("#3AB52B")
 
@@ -19,8 +19,10 @@ const WORD_GREEN := Color("#3AB52B")
 static var _last_mulligans := 0
 static var _last_players := 1
 ## Names for pass-and-play players (edited in Round Setup).
-static var reuse_per_mode := false  # Round Setup: a footballer may be used once for Caps AND once for Goals
 static var player_names: Array = ["Player 1", "Player 2", "Player 3", "Player 4"]
+## Local profile per player slot ("" = guest; guests use the first profile's favourites).
+static var player_profile_ids: Array = ["", "", "", ""]
+static var _profile_slots_init := false
 
 var _pages: Control
 var _stack: Array[Control] = []
@@ -568,6 +570,8 @@ func _course_card(c: Dictionary) -> Button:
 
 func _open_round_setup(course_id: String) -> void:
 	var info := App.course_info(course_id)
+	var rc := RoundConfig.from_settings(App.settings)  # defaults from Settings; frozen once the round starts
+	_sync_profile_slots()
 	var pg := _page("Round Setup")
 	var body: VBoxContainer = pg["body"]
 	# selected course
@@ -592,7 +596,9 @@ func _open_round_setup(course_id: String) -> void:
 		for i in names_box.get_child_count():
 			(names_box.get_child(i) as Control).visible = i < _last_players
 	for n in 4:
+		var slot_row := UiKit.hbox(8)
 		var ne := LineEdit.new()
+		ne.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		ne.text = String(player_names[n])
 		ne.placeholder_text = "Player %d" % (n + 1)
 		ne.custom_minimum_size = Vector2(0, 58)
@@ -601,7 +607,25 @@ func _open_round_setup(course_id: String) -> void:
 		ne.add_theme_color_override("font_color", [Color("#A0F344"), Color("#D63A44"), Color("#FFD84A"), Color("#52AAFF")][n])
 		var idx := n
 		ne.text_changed.connect(func(t: String) -> void: player_names[idx] = t.strip_edges() if t.strip_edges() != "" else "Player %d" % (idx + 1))
-		names_box.add_child(ne)
+		var pbtn := Button.new()
+		pbtn.custom_minimum_size = Vector2(190, 58)
+		pbtn.focus_mode = Control.FOCUS_NONE
+		pbtn.clip_text = true
+		pbtn.add_theme_font_size_override("font_size", 20)
+		pbtn.add_theme_stylebox_override("normal", UiKit.skin("recess", 6, 12, 8))
+		pbtn.add_theme_stylebox_override("hover", UiKit.skin("btn", 6, 12, 8))
+		pbtn.set_meta("ui_id", "profile_slot_%d" % (n + 1))
+		var shown_profile := func() -> void: pbtn.text = _profile_label(String(player_profile_ids[idx]))
+		shown_profile.call()
+		pbtn.pressed.connect(func() -> void:
+			player_profile_ids[idx] = _next_profile_id(String(player_profile_ids[idx]))
+			var pid := String(player_profile_ids[idx])
+			player_names[idx] = String(App.profiles.get_profile(pid).get("name", "Player %d" % (idx + 1)))
+			ne.text = String(player_names[idx])
+			shown_profile.call())
+		slot_row.add_child(pbtn)
+		slot_row.add_child(ne)
+		names_box.add_child(slot_row)
 	var pchoices := HBoxContainer.new()
 	pchoices.add_theme_constant_override("separation", 10)
 	var pbtns: Array[Button] = []
@@ -665,41 +689,145 @@ func _open_round_setup(course_id: String) -> void:
 	refresh.call()
 	body.add_child(choices)
 	body.add_child(_note("Redo the last shot from its result screen. The choice stays fixed for this round."))
-	# rules in force (read-only here; changed in Settings > Gameplay)
-	body.add_child(_caption("RULES FOR THIS ROUND"))
-	var rules := PanelContainer.new()
-	rules.add_theme_stylebox_override("panel", UiKit.skin("recess", 6, 18, 12))
-	rules.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var rv := UiKit.vbox(6)
-	for pair in [["Hole size", "%s ft" % _trim(snappedf(App.settings.physics.cup_diameter_in() / 12.0, 0.01))],
-			["Gimme (from edge)", "%s ft" % _trim(App.settings.holeout_radius_ft)],
-			["Maximum score", "None"]]:
-		var rr := UiKit.hbox(10)
-		var rl := UiKit.label(String(pair[0]), 22, UiKit.C_MUTED)
-		rl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		rr.add_child(rl)
-		var rv2 := UiKit.label(String(pair[1]), 22, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
-		rv2.add_theme_font_override("font", UiKit.font_semi())
-		rr.add_child(rv2)
-		rv.add_child(rr)
-	rules.add_child(rv)
-	body.add_child(rules)
-	body.add_child(_note("Change hole size and gimme distance in Settings > Gameplay."))
-	var rcb := CheckBox.new()
-	rcb.text = "Footballer once per mode (Caps and Goals)"
-	rcb.button_pressed = reuse_per_mode
-	rcb.add_theme_font_size_override("font_size", 22)
-	rcb.set_meta("ui_id", "reuse_per_mode")
-	rcb.toggled.connect(func(on: bool) -> void: reuse_per_mode = on)
-	body.add_child(rcb)
-	body.add_child(_note("Off (default): each footballer is used once per match. On: the same footballer may take one Caps shot and one Goals shot."))
+	# difficulty: pre-filled from Settings > Gameplay, frozen for the round when it starts
+	body.add_child(_caption("DIFFICULTY"))
+	_difficulty_controls(body, rc, Callable())
+	body.add_child(_note("These values are fixed for the whole round. Settings > Gameplay holds the defaults that fill this page."))
 	(pg["footer"] as VBoxContainer).add_child(_primary_button("Start round", func() -> void:
-		play_requested.emit(course_id, false, _last_mulligans, _last_players), "start_round"))
+		play_requested.emit(course_id, false, _last_mulligans, _last_players, rc), "start_round"))
 	_push(pg["root"])
 
 
 static func _trim(v: float) -> String:
 	return str(int(round(v))) if absf(v - round(v)) < 0.005 else "%.2f" % v
+
+
+## Profile slot helpers (Round Setup).
+static func _profile_label(profile_id: String) -> String:
+	var pr := App.profiles.get_profile(profile_id)
+	return "Guest" if pr.is_empty() else String(pr["name"])
+
+
+## Guest -> profile 1 -> profile 2 ... -> guest.
+static func _next_profile_id(current: String) -> String:
+	var ids: Array = [""]
+	for pr in App.profiles.all_profiles():
+		ids.append(String(pr["id"]))
+	return String(ids[(ids.find(current) + 1) % ids.size()])
+
+
+## First visit: slot 1 is the first profile. Every visit: deleted profiles fall back to guest and
+## slots on a profile show its current name.
+static func _sync_profile_slots() -> void:
+	if not _profile_slots_init:
+		_profile_slots_init = true
+		var all := App.profiles.all_profiles()
+		if not all.is_empty():
+			player_profile_ids[0] = String(all[0]["id"])
+	for n in 4:
+		var pr := App.profiles.get_profile(String(player_profile_ids[n]))
+		if pr.is_empty():
+			if String(player_profile_ids[n]) != "":
+				player_names[n] = "Player %d" % (n + 1)
+			player_profile_ids[n] = ""
+		else:
+			player_names[n] = String(pr["name"])
+
+
+func _choice_row(labels: Array, current: int, cb: Callable, id_prefix: String) -> Control:
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 10)
+	flow.add_theme_constant_override("v_separation", 10)
+	var btns: Array[Button] = []
+	var cur := [current]
+	var paint := func() -> void:
+		for i in btns.size():
+			var on: bool = i == int(cur[0])
+			btns[i].add_theme_stylebox_override("normal", UiKit.skin("lime" if on else "recess", 6, 16, 8))
+			btns[i].add_theme_stylebox_override("hover", UiKit.skin("lime" if on else "btn", 6, 16, 8))
+			btns[i].add_theme_color_override("font_color", Color("#0E2A07") if on else Color.WHITE)
+			btns[i].add_theme_color_override("font_hover_color", Color("#0E2A07") if on else Color.WHITE)
+	for i in labels.size():
+		var b := Button.new()
+		b.text = String(labels[i])
+		b.custom_minimum_size = Vector2(0, 62)
+		b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_font_size_override("font_size", 22)
+		b.add_theme_font_override("font", UiKit.font_semi())
+		b.set_meta("ui_id", "%s_%d" % [id_prefix, i])
+		var idx := i
+		b.pressed.connect(func() -> void:
+			cur[0] = idx
+			paint.call()
+			cb.call(idx))
+		btns.append(b)
+		flow.add_child(b)
+	paint.call()
+	return flow
+
+
+## Shared by Round Setup (round-only copy) and Settings > Gameplay (on_change writes the defaults).
+func _difficulty_controls(body: VBoxContainer, rc: RoundConfig, on_change: Callable) -> void:
+	var changed := func() -> void:
+		if on_change.is_valid():
+			on_change.call()
+	var cup := UiKit.spin(RoundConfig.MIN_CUP_FT, RoundConfig.MAX_CUP_FT, 0.05, rc.cup_diameter_ft, func(v: float) -> void:
+		rc.cup_diameter_ft = v
+		changed.call())
+	cup.set_meta("ui_id", "cup_size")
+	body.add_child(_setting_row("Hole size (diameter, ft)", cup))
+	var gimme := UiKit.spin(0, 10, 0.5, rc.gimme_ft, func(v: float) -> void:
+		rc.gimme_ft = ScoringService.clamp_radius_ft(v)
+		changed.call())
+	gimme.set_meta("ui_id", "gimme")
+	body.add_child(_setting_row("Gimme (ft from cup edge, 0 = none)", gimme))
+	body.add_child(_note("Regulation hole is about 0.35 ft (4.25 in). A ball at rest within the gimme distance of the cup edge is holed automatically (1 stroke); 0 ft means it must drop."))
+	body.add_child(_caption("FOOTBALLER RULE"))
+	body.add_child(_choice_row(["Once per match", "Once per mode (Caps and Goals)"], 1 if rc.reuse_per_mode else 0, func(i: int) -> void:
+		rc.reuse_per_mode = i == 1
+		changed.call(), "reuse"))
+	body.add_child(_caption("WIND"))
+	var wscale := UiKit.spin(RoundConfig.WIND_SCALE_MIN, RoundConfig.WIND_SCALE_MAX, 0.25, rc.wind_scale, func(v: float) -> void:
+		rc.wind_scale = v
+		changed.call())
+	var wrow := _setting_row("Wind strength (x course wind)", wscale)
+	wrow.visible = rc.wind_mode == RoundConfig.WindMode.SCALED
+	body.add_child(_choice_row(["Course wind", "No wind", "Scaled"], rc.wind_mode, func(i: int) -> void:
+		rc.wind_mode = i
+		wrow.visible = i == RoundConfig.WindMode.SCALED
+		changed.call(), "wind"))
+	body.add_child(wrow)
+	body.add_child(_caption("MAXIMUM SCORE"))
+	var over := UiKit.spin(RoundConfig.CUSTOM_OVER_MIN, RoundConfig.CUSTOM_OVER_MAX, 1, rc.max_over_par_custom, func(v: float) -> void:
+		rc.max_over_par_custom = int(v)
+		changed.call())
+	var orow := _setting_row("Strokes over par", over)
+	orow.visible = rc.max_score_mode == RoundConfig.MaxScore.CUSTOM
+	body.add_child(_choice_row(["None", "Par + 5", "Custom"], rc.max_score_mode, func(i: int) -> void:
+		rc.max_score_mode = i
+		orow.visible = i == RoundConfig.MaxScore.CUSTOM
+		changed.call(), "maxscore"))
+	body.add_child(orow)
+	body.add_child(_note("With a maximum, a hole ends when the player reaches par plus that many strokes (penalties count) and the score is recorded as the maximum."))
+	body.add_child(_caption("AIDS AND READ-OUTS"))
+	for t in [["Aim arrow", rc.show_aim_arrow, "aim_arrow"], ["Ball trail", rc.show_trail, "trail"],
+			["Footballer numbers (caps / goals) before the shot", rc.show_stats, "show_stats"]]:
+		var cb := CheckBox.new()
+		cb.text = String(t[0])
+		cb.button_pressed = bool(t[1])
+		cb.add_theme_font_size_override("font_size", 22)
+		cb.set_meta("ui_id", String(t[2]))
+		var key := String(t[2])
+		cb.toggled.connect(func(on: bool) -> void:
+			match key:
+				"aim_arrow": rc.show_aim_arrow = on
+				"trail": rc.show_trail = on
+				"show_stats": rc.show_stats = on
+			changed.call())
+		body.add_child(cb)
+	body.add_child(_setting_row("Lie penalty read-out", _choice_row(["Range", "Exact"], 1 if rc.lie_exact else 0, func(i: int) -> void:
+		rc.lie_exact = i == 1
+		changed.call(), "lie_readout")))
 
 
 # ------------------------------------------------------------------ settings
@@ -708,6 +836,7 @@ func _open_settings() -> void:
 	var pg := _page("Settings")
 	var body: VBoxContainer = pg["body"]
 	body.add_child(_nav_row("flag", "Gameplay", "Hole size, auto hole-out, hole pars", _open_settings_gameplay, "settings_gameplay"))
+	body.add_child(_nav_row("star", "Profiles", "Named players and their favourites", _open_profiles, "settings_profiles"))
 	body.add_child(_nav_row("target", "Controls", "Aiming and shot controls", _open_settings_controls, "settings_controls"))
 	body.add_child(_nav_row("sliders", "Audio / Visual", "Sound and ball trail", _open_settings_visual, "settings_visual"))
 	body.add_child(_nav_row("gear", "Developer", "Testing tools, data, build info", _open_settings_developer, "settings_developer"))
@@ -747,17 +876,9 @@ func _open_settings_gameplay() -> void:
 	var pg := _page("Gameplay")
 	var body: VBoxContainer = pg["body"]
 	var st: SettingsStore = App.settings
-	body.add_child(_setting_row("Gimme distance (ft from cup edge)", UiKit.spin(0, 10, 0.5, st.holeout_radius_ft, func(val: float) -> void:
-		st.holeout_radius_ft = ScoringService.clamp_radius_ft(val)
-		st.save())))
-	body.add_child(_setting_row("Hole size (diameter, ft)", UiKit.spin(0.35, 6.0, 0.05, st.physics.cup_diameter_in() / 12.0, func(val: float) -> void:
-		st.physics.set_cup_diameter_in(val * 12.0)
-		st.save())))
-	body.add_child(_toggle("Show exact lie penalty (off = range)", st.lie_effect_exact, func(on: bool) -> void:
-		st.lie_effect_exact = on
-		st.save()))
-	body.add_child(_note("The ball on the shot card shows the lie and its distance penalty: a range like -10 to -20%, or the exact value for this shot."))
-	body.add_child(_note("Regulation is about 0.35 ft (4.25 in). The game default is a friendlier 1 ft. Gimme: a ball at rest within this distance of the cup edge is holed automatically (1 stroke). 0 ft = no gimme, the ball must drop. A 5 ft hole with a 3 ft gimme is allowed."))
+	body.add_child(_note("These are the DEFAULTS that pre-fill Round Setup. Each round freezes its own copy."))
+	var rcd := RoundConfig.from_settings(st)
+	_difficulty_controls(body, rcd, func() -> void: rcd.write_defaults(st))
 	body.add_child(_nav_row("flag", "Edit hole pars", "Applies to rounds started afterwards", _show_par_editor))
 	_push(pg["root"])
 
@@ -799,7 +920,7 @@ func _open_settings_developer() -> void:
 	var pg := _page("Developer")
 	var body: VBoxContainer = pg["body"]
 	var st: SettingsStore = App.settings
-	body.add_child(_nav_row("gear", "Developer Test", "All 17 holes with the developer panel", func() -> void: play_requested.emit("all", true, 0, 1), "developer_test"))
+	body.add_child(_nav_row("gear", "Developer Test", "All 17 holes with the developer panel", func() -> void: play_requested.emit("all", true, 0, 1, RoundConfig.from_settings(App.settings)), "developer_test"))
 	body.add_child(_toggle("TEST MODE: show caps/goals before shot", st.show_stats, func(on: bool) -> void:
 		st.show_stats = on
 		st.save()))
@@ -814,6 +935,62 @@ func _open_settings_developer() -> void:
 	body.add_child(_nav_row("list", "Export data", "Copy a summary or save CSV / JSON files", _show_export))
 	body.add_child(_note("Foot Golf  ·  %s" % App.build_label()))
 	_push(pg["root"])
+
+
+# ------------------------------------------------------------------ profiles
+
+func _open_profiles() -> void:
+	var pg := _page("Profiles")
+	var body: VBoxContainer = pg["body"]
+	_fill_profiles(body)
+	_push(pg["root"])
+
+
+func _fill_profiles(body: VBoxContainer) -> void:
+	UiKit.clear(body)
+	var all := App.profiles.all_profiles()
+	body.add_child(_note("Named players on this phone. Each has its own favourites (the star in the footballer picker). Pick profiles per player in Round Setup."))
+	for pr in all:
+		var pid := String(pr["id"])
+		var row := UiKit.hbox(8)
+		var ne := LineEdit.new()
+		ne.text = String(pr["name"])
+		ne.max_length = PlayerProfileStore.MAX_NAME_LEN
+		ne.custom_minimum_size = Vector2(0, 62)
+		ne.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		ne.add_theme_font_size_override("font_size", 24)
+		ne.set_meta("ui_id", "profile_name_%s" % pid)
+		ne.text_submitted.connect(func(t: String) -> void: App.profiles.rename_profile(pid, t))
+		ne.focus_exited.connect(func() -> void:
+			if not App.profiles.rename_profile(pid, ne.text):
+				ne.text = String(App.profiles.get_profile(pid).get("name", ne.text)))
+		row.add_child(ne)
+		row.add_child(UiKit.label("%d \u2605" % (pr["favourites"] as Array).size(), 22, UiKit.C_MUTED))
+		var del := UiKit.button("Delete", func() -> void:
+			if App.profiles.delete_profile(pid):
+				_fill_profiles(body), 62, 20)
+		del.disabled = all.size() <= 1
+		del.set_meta("ui_id", "profile_delete_%s" % pid)
+		row.add_child(del)
+		body.add_child(row)
+	if all.size() < PlayerProfileStore.MAX_PROFILES:
+		var add := LineEdit.new()
+		add.placeholder_text = "New profile name"
+		add.max_length = PlayerProfileStore.MAX_NAME_LEN
+		add.custom_minimum_size = Vector2(0, 62)
+		add.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		add.add_theme_font_size_override("font_size", 24)
+		add.set_meta("ui_id", "profile_new_name")
+		var arow := UiKit.hbox(8)
+		arow.add_child(add)
+		var addb := UiKit.button("Add", func() -> void:
+			if App.profiles.create_profile(add.text) != "":
+				_fill_profiles(body), 62, 22)
+		addb.set_meta("ui_id", "profile_add")
+		arow.add_child(addb)
+		body.add_child(arow)
+	else:
+		body.add_child(_note("Maximum of %d profiles." % PlayerProfileStore.MAX_PROFILES))
 
 
 # ------------------------------------------------------------------ statistics (overview real, rest placeholders)

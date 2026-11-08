@@ -817,7 +817,7 @@ func refresh() -> void:
 	if fb != null:
 		_player_flag.texture = Flags.texture(fb.country_code)
 		var nm := fb.name
-		if (bool(App.online.setup.get("show_stats", false)) if App.online.started else App.settings.show_stats):
+		if session.rules.show_stats:
 			nm += "  ·  " + (UiKit.plural(fb.caps, "cap") if session.mode == ShotTypes.Mode.CAPS else UiKit.plural(fb.goals, "goal"))
 		_player_name.text = nm
 	var lie_hint := Surface.effect_hint(lie, session.cfg.surfaces)
@@ -896,7 +896,7 @@ func _update_lie_effect(lie: int, flight: bool) -> void:
 	var nm := Surface.name_of(lie).to_upper()
 	if not flight or int(pv["max_pct"]) <= 0:
 		_lie_effect_label.text = nm
-	elif App.settings.lie_effect_exact:
+	elif session.rules.lie_exact:
 		_lie_effect_label.text = "%s  -%d%%" % [nm, int(pv["exact_pct"])]
 	elif int(pv["min_pct"]) == int(pv["max_pct"]):
 		_lie_effect_label.text = "%s  -%d%%" % [nm, int(pv["max_pct"])]
@@ -1059,7 +1059,7 @@ func show_picker() -> void:
 		return
 	var p := FootballerPicker.new()
 	p.context_text = "Ball %s to pin" % Units.fmt_len(session.distance_to_pin_m())
-	p.show_stats = (bool(App.online.setup.get("show_stats", false)) if App.online.started else App.settings.show_stats)
+	p.show_stats = session.rules.show_stats
 	push_overlay(p)
 	p.setup(session)
 	p.picked.connect(func(_id: String) -> void: _remove_overlay(p))
