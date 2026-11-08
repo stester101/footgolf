@@ -498,26 +498,8 @@ func set_cup_radius(r: float) -> void:
 
 
 func _build_tee_markers() -> void:
-	# the tee box itself: a slightly raised, mown pad with a darker border, flush with the ball start
-	for tb in hole.tee_boxes:
-		var bx := tb as HoleDefinition.Box
-		var h := hole.terrain_height(bx.cx, bx.cz)
-		var rot := atan2(bx.s, bx.c)
-		for layer in 2:
-			var inset := 0.0 if layer == 0 else 0.35
-			var mi := MeshInstance3D.new()
-			var bm := BoxMesh.new()
-			bm.size = Vector3(maxf(bx.hw * 2.0 - inset * 2.0, 0.5), 0.3, maxf(bx.hl * 2.0 - inset * 2.0, 0.5))
-			mi.mesh = bm
-			var mat := StandardMaterial3D.new()
-			mat.albedo_color = Color("#1F4F1B") if layer == 0 else Color("#2C6A26")
-			mat.roughness = 0.9
-			mi.material_override = mat
-			mi.position = Vector3(bx.cx, h - 0.14 + (0.004 if layer == 1 else 0.0), bx.cz)
-			mi.rotation.y = rot
-			add_child(mi)
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.1, 0.35, 0.85)
+	mat.albedo_color = Color(1.0, 0.85, 0.1)  # yellow tee markers
 	mat.roughness = 0.4
 	var d := (hole.pin - hole.tee).normalized()
 	var side := Vector2(-d.y, d.x)
