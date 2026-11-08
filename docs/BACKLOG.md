@@ -21,6 +21,12 @@ To do:
 - Wind should affect high and low trajectories differently (physics change: calibration tests needed).
 - Idea: four clubs (Driver, Iron, Wedge, Putter). Conflicts with the locked "no clubs" rule in CLAUDE.md/spec; needs an explicit owner decision.
 
+## Requested 8 Nov (owner), queued after the courses/tees merge
+- Caps/goals SORT option in Round Setup difficulty (picker ordered by caps or goals, numbers stay hidden; off by default; exception to the "never sort by stats outside TEST MODE" invariant, frozen per round, host-frozen online).
+- Custom COURSE COMBINATIONS: pick any courses (or sets of holes) in any order as one round.
+- MINI SEASON (solo, pass-and-play and online lobby): host picks the courses; played back to back in the same room; points per course by finishing place, scaled by hole count (owner to confirm), bonus for the course winner, ties split; season standings screen; host freezes the season so both phones agree. Natural first step of the career-mode ladder (docs/CAREER_MODE_PROPOSAL.md).
+- Parity rule: every single-player option must also work online via the host-frozen RoundConfig.
+
 ## In progress
 - Online play is now DIRECT LAN/hotspot: the host phone runs `LocalRelay` (GDScript port of the relay). Owner dropped the hosted wss:// relay. Headless-tested only; real-phone QA (Wi-Fi and hotspot, 2-4 phones), verification of the merged game_ui and an on-screen check of the new Online screen remain. See `docs/MULTIPLAYER.md`.
 - Optional later: hosted wss:// relay (`relay/server.py` still works, no UI for it), mDNS/QR code to avoid typing the host IP.
