@@ -1149,6 +1149,7 @@ func show_picker() -> void:
 	var p := FootballerPicker.new()
 	p.context_text = "Ball %s to pin" % Units.fmt_len(session.distance_to_pin_m())
 	p.show_stats = session.rules.show_stats
+	p.stat_sort = session.rules.order_by_stats
 	push_overlay(p)
 	p.setup(session)
 	p.picked.connect(func(_id: String) -> void: _remove_overlay(p))
@@ -1622,7 +1623,15 @@ func set_next_hole_progress(p: float) -> void:
 		_next_btn.disabled = false
 
 
+## Set by RoundController during a mini season: replaces the round-complete card with the season pages.
+var round_end_override := Callable()
+
+
 func _on_round_completed() -> void:
+	if round_end_override.is_valid():
+		close_all_overlays()
+		round_end_override.call()
+		return
 	_board_slot = -1
 	close_all_overlays()
 	var rs := _board_rs()

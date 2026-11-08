@@ -50,6 +50,9 @@ var mulligans := 0
 var players := 1
 ## Frozen Round Setup rules (set by Main before the scene is added).
 var rules: RoundConfig
+## Mini season in progress (owned by Main, null for a normal round).
+var season: Season
+signal next_course_requested(course_id: String)
 var _marker: MeshInstance3D
 var _marker_pos := Vector3.INF
 var _shown_cup_r := -1.0
@@ -150,6 +153,8 @@ func _ready() -> void:
 			rig.overhead_zoom(f, get_viewport().get_visible_rect().size * 0.5))
 	ui.main_menu_requested.connect(func() -> void: exit_to_menu.emit())
 	ui.developer_requested.connect(toggle_dev_panel)
+	if season != null:
+		ui.round_end_override = _show_season_page
 	# after ui.setup(): the summary card exists before preloading reports progress into it
 	session.hole_completed.connect(func(_hs: HoleState) -> void: _start_preload())
 	DisplayServer.screen_set_keep_on(true)
@@ -627,6 +632,37 @@ func handle_back() -> void:
 		_set_overhead(false)
 	else:
 		ui.show_pause()
+
+
+## Season: record this course's result (identical on every phone: it reads the synced round states) and show
+## the standings page. Only the host / solo player can move on; the host's event starts the next course.
+func _show_season_page() -> void:
+	var at := season.index
+	var names: Array = []
+	var strokes: Array = []
+	var rels: Array = []
+	for i in session.player_count():
+		var rs := session.slot_round_state(i)
+		names.append(String(session.player_names[i]) if i < session.player_names.size() else "Player %d" % (i + 1))
+		strokes.append(rs.total_score())
+		rels.append(rs.relative_to_par())
+	var rs0 := session.slot_round_state(0)
+	season.record_course(at, course_id, String(App.course_info(course_id).get("name", course_id)),
+		rs0.holes.size(), rs0.total_par(), names, strokes, rels)
+	var can_advance := not (session is OnlineSession) or App.online.seat == 0
+	ui.push_overlay(SeasonPages.build(season, at, can_advance, _season_next, func() -> void: exit_to_menu.emit()))
+
+
+func _season_next() -> void:
+	season.advance()
+	var nxt := season.current_course()
+	if session is OnlineSession:
+		var pars := {}
+		for h in App.load_holes(nxt):
+			pars[h.id] = h.par
+		App.online.send_event({"kind": "season_next", "course": nxt, "pars": pars, "season": season.to_dict()})
+		App.online.apply_season_course(nxt, pars)
+	next_course_requested.emit(nxt)
 
 
 func _add_online_status() -> void:

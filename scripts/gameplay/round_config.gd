@@ -27,6 +27,10 @@ var show_aim_arrow := true
 var show_trail := true
 var lie_exact := false
 var show_stats := true
+## Owner-approved opt-in (docs/DECISIONS.md): the picker offers Caps/Goals sort orders; numbers stay hidden unless show_stats.
+var order_by_stats := false
+## Mini season: ordered course ids played back to back (empty = a normal single round). See Season.
+var season_courses: Array = []
 
 
 ## Round Setup defaults from the saved settings.
@@ -51,7 +55,7 @@ func write_defaults(st: SettingsStore) -> void:
 	st.round_defaults = {
 		"reuse_per_mode": reuse_per_mode, "wind_mode": wind_mode, "wind_scale": wind_scale,
 		"max_score_mode": max_score_mode, "max_over_par_custom": max_over_par_custom,
-		"show_aim_arrow": show_aim_arrow,
+		"show_aim_arrow": show_aim_arrow, "order_by_stats": order_by_stats,
 	}
 	st.save()
 
@@ -63,6 +67,7 @@ func apply_dict(d: Dictionary) -> void:
 	max_score_mode = clampi(int(d.get("max_score_mode", max_score_mode)), MaxScore.NONE, MaxScore.CUSTOM)
 	max_over_par_custom = clampi(int(d.get("max_over_par_custom", max_over_par_custom)), CUSTOM_OVER_MIN, CUSTOM_OVER_MAX)
 	show_aim_arrow = bool(d.get("show_aim_arrow", show_aim_arrow))
+	order_by_stats = bool(d.get("order_by_stats", order_by_stats))
 
 
 ## Complete, JSON-safe encoding (online setup: the host freezes this and every phone decodes it).
@@ -72,6 +77,7 @@ func to_dict() -> Dictionary:
 		"wind_mode": wind_mode, "wind_scale": wind_scale, "max_score_mode": max_score_mode,
 		"max_over_par_custom": max_over_par_custom, "show_aim_arrow": show_aim_arrow,
 		"show_trail": show_trail, "lie_exact": lie_exact, "show_stats": show_stats,
+		"order_by_stats": order_by_stats, "season_courses": season_courses.duplicate(),
 	}
 
 
@@ -84,6 +90,7 @@ static func from_dict(d: Dictionary) -> RoundConfig:
 	rc.lie_exact = bool(d.get("lie_exact", rc.lie_exact))
 	rc.show_stats = bool(d.get("show_stats", rc.show_stats))
 	rc.apply_dict(d)
+	rc.season_courses = Season.clean_course_ids(d.get("season_courses", []))
 	return rc
 
 
@@ -100,6 +107,8 @@ func duplicate_config() -> RoundConfig:
 	c.show_trail = show_trail
 	c.lie_exact = lie_exact
 	c.show_stats = show_stats
+	c.order_by_stats = order_by_stats
+	c.season_courses = season_courses.duplicate()
 	return c
 
 

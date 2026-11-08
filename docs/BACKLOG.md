@@ -22,9 +22,9 @@ To do:
 - Idea: four clubs (Driver, Iron, Wedge, Putter). Conflicts with the locked "no clubs" rule in CLAUDE.md/spec; needs an explicit owner decision.
 
 ## Requested 8 Nov (owner), queued after the courses/tees merge
-- Caps/goals SORT option in Round Setup difficulty (picker ordered by caps or goals, numbers stay hidden; off by default; exception to the "never sort by stats outside TEST MODE" invariant, frozen per round, host-frozen online).
-- Custom COURSE COMBINATIONS: pick any courses (or sets of holes) in any order as one round.
-- MINI SEASON (solo, pass-and-play and online lobby): host picks the courses; played back to back in the same room; points per course by finishing place, scaled by hole count (owner to confirm), bonus for the course winner, ties split; season standings screen; host freezes the season so both phones agree. Natural first step of the career-mode ladder (docs/CAREER_MODE_PROPOSAL.md).
+- DONE (8 Nov, headless + screenshots only): Caps/goals SORT option in Round Setup difficulty (picker ordered by caps or goals, numbers stay hidden; off by default; exception to the "never sort by stats outside TEST MODE" invariant, frozen per round, host-frozen online).
+- DONE (8 Nov): Custom COURSE COMBINATIONS: pick any courses (or sets of holes) in any order as one round.
+- DONE (8 Nov, bonus idea dropped, scaled points as in DECISIONS.md): MINI SEASON (solo, pass-and-play and online lobby): host picks the courses; played back to back in the same room; points per course by finishing place, scaled by hole count (owner to confirm), bonus for the course winner, ties split; season standings screen; host freezes the season so both phones agree. Natural first step of the career-mode ladder (docs/CAREER_MODE_PROPOSAL.md).
 - Parity rule: every single-player option must also work online via the host-frozen RoundConfig.
 
 ## In progress

@@ -177,6 +177,14 @@ func start_game(course_id: String, mulligans: int, rules: RoundConfig = null) ->
 		"wind_speed": app.settings.wind_speed, "wind_bearing": app.settings.wind_bearing,
 		"show_stats": rules.show_stats, "pars": pars}})
 
+## Mini season: every phone points its frozen setup at the course now being played.
+func apply_season_course(course_id: String, pars: Dictionary) -> void:
+	setup["course"] = course_id
+	var merged: Dictionary = setup.get("pars", {})
+	merged.merge(pars, true)
+	setup["pars"] = merged
+
+
 func request_resync() -> void:
 	if active and started:
 		transport.send({"type": "resync"})

@@ -663,9 +663,27 @@ func _open_online_lobby() -> void:
 	courses.custom_minimum_size.y = 64
 	var course_list := App.courses()
 	for c in course_list: courses.add_item(String(c.name))
+	var fmt := [0]  # 0 one course, 1 custom combination, 2 mini season (host only)
+	var combo := CourseComboPicker.new()
+	var start_ok := [true]
+	var refresh := [func() -> void: pass]
 	if is_host:
 		body.add_child(_caption("COURSE"))
+		body.add_child(_choice_row(["One course", "Combined", "Mini season"], 0, func(i: int) -> void:
+			fmt[0] = i
+			courses.visible = i == 0
+			combo.visible = i != 0
+			if i != 0:
+				combo.set_allow_repeat(i == 2)
+			start_ok[0] = i == 0 or not combo.ids.is_empty()
+			refresh[0].call(), "lobby_format"))
 		body.add_child(courses)
+		combo.setup(course_list, false)
+		combo.visible = false
+		combo.changed.connect(func(ids: Array) -> void:
+			start_ok[0] = fmt[0] == 0 or not ids.is_empty()
+			refresh[0].call())
+		body.add_child(combo)
 		body.add_child(_caption("DIFFICULTY (frozen for everyone at start)"))
 		_difficulty_controls(body, online_rules, Callable())
 	body.add_child(_note("Host settings are frozen at start. Footballers are shared: each can be used once. Mulligans: %s." % ("Unlimited" if _last_mulligans < 0 else str(_last_mulligans))))
@@ -678,7 +696,13 @@ func _open_online_lobby() -> void:
 	ready.toggled.connect(func(value: bool) -> void: App.online.set_ready(value))
 	(pg.footer as VBoxContainer).add_child(ready)
 	var start := _primary_button("Start online round", func() -> void:
-		App.online.start_game(String(course_list[courses.selected].id), _last_mulligans, online_rules), "online_start")
+		var course_id := String(course_list[courses.selected].id)
+		if fmt[0] == 1 and not combo.ids.is_empty():
+			course_id = CourseCombo.make_id(combo.ids)
+		elif fmt[0] == 2 and not combo.ids.is_empty():
+			online_rules.season_courses = combo.ids.duplicate()  # frozen into the setup; every phone builds the same season
+			course_id = String(combo.ids[0])
+		App.online.start_game(course_id, _last_mulligans, online_rules), "online_start")
 	start.visible = is_host
 	(pg.footer as VBoxContainer).add_child(start)
 	var update := func() -> void:
@@ -711,8 +735,9 @@ func _open_online_lobby() -> void:
 			roster.add_child(card[0])
 			all_ready = all_ready and bool(player.ready) and bool(player.connected)
 			if i == App.online.seat: ready.set_pressed_no_signal(bool(player.ready))
-		start.disabled = not all_ready
+		start.disabled = not all_ready or not start_ok[0]
 		status_label.text = App.online.status if App.online.players.size() >= 2 else "Waiting for friends to join…"
+	refresh[0] = update
 	App.online.changed.connect(update)
 	(pg.root as Control).tree_exiting.connect(func() -> void:
 		if App.online.changed.is_connected(update): App.online.changed.disconnect(update))
@@ -726,6 +751,7 @@ func _open_course_select() -> void:
 	var pg := _page("Course Select")
 	var body: VBoxContainer = pg["body"]
 	var current: Control = null
+	body.add_child(_nav_row("course", "Build your own", "Combine courses into one round, or play a mini season", _open_combo_builder, "menu_build_own"))
 	for c in App.courses():
 		var card := _course_card(c)
 		if String(c["id"]) == App.settings.last_course:
@@ -782,9 +808,36 @@ func _course_card(c: Dictionary) -> Button:
 	return b
 
 
-func _open_round_setup(course_id: String) -> void:
+## Build your own: a combined round (one scorecard) or a mini season (each course its own round, season table).
+func _open_combo_builder() -> void:
+	var pg := _page("Build Your Own")
+	var body: VBoxContainer = pg["body"]
+	var season_mode := [false]
+	var picker := CourseComboPicker.new()
+	var go := _primary_button("Continue", func() -> void:
+		if picker.ids.is_empty():
+			return
+		if season_mode[0]:
+			_open_round_setup(String(picker.ids[0]), picker.ids.duplicate())
+		else:
+			_open_round_setup(CourseCombo.make_id(picker.ids)), "combo_continue")
+	go.disabled = true
+	body.add_child(_caption("FORMAT"))
+	body.add_child(_choice_row(["One combined round", "Mini season"], 0, func(i: int) -> void:
+		season_mode[0] = i == 1
+		picker.set_allow_repeat(i == 1), "combo_format"))
+	body.add_child(_note("Combined round: the holes of every chosen course in order, one scorecard. Mini season: each course is its own round, played back to back; points per course by finishing place, scaled by hole count. Same sitting, no saving."))
+	picker.setup(App.courses(), false)
+	picker.changed.connect(func(ids: Array) -> void: go.disabled = ids.is_empty())
+	body.add_child(picker)
+	(pg["footer"] as VBoxContainer).add_child(go)
+	_push(pg["root"])
+
+
+func _open_round_setup(course_id: String, season_courses: Array = []) -> void:
 	var info := App.course_info(course_id)
 	var rc := RoundConfig.from_settings(App.settings)  # defaults from Settings; frozen once the round starts
+	rc.season_courses = season_courses
 	_sync_profile_slots()
 	var pg := _page("Round Setup")
 	var body: VBoxContainer = pg["body"]
@@ -799,7 +852,12 @@ func _open_round_setup(course_id: String) -> void:
 	var ci := UiKit.label("%d HOLES  ·  PAR %d" % [(info.get("holes", []) as Array).size(), App.course_par(course_id)], 19, Color(1, 1, 1, 0.9))
 	ci.add_theme_font_override("font", UiKit.font_caps())
 	cv.add_child(ci)
-	cv.add_child(UiKit.text(String(info.get("blurb", "")), 21, Color(1, 1, 1, 0.8)))
+	if season_courses.is_empty():
+		cv.add_child(UiKit.text(String(info.get("blurb", "")), 21, Color(1, 1, 1, 0.8)))
+	else:
+		cn.text = "Mini season: %s" % UiKit.plural(season_courses.size(), "course")
+		ci.text = "%d COURSES, EACH ITS OWN ROUND" % season_courses.size()
+		cv.add_child(UiKit.text(" > ".join(PackedStringArray(season_courses.map(func(c) -> String: return String(App.course_info(String(c)).get("name", c))))), 21, Color(1, 1, 1, 0.8)))
 	cp.add_child(cv)
 	body.add_child(cp)
 	# players: 1 = solo, 2 to 4 = pass-and-play on this phone (one shot each, in turn)
@@ -1025,7 +1083,8 @@ func _difficulty_controls(body: VBoxContainer, rc: RoundConfig, on_change: Calla
 	body.add_child(_note("With a maximum, a hole ends when the player reaches par plus that many strokes (penalties count) and the score is recorded as the maximum."))
 	body.add_child(_caption("AIDS AND READ-OUTS"))
 	for t in [["Aim arrow", rc.show_aim_arrow, "aim_arrow"], ["Ball trail", rc.show_trail, "trail"],
-			["Footballer numbers (caps / goals) before the shot", rc.show_stats, "show_stats"]]:
+			["Footballer numbers (caps / goals) before the shot", rc.show_stats, "show_stats"],
+			["Order picker by caps / goals (numbers stay hidden)", rc.order_by_stats, "order_by_stats"]]:
 		var cb := CheckBox.new()
 		cb.text = String(t[0])
 		cb.button_pressed = bool(t[1])
@@ -1037,6 +1096,7 @@ func _difficulty_controls(body: VBoxContainer, rc: RoundConfig, on_change: Calla
 				"aim_arrow": rc.show_aim_arrow = on
 				"trail": rc.show_trail = on
 				"show_stats": rc.show_stats = on
+				"order_by_stats": rc.order_by_stats = on
 			changed.call())
 		body.add_child(cb)
 	body.add_child(_setting_row("Lie penalty read-out", _choice_row(["Range", "Exact"], 1 if rc.lie_exact else 0, func(i: int) -> void:

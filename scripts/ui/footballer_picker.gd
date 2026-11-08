@@ -22,6 +22,8 @@ static var _by_player := {}
 
 var session: GameSession
 var show_stats := false
+## Round Setup opt-in (RoundConfig.order_by_stats): offers the Caps/Goals sort orders; numbers stay hidden unless show_stats.
+var stat_sort := false
 ## Shown in the header, e.g. the ball-to-pin distance.
 var context_text := ""
 
@@ -258,7 +260,7 @@ func _build_main_panel() -> PanelContainer:
 	(fbtn[0] as Button).set_meta("ui_id", "filters")
 	row.add_child(fbtn[0])
 	var labels: Array = FootballerRepository.SORT_LABELS.duplicate()
-	if show_stats:
+	if show_stats or stat_sort:
 		labels.append_array(FootballerRepository.STAT_SORT_LABELS)
 	_sort_popup = PopupMenu.new()
 	for i in labels.size():
@@ -586,7 +588,7 @@ func _render() -> void:
 	var n := _filter_count()
 	_filters_label.text = "Filters (%d)" % n if n > 0 else "Filters"
 	var idx := maxi(_sort_keys.find(_sort_key), 0)
-	_sort_label.text = String(((FootballerRepository.SORT_LABELS + (FootballerRepository.STAT_SORT_LABELS if show_stats else []))[idx])[1])
+	_sort_label.text = String(((FootballerRepository.SORT_LABELS + (FootballerRepository.STAT_SORT_LABELS if (show_stats or stat_sort) else []))[idx])[1])
 	for i in _sort_popup.item_count:
 		_sort_popup.set_item_checked(i, i == idx)
 	_refresh_chips()
