@@ -145,6 +145,14 @@ func _run() -> void:
 				if SkyLife.preview:
 					await get_tree().create_timer(4.0).timeout  # let the birds/jet spawn
 				await _shot("hole%d_aim" % (session.round_state.current_index + 1))
+				if OS.get_cmdline_user_args().has("--smoke-near-pin"):
+					# Dev tool check: drop the ball 4 m short of the pin and photograph the cup and flag close up.
+					var pin3 := session.hole.cup_position()
+					var tee3 := session.ball_pos
+					var dir2 := Vector2(pin3.x - tee3.x, pin3.z - tee3.z).normalized()
+					var err := session.dev_place_ball(pin3.x - dir2.x * 3.0 + dir2.y * 1.5, pin3.z - dir2.y * 3.0 - dir2.x * 1.5)
+					await _frames(20)
+					await _shot("hole%d_near_pin%s" % [session.round_state.current_index + 1, "" if err == "" else "_FAILED"])
 			ShotTypes.State.AIMING:
 				if OS.get_cmdline_user_args().has("--smoke-card") and session.shot_counter >= 2 and not _card_done:
 					_card_done = true
