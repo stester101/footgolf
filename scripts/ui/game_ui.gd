@@ -82,6 +82,10 @@ var _hole_strip: HBoxContainer
 
 ## Shot-screen design: broadcast-style blue banner, white shot card, dark spin strip.
 const C_NAVY_BANNER := Color("#0D1B2E")
+const C_BAN := Color("#1D57B0")
+const C_BAN_DEEP := Color("#164A9A")
+const C_BAN_TILE := Color("#E9EBEF")
+const C_BAN_NAVY := Color("#1A3E7A")
 const C_NAVY_DEEP := Color("#091424")
 const C_GOLD := Color("#C9A96A")
 const C_CREAM := Color("#F4EFE2")
@@ -210,21 +214,21 @@ func _icon_btn(kind: String, label: String, cb: Callable, ui_id: String, w: int 
 
 func _build_scoreboard() -> PanelContainer:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", UiKit.box(C_NAVY_BANNER, 0, 0))
+	p.add_theme_stylebox_override("panel", UiKit.box(C_BAN, 0, 0))
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var row := UiKit.hbox(0)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(row)
 	# left: hole block, full height (like the broadcast logo block)
 	var block := PanelContainer.new()
-	block.add_theme_stylebox_override("panel", UiKit.box(C_NAVY_DEEP, 0, 0))
+	block.add_theme_stylebox_override("panel", UiKit.box(C_BAN_DEEP, 0, 0))
 	block.custom_minimum_size = Vector2(112, 0)
 	block.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var bv := UiKit.vbox(0)
 	bv.alignment = BoxContainer.ALIGNMENT_CENTER
 	bv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bv.add_child(_tag("HOLE", 15, C_GOLD, HORIZONTAL_ALIGNMENT_CENTER))
-	_hole_num = _num("01", 46, C_CREAM, HORIZONTAL_ALIGNMENT_CENTER)
+	bv.add_child(_tag("HOLE", 15, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
+	_hole_num = _num("01", 46, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	_hole_num.add_theme_font_override("font", UiKit.font_semi())
 	bv.add_child(_hole_num)
 	block.add_child(bv)
@@ -241,7 +245,7 @@ func _build_scoreboard() -> PanelContainer:
 	name_m.add_theme_constant_override("margin_top", 10)
 	name_m.add_theme_constant_override("margin_bottom", 8)
 	name_m.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hole_name = UiKit.label("", 30, C_CREAM)
+	_hole_name = UiKit.label("", 30, Color.WHITE)
 	_hole_name.add_theme_font_override("font", UiKit.font_semi())
 	_hole_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_hole_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -249,24 +253,24 @@ func _build_scoreboard() -> PanelContainer:
 	top.add_child(name_m)
 	# score tile: cream, like the reference's white tile
 	var tile := PanelContainer.new()
-	tile.add_theme_stylebox_override("panel", UiKit.box(C_CREAM, 0, 0))
+	tile.add_theme_stylebox_override("panel", UiKit.box(C_BAN_TILE, 0, 0))
 	tile.custom_minimum_size = Vector2(120, 0)
 	tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var tv := UiKit.vbox(0)
 	tv.alignment = BoxContainer.ALIGNMENT_CENTER
 	tv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_round_score = _num("E", 44, C_NAVY_BANNER, HORIZONTAL_ALIGNMENT_CENTER)
+	_round_score = _num("E", 44, C_BAN_NAVY, HORIZONTAL_ALIGNMENT_CENTER)
 	_round_score.add_theme_font_override("font", UiKit.font_semi())
 	tv.add_child(_round_score)
 	_round_sub = _num("", 14, C_MUTED_NAVY, HORIZONTAL_ALIGNMENT_CENTER)
-	_round_sub.add_theme_color_override("font_color", C_NAVY_MUTED)
+	_round_sub.add_theme_color_override("font_color", C_BAN_NAVY)
 	tv.add_child(_round_sub)
 	tile.add_child(tv)
 	top.add_child(tile)
 	right.add_child(top)
 	# gold rule between the rows
 	var rule := ColorRect.new()
-	rule.color = Color(C_GOLD, 0.7)
+	rule.color = Color(1, 1, 1, 0.55)
 	rule.custom_minimum_size = Vector2(0, 2)
 	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right.add_child(rule)
@@ -283,7 +287,7 @@ func _build_scoreboard() -> PanelContainer:
 	bm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var brow := UiKit.hbox(12)
 	brow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hole_sub = _num("", 19, C_MUTED_NAVY)
+	_hole_sub = _num("", 19, Color.WHITE)
 	_hole_sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hole_sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	brow.add_child(_hole_sub)
@@ -306,15 +310,15 @@ func _refresh_hole_strip() -> void:
 	var cur := session.round_state.current_index
 	for i in range(maxi(0, cur - 2), mini(n, cur + 3)):
 		var is_cur := i == cur
-		var lbl := _num(str(i + 1), 19, C_CREAM if is_cur else C_MUTED_NAVY, HORIZONTAL_ALIGNMENT_CENTER)
+		var lbl := _num(str(i + 1), 19, C_BAN_NAVY if is_cur else Color(1, 1, 1, 0.8), HORIZONTAL_ALIGNMENT_CENTER)
 		lbl.add_theme_font_override("font", UiKit.font_semi() if is_cur else UiKit.font_num())
 		if is_cur:
 			var ring := PanelContainer.new()
 			var rsb := StyleBoxFlat.new()
-			rsb.bg_color = C_NAVY_DEEP
+			rsb.bg_color = Color.WHITE
 			rsb.set_corner_radius_all(16)
 			rsb.set_border_width_all(2)
-			rsb.border_color = C_GOLD
+			rsb.border_color = Color(1, 1, 1, 0.6)
 			rsb.content_margin_left = 7
 			rsb.content_margin_right = 7
 			rsb.content_margin_top = 1
