@@ -371,117 +371,312 @@ func _build_home() -> Control:
 	return root
 
 
-## Online is separate from the existing solo/pass-and-play setup.
+## Online play is hotspot-only: the host turns on the phone's hotspot and taps Host; friends join
+## that hotspot and tap Join. The host phone runs the game server (LocalRelay).
 func _multiplayer_card() -> Control:
-	return _nav_row("people", "Online Multiplayer", "Private room · 2–4 phones", _open_online, "menu_multiplayer")
+	return _nav_row("people", "Online Multiplayer", "Phone hotspot · 2–4 phones", _open_online, "menu_multiplayer")
 
 
-func _online_input(body: VBoxContainer, title: String, value: String, hint: String) -> LineEdit:
-	body.add_child(_caption(title))
+func _online_cfg() -> ConfigFile:
+	var config := ConfigFile.new()
+	config.load("user://online.cfg")
+	return config
+
+
+func _online_name() -> String:
+	var n := String(_online_cfg().get_value("online", "name", "Player")).strip_edges()
+	return "Player" if n.is_empty() else n
+
+
+## Glass sub-panel used by every online page (same material as Round Setup's course/rules cards).
+func _online_card(kind: String = "recess") -> Array:
+	var cp := PanelContainer.new()
+	cp.add_theme_stylebox_override("panel", UiKit.skin(kind, 6, 20, 14))
+	cp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var cv := UiKit.vbox(8)
+	cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cp.add_child(cv)
+	return [cp, cv]
+
+
+## Numbered instruction card.
+func _online_steps(title: String, steps: Array) -> Control:
+	var card := _online_card()
+	var cv: VBoxContainer = card[1]
+	cv.add_child(_caption(title))
+	for i in steps.size():
+		var row := UiKit.hbox(14)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var badge := PanelContainer.new()
+		badge.add_theme_stylebox_override("panel", UiKit.skin("lime", 6, 0, 0))
+		badge.custom_minimum_size = Vector2(40, 40)
+		badge.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var bl := UiKit.label(str(i + 1), 24, Color("#0E2A07"), HORIZONTAL_ALIGNMENT_CENTER)
+		bl.add_theme_font_override("font", UiKit.font_semi())
+		bl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		badge.add_child(bl)
+		row.add_child(badge)
+		var tl := UiKit.text(String(steps[i]), 22, Color.WHITE)
+		tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(tl)
+		cv.add_child(row)
+	return card[0]
+
+
+func _online_field(title: String, value: String, hint: String, big: bool = false) -> Array:
+	var box := UiKit.vbox(6)
+	box.add_child(_caption(title))
 	var field := LineEdit.new()
 	field.text = value
 	field.placeholder_text = hint
-	field.custom_minimum_size.y = 64
-	field.add_theme_font_size_override("font_size", 23)
-	body.add_child(field)
-	return field
+	field.custom_minimum_size.y = 76 if big else 64
+	field.add_theme_font_size_override("font_size", 34 if big else 23)
+	if big:
+		field.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		field.add_theme_font_override("font", UiKit.font_semi())
+	box.add_child(field)
+	return [box, field]
+
+
+func _secondary_button(text: String, cb: Callable, ui_id: String) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.custom_minimum_size = Vector2(0, 62)
+	b.focus_mode = Control.FOCUS_NONE
+	b.add_theme_font_size_override("font_size", 22)
+	b.add_theme_font_override("font", UiKit.font_semi())
+	b.set_meta("ui_id", ui_id)
+	b.pressed.connect(cb)
+	return b
 
 
 func _open_online() -> void:
 	var pg := _page("Online Multiplayer")
 	var body: VBoxContainer = pg.body
-	(pg.root as Control).set_meta("online_page", true)
-	var config := ConfigFile.new()
-	config.load("user://online.cfg")
-	var nickname := _online_input(body, "YOUR NAME", String(config.get_value("online", "name", "Player")), "Name")
+	var config := _online_cfg()
+	var nf := _online_field("YOUR NAME", String(config.get_value("online", "name", "Player")), "Name")
+	var nickname: LineEdit = nf[1]
 	nickname.max_length = 24
-	body.add_child(_note("Play together in the same room: everyone on the same Wi-Fi, or on the Wi-Fi hotspot of the host's phone (no internet needed). The host phone runs the game server: keep the app open on it."))
-	body.add_child(_caption("JOIN: HOST PHONE ADDRESS"))
-	var address := _online_input(body, "HOST IP ADDRESS", String(config.get_value("online", "host_ip", "")), "e.g. 192.168.1.20")
-	var port_field := _online_input(body, "PORT", String(config.get_value("online", "port", str(LocalRelay.DEFAULT_PORT))), str(LocalRelay.DEFAULT_PORT))
-	port_field.max_length = 5
-	var code_field := _online_input(body, "ROOM CODE", "", "Enter code to join")
-	code_field.max_length = 6
-	var status_label := UiKit.text("Host on this phone, or enter the host's address to join.", 21, UiKit.C_MUTED)
-	body.add_child(status_label)
-	var save_name := func() -> void:
-		config.set_value("online", "name", nickname.text.strip_edges())
-		config.set_value("online", "host_ip", address.text.strip_edges())
-		config.set_value("online", "port", port_field.text.strip_edges())
-		config.save("user://online.cfg")
-	var host_game := func() -> void:
-		save_name.call()
-		var listen_port := LocalRelay.DEFAULT_PORT
-		if not (App.local_relay.is_running() and App.local_relay.port == listen_port):
-			var err := App.local_relay.start(listen_port)
-			if err != OK:
-				status_label.text = "Could not start the game server on port %d (error %d)." % [listen_port, err]
-				return
-		var ips := LocalRelay.private_addresses()
-		(pg.root as Control).set_meta("host_hint", "Friends join with address %s port %d (Wi-Fi hotspot works too)." % [
-			" or ".join(ips) if not ips.is_empty() else "(no Wi-Fi/hotspot address found; turn on Wi-Fi or hotspot)", listen_port])
-		App.online.connect_room("ws://127.0.0.1:%d" % listen_port, nickname.text, "")
-	var join_game := func() -> void:
-		var host_ip := address.text.strip_edges()
-		var join_port := port_field.text.strip_edges()
-		if not NetTransport.is_private_host(host_ip) or not join_port.is_valid_int():
-			status_label.text = "Enter the host's private IP address (like 192.168.1.20) and port."
-			return
-		if code_field.text.strip_edges().length() != 6:
-			status_label.text = "Enter the six-character room code."
-			return
-		save_name.call()
-		App.online.connect_room("ws://%s:%d" % [host_ip, int(join_port)], nickname.text, code_field.text.strip_edges())
-	var host := _primary_button("Host on this phone", host_game, "online_host")
-	var join := _primary_button("Join", join_game, "online_join")
-	(pg.footer as VBoxContainer).add_child(host)
-	(pg.footer as VBoxContainer).add_child(join)
+	nickname.text_changed.connect(func(t: String) -> void:
+		var c := _online_cfg()
+		c.set_value("online", "name", t.strip_edges())
+		c.save("user://online.cfg"))
+	body.add_child(nf[0])
+	body.add_child(_online_steps("HOW IT WORKS", [
+		"One phone hosts: turn on its hotspot, then tap Host a game.",
+		"Everyone else connects their phone to that hotspot, then taps Join a game.",
+		"Enter the room code shown on the host phone. No internet or IP address needed."]))
+	body.add_child(_nav_row("people", "Host a game", "Your phone's hotspot carries the game", _open_online_host, "online_host_menu"))
+	body.add_child(_nav_row("flag", "Join a game", "Connect to the host's hotspot first", _open_online_join, "online_join_menu"))
+	body.add_child(_note("Keep the app open on the host phone during the round."))
+	_push(pg.root)
+
+
+## Watches App.online and opens the lobby when a seat is assigned.
+func _watch_online_connection(pg: Dictionary, status_label: Label, buttons: Array) -> void:
 	var update := func() -> void:
 		if not is_instance_valid(status_label): return
-		status_label.text = App.online.status
-		if App.online.seat == 0 and (pg.root as Control).has_meta("host_hint"):
-			status_label.text += "\n" + String((pg.root as Control).get_meta("host_hint"))
-		host.disabled = App.online.active
-		join.disabled = App.online.active
+		if App.online.active or not App.online.status.begins_with("Not connected"):
+			status_label.text = App.online.status
+		for b: Button in buttons:
+			b.disabled = App.online.active
 		if App.online.seat >= 0 and not bool((pg.root as Control).get_meta("lobby_open", false)):
 			(pg.root as Control).set_meta("lobby_open", true)
 			_open_online_lobby()
 	App.online.changed.connect(update)
 	(pg.root as Control).tree_exiting.connect(func() -> void:
 		if App.online.changed.is_connected(update): App.online.changed.disconnect(update))
+
+
+func _open_online_host() -> void:
+	var pg := _page("Host a game")
+	var body: VBoxContainer = pg.body
+	(pg.root as Control).set_meta("online_page", true)
+	body.add_child(_online_steps("HOSTING", [
+		"Turn on your phone's hotspot (Settings, Hotspot / Tethering).",
+		"Tap Start hosting below.",
+		"Friends connect to your hotspot, tap Join a game and enter the room code."]))
+	var addr_card := _online_card("select")
+	var av: VBoxContainer = addr_card[1]
+	av.add_child(_caption("YOUR HOTSPOT ADDRESS"))
+	var addr_label := UiKit.label("", 40, Color.WHITE)
+	addr_label.add_theme_font_override("font", UiKit.font_semi())
+	av.add_child(addr_label)
+	var addr_note := _note("")
+	av.add_child(addr_note)
+	body.add_child(addr_card[0])
+	var refresh_addr := func() -> void:
+		var best := HostFinder.best_host_address(IP.get_local_addresses())
+		addr_label.text = best if best != "" else "No hotspot found"
+		addr_note.text = "Friends find this phone automatically once they are on your hotspot." if best != "" \
+			else "Turn on your phone's hotspot, then come back to this screen."
+	refresh_addr.call()
+	var status_label := UiKit.text("Ready when you are.", 21, UiKit.C_MUTED)
+	body.add_child(status_label)
+	var host_game := func() -> void:
+		var listen_port := LocalRelay.DEFAULT_PORT
+		if not (App.local_relay.is_running() and App.local_relay.port == listen_port):
+			var err := App.local_relay.start(listen_port)
+			if err != OK:
+				status_label.text = "Could not start the game server on port %d (error %d)." % [listen_port, err]
+				return
+		refresh_addr.call()
+		App.online.connect_room("ws://127.0.0.1:%d" % listen_port, _online_name(), "")
+	var host := _primary_button("Start hosting", host_game, "online_host")
+	(pg.footer as VBoxContainer).add_child(host)
+	_watch_online_connection(pg, status_label, [host])
 	_push(pg.root)
 
 
+func _open_online_join() -> void:
+	var pg := _page("Join a game")
+	var body: VBoxContainer = pg.body
+	(pg.root as Control).set_meta("online_page", true)
+	body.add_child(_online_steps("JOINING", [
+		"Open Wi-Fi settings and connect to the host phone's hotspot.",
+		"Come back here: the host is found automatically.",
+		"Type the room code from the host's screen and tap Join."]))
+	var finder := HostFinder.new()
+	(pg.root as Control).add_child(finder)
+	var found_card := _online_card("select")
+	var fv: VBoxContainer = found_card[1]
+	fv.add_child(_caption("HOST PHONE"))
+	var found_label := UiKit.label("Looking for the host…", 30, Color.WHITE)
+	found_label.add_theme_font_override("font", UiKit.font_semi())
+	fv.add_child(found_label)
+	var found_note := _note("Make sure you are connected to the host's hotspot.")
+	fv.add_child(found_note)
+	body.add_child(found_card[0])
+	var cf := _online_field("ROOM CODE", "", "6-character code", true)
+	var code_field: LineEdit = cf[1]
+	code_field.max_length = 6
+	code_field.text_changed.connect(func(t: String) -> void:
+		var up := t.to_upper()
+		if up != t:
+			var pos := code_field.caret_column
+			code_field.text = up
+			code_field.caret_column = pos)
+	body.add_child(cf[0])
+	var manual := UiKit.vbox(6)
+	manual.visible = false
+	var config := _online_cfg()
+	var mf := _online_field("HOST ADDRESS", String(config.get_value("online", "host_ip", "")), "e.g. 192.168.43.1")
+	var address: LineEdit = mf[1]
+	manual.add_child(mf[0])
+	body.add_child(manual)
+	var again := _secondary_button("Search again", func() -> void: pass, "online_search")
+	var manual_btn := _secondary_button("Enter address manually", func() -> void: pass, "online_manual")
+	var row := UiKit.hbox(10)
+	again.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	manual_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(again)
+	row.add_child(manual_btn)
+	body.add_child(row)
+	var status_label := UiKit.text("", 21, UiKit.C_MUTED)
+	body.add_child(status_label)
+	var join := _primary_button("Join", func() -> void: pass, "online_join")
+	(pg.footer as VBoxContainer).add_child(join)
+	var state := {"ip": ""}
+	var refresh_join := func() -> void:
+		join.disabled = App.online.active or (state.ip == "" and not (manual.visible and address.text.strip_edges() != ""))
+	var search := func() -> void:
+		state.ip = ""
+		found_label.text = "Looking for the host…"
+		found_label.add_theme_color_override("font_color", Color.WHITE)
+		found_note.text = "Make sure you are connected to the host's hotspot."
+		again.disabled = true
+		var n := finder.start()
+		if n == 0:
+			finder.finished.emit([])
+		refresh_join.call()
+	finder.found.connect(func(ip: String) -> void:
+		if state.ip == "":
+			state.ip = ip
+			found_label.text = "Host found · %s" % ip
+			found_label.add_theme_color_override("font_color", Color("#A0F344"))
+			found_note.text = "Enter the room code and tap Join."
+			refresh_join.call())
+	finder.finished.connect(func(hosts: Array) -> void:
+		again.disabled = false
+		if hosts.is_empty():
+			found_label.text = "No host found"
+			found_label.add_theme_color_override("font_color", UiKit.C_WARN)
+			found_note.text = "Check you are on the host's hotspot and the host has tapped Start hosting, then search again. Or enter the address manually."
+		elif hosts.size() > 1:
+			found_note.text = "%d hosts answered; using %s. Enter the address manually to pick another." % [hosts.size(), hosts[0]]
+		refresh_join.call())
+	again.pressed.connect(search)
+	manual_btn.pressed.connect(func() -> void:
+		manual.visible = not manual.visible
+		manual_btn.text = "Hide manual address" if manual.visible else "Enter address manually"
+		refresh_join.call())
+	address.text_changed.connect(func(_t: String) -> void: refresh_join.call())
+	var join_game := func() -> void:
+		var host_ip: String = address.text.strip_edges() if manual.visible and address.text.strip_edges() != "" else String(state.ip)
+		var join_port := LocalRelay.DEFAULT_PORT
+		if host_ip.contains(":"):
+			join_port = int(host_ip.get_slice(":", 1))
+			host_ip = host_ip.get_slice(":", 0)
+		if not NetTransport.is_private_host(host_ip) or join_port <= 0 or join_port > 65535:
+			status_label.text = "That does not look like a hotspot address (like 192.168.43.1)."
+			return
+		if code_field.text.strip_edges().length() != 6:
+			status_label.text = "Enter the six-character room code from the host's screen."
+			return
+		if manual.visible:
+			var c := _online_cfg()
+			c.set_value("online", "host_ip", address.text.strip_edges())
+			c.save("user://online.cfg")
+		finder.cancel()
+		App.online.connect_room("ws://%s:%d" % [host_ip, join_port], _online_name(), code_field.text.strip_edges())
+	join.pressed.connect(join_game)
+	_watch_online_connection(pg, status_label, [join])
+	_push(pg.root)
+	search.call_deferred()
+
+
 func _open_online_lobby() -> void:
-	var pg := _page("Private Lobby")
+	var pg := _page("Lobby")
 	(pg.root as Control).set_meta("online_page", true)
 	var body: VBoxContainer = pg.body
-	body.add_child(UiKit.label("ROOM  " + App.online.code, 38, Color.WHITE))
-	if App.online.seat == 0 and App.local_relay.is_running():
-		var ips := LocalRelay.private_addresses()
-		body.add_child(_note("Friends join with address %s, port %d and this room code. Wi-Fi hotspot works. Keep this app open." % [
-			", ".join(ips) if not ips.is_empty() else "(none found: turn on Wi-Fi or hotspot)", App.local_relay.port]))
-	var roster := UiKit.vbox(10)
+	var is_host := App.online.seat == 0
+	var code_card := _online_card("select")
+	var cv: VBoxContainer = code_card[1]
+	cv.add_child(_caption("ROOM CODE"))
+	var code_text := " ".join(Array(App.online.code.split("")).map(func(c: String) -> String: return c))
+	var code_label := UiKit.label(code_text, 76, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	code_label.add_theme_font_override("font", UiKit.font_display())
+	cv.add_child(code_label)
+	if is_host:
+		var best := HostFinder.best_host_address(IP.get_local_addresses())
+		cv.add_child(_note("Friends: connect to your hotspot, tap Join a game, enter this code.%s" % (
+			"\nHotspot address: %s" % best if best != "" else "\nNo hotspot address found. Turn your hotspot on.")))
+	else:
+		cv.add_child(_note("Connected. Waiting for the host to start the round."))
+	body.add_child(code_card[0])
+	body.add_child(_caption("PLAYERS"))
+	var roster := UiKit.vbox(8)
 	body.add_child(roster)
 	var courses := OptionButton.new()
 	courses.custom_minimum_size.y = 64
 	var course_list := App.courses()
 	for c in course_list: courses.add_item(String(c.name))
-	body.add_child(_caption("COURSE (HOST SELECTS)"))
-	body.add_child(courses)
-	courses.disabled = App.online.seat != 0
-	body.add_child(_note("Host gameplay settings are frozen at start. Shared footballer pool. Mulligans: %s." % ("Unlimited" if _last_mulligans < 0 else str(_last_mulligans))))
-	body.add_child(_note("A lost connection pauses the round for up to 60 seconds. Leaving ends the room. Host transfer is not included yet."))
+	if is_host:
+		body.add_child(_caption("COURSE"))
+		body.add_child(courses)
+	body.add_child(_note("Host settings are frozen at start. Footballers are shared: each can be used once. Mulligans: %s." % ("Unlimited" if _last_mulligans < 0 else str(_last_mulligans))))
+	body.add_child(_note("A lost connection pauses the round for up to 60 seconds. Leaving ends the room."))
 	var status_label := UiKit.text("", 21, UiKit.C_MUTED)
 	body.add_child(status_label)
 	var ready := CheckButton.new()
 	ready.text = "Ready to play"
 	ready.custom_minimum_size.y = 64
 	ready.toggled.connect(func(value: bool) -> void: App.online.set_ready(value))
-	body.add_child(ready)
+	(pg.footer as VBoxContainer).add_child(ready)
 	var start := _primary_button("Start online round", func() -> void:
 		App.online.start_game(String(course_list[courses.selected].id), _last_mulligans), "online_start")
-	start.visible = App.online.seat == 0
+	start.visible = is_host
 	(pg.footer as VBoxContainer).add_child(start)
 	var update := func() -> void:
 		if not is_instance_valid(roster): return
@@ -492,13 +687,29 @@ func _open_online_lobby() -> void:
 		var colors := [Color("#64CC54"), Color("#F16C72"), Color("#E9CA57"), Color("#5C9FEB")]
 		for i in App.online.players.size():
 			var player: Dictionary = App.online.players[i]
-			var suffix := "Ready" if bool(player.ready) else "Not ready"
-			if not bool(player.connected): suffix = "Reconnecting"
-			roster.add_child(UiKit.label("P%d · %s · %s" % [i + 1, player.name, suffix], 24, colors[i]))
+			var suffix := "READY" if bool(player.ready) else "NOT READY"
+			if not bool(player.connected): suffix = "RECONNECTING"
+			var card := _online_card()
+			var rowh := UiKit.hbox(12)
+			rowh.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var dot := ColorRect.new()
+			dot.color = colors[i]
+			dot.custom_minimum_size = Vector2(10, 40)
+			dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			rowh.add_child(dot)
+			var nm := String(player.name) + (" (you)" if i == App.online.seat else "") + ("  · host" if i == 0 else "")
+			var nl := UiKit.label(nm, 26, Color.WHITE)
+			nl.add_theme_font_override("font", UiKit.font_semi())
+			nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			nl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			rowh.add_child(nl)
+			rowh.add_child(UiKit.label(suffix, 19, UiKit.C_ACCENT if bool(player.ready) and bool(player.connected) else UiKit.C_WARN))
+			card[1].add_child(rowh)
+			roster.add_child(card[0])
 			all_ready = all_ready and bool(player.ready) and bool(player.connected)
 			if i == App.online.seat: ready.set_pressed_no_signal(bool(player.ready))
 		start.disabled = not all_ready
-		status_label.text = App.online.status
+		status_label.text = App.online.status if App.online.players.size() >= 2 else "Waiting for friends to join…"
 	App.online.changed.connect(update)
 	(pg.root as Control).tree_exiting.connect(func() -> void:
 		if App.online.changed.is_connected(update): App.online.changed.disconnect(update))

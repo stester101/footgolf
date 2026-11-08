@@ -7,6 +7,15 @@ var pending := false
 var _applying := false
 var _host := false
 var _remote_mulligan_available := false
+## Live view of the active player's pre-shot choices (spectators only). Cosmetic and non-authoritative:
+## never read by any rule, never saved in snapshots, ignored when stale or out of turn.
+const PREVIEW_INTERVAL_MS := 220
+const PREVIEW_HEARTBEAT_MS := 1500
+const PREVIEW_STALE_MS := 5000
+var _preview := {}
+var _preview_at := 0
+var _sent_preview := {}
+var _sent_at := 0
 
 func configure(value: OnlineRoom) -> void:
 	room = value
@@ -14,6 +23,7 @@ func configure(value: OnlineRoom) -> void:
 	room.intent.connect(_on_intent)
 	room.event.connect(_on_event)
 	room.resync.connect(_on_resync)
+	room.preview.connect(_on_preview)
 	room.error.connect(func(text: String) -> void:
 		pending = false
 		message.emit(text))
@@ -23,7 +33,7 @@ func configure(value: OnlineRoom) -> void:
 
 func dispose() -> void:
 	# Lambda connections capture the session; disconnect all connections owned by this session.
-	for sig in [room.intent, room.event, room.resync, room.error, room.changed]:
+	for sig in [room.intent, room.event, room.resync, room.preview, room.error, room.changed]:
 		for connection in sig.get_connections():
 			if connection.callable.get_object() == self:
 				sig.disconnect(connection.callable)
@@ -76,6 +86,7 @@ func can_mulligan() -> bool:
 func advance(delta: float, speed_mult: float = 1.0) -> void:
 	if room.paused: return
 	super.advance(delta, speed_mult)
+	_send_preview()
 
 func skip_motion() -> void:
 	# Local skip only speeds up animation; the host still decides the result.
@@ -219,3 +230,57 @@ func apply_snapshot(data: Dictionary, animate: bool) -> void:
 			round_completed.emit()
 	ball_placed.emit()
 	selection_changed.emit()
+
+# ---- live aim preview (non-authoritative)
+
+## What the active player is choosing right now. Pure so it can be unit-tested.
+func preview_payload() -> Dictionary:
+	return {"rev": revision, "id": selected_id, "mode": mode, "style": style,
+		"traj": trajectory, "spin": spin, "aim": aim_bearing_deg}
+
+func _send_preview() -> void:
+	if state != ShotTypes.State.AIMING or not controls_turn():
+		_sent_preview = {}
+		return
+	var now := Time.get_ticks_msec()
+	var payload := preview_payload()
+	var changed := JSON.stringify(payload) != JSON.stringify(_sent_preview)
+	if (changed and now - _sent_at >= PREVIEW_INTERVAL_MS) or now - _sent_at >= PREVIEW_HEARTBEAT_MS:
+		_sent_preview = payload
+		_sent_at = now
+		room.send_preview(payload)
+
+## Returns a clean preview or {} when the data is malformed.
+static func sanitize_preview(d: Dictionary) -> Dictionary:
+	for key in ["rev", "mode", "style", "traj", "spin", "aim"]:
+		if not (d.get(key) is float or d.get(key) is int) or not is_finite(float(d[key])):
+			return {}
+	if not d.get("id") is String or String(d.id).length() > 80:
+		return {}
+	var out := {"rev": int(d.rev), "id": String(d.id), "mode": int(d.mode), "style": int(d.style),
+		"traj": int(d.traj), "spin": clampf(float(d.spin), -1.0, 1.0), "aim": fposmod(float(d.aim), 360.0)}
+	if not (out.mode in [0, 1] and out.style in [0, 1] and out.traj in [0, 1, 2, 3]):
+		return {}
+	return out
+
+func _on_preview(seat: int, data: Dictionary) -> void:
+	if seat != turn or seat == room.seat:
+		return
+	var clean := sanitize_preview(data)
+	if clean.is_empty() or int(clean.rev) != revision:
+		return
+	_preview = clean
+	_preview_at = Time.get_ticks_msec()
+	selection_changed.emit()  # UI refresh only
+
+## The active player's current choices as seen by a waiting phone, or {} (not waiting, stale, or out of turn).
+func watch_preview() -> Dictionary:
+	if _preview.is_empty() or state != ShotTypes.State.AIMING or not is_spectating():
+		return {}
+	if int(_preview.rev) != revision or Time.get_ticks_msec() - _preview_at > PREVIEW_STALE_MS:
+		return {}
+	return _preview
+
+## True on a phone that is watching somebody else's turn.
+func is_spectating() -> bool:
+	return room != null and room.active and room.seat >= 0 and room.seat != turn

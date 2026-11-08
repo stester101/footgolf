@@ -148,6 +148,7 @@ func setup(s: GameSession) -> void:
 	col.add_child(_toast)
 	_shot_controls = _build_shot_controls()
 	col.add_child(_shot_controls)
+	_build_watch_card(col)
 	_lie_chip = PanelContainer.new()
 	_lie_chip.add_theme_stylebox_override("panel", UiKit.skin("recess", 6, 18, 6))
 	_lie_chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -832,7 +833,8 @@ func refresh() -> void:
 		_result_box.modulate.a = 1.0
 	var show_result := session.state == ShotTypes.State.SHOT_RESULT
 	var between := session.state == ShotTypes.State.HOLE_COMPLETE or session.state == ShotTypes.State.ROUND_COMPLETE
-	_shot_controls.visible = not show_result and not overhead and not between
+	var watching := _update_watch_card(overhead)
+	_shot_controls.visible = not show_result and not overhead and not between and not watching
 	_utility_row.visible = not between  # never hidden for a modal: that collapsed the layout and made the HUD jump
 	_result_card.visible = show_result and not overhead
 	_lie_chip.visible = _result_card.visible and _lie_chip_label.text != ""
@@ -965,6 +967,89 @@ func _apply_player_style() -> void:
 		if key != _last_turn_key:
 			_last_turn_key = key
 			_flash_turn(String(session.active_name()).to_upper() + (" · YOUR SHOT" if not (session is OnlineSession) or (session as OnlineSession).controls_turn() else " · TO PLAY"), col)
+
+
+# ------------------------------------------------------------------ online spectator card
+
+var _watch_card: PanelContainer
+var _watch_who: Label
+var _watch_flag: TextureRect
+var _watch_name: Label
+var _watch_detail: Label
+
+
+## Compact card for the phone that is waiting while another player aims and while their ball flies.
+## Read-only: shows what the active player picked; nothing here can act on the session.
+func _build_watch_card(col: VBoxContainer) -> void:
+	_watch_card = PanelContainer.new()
+	_watch_card.add_theme_stylebox_override("panel", UiKit.skin("glass", 8, 18, 12))
+	_watch_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_watch_card.visible = false
+	var v := UiKit.vbox(6)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_watch_who = _tag("", 19, UiKit.C_CYAN)
+	v.add_child(_watch_who)
+	var row := UiKit.hbox(12)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_watch_flag = TextureRect.new()
+	_watch_flag.custom_minimum_size = Vector2(44, 30)
+	_watch_flag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_watch_flag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_watch_flag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_watch_flag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_watch_flag)
+	_watch_name = UiKit.label("", 30, Color.WHITE)
+	_watch_name.add_theme_font_override("font", UiKit.font_semi())
+	_watch_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_watch_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(_watch_name)
+	v.add_child(row)
+	_watch_detail = UiKit.label("", 19, UiKit.C_MUTED)
+	_watch_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(_watch_detail)
+	_watch_card.add_child(v)
+	col.add_child(_watch_card)
+
+
+## Returns true while the card is shown (waiting phone, not on the map, shot not yet resolved).
+func _update_watch_card(overhead: bool) -> bool:
+	var live := session is OnlineSession and (session as OnlineSession).is_spectating() \
+			and session.state in [ShotTypes.State.AIMING, ShotTypes.State.SHOT_COMMITTED,
+			ShotTypes.State.BALL_IN_MOTION, ShotTypes.State.HAZARD_RESOLUTION]
+	if not live or overhead:
+		_watch_card.visible = false
+		return live
+	var p: Dictionary = {}
+	var flying := session.state != ShotTypes.State.AIMING
+	if flying and session.current_request != null:
+		var r: ShotRequest = session.current_request
+		p = {"id": r.footballer_id, "mode": r.mode, "style": r.style, "traj": r.trajectory, "spin": r.spin, "aim": r.aim_bearing_deg}
+	else:
+		p = (session as OnlineSession).watch_preview()
+	var pcol: Color = PLAYER_COLS[clampi(session.turn, 0, 3)]
+	_watch_who.text = "%s · %s" % [String(session.active_name()).to_upper(), "BALL IN FLIGHT" if flying else "IS AIMING"]
+	_watch_who.add_theme_color_override("font_color", pcol.lightened(0.55))  # readable on the glass card
+	var fb: Footballer = session.repo.get_by_id(String(p.get("id", ""))) if not p.is_empty() and String(p.get("id", "")) != "" else null
+	if fb == null:
+		_watch_flag.texture = null
+		_watch_name.text = "Choosing a footballer…"
+		_watch_detail.text = "Waiting for %s to take the shot." % session.active_name()
+	else:
+		_watch_flag.texture = Flags.texture(fb.country_code)
+		var nm := fb.name
+		var m := int(p.mode)
+		if bool(App.online.setup.get("show_stats", false)):
+			nm += "  ·  " + (UiKit.plural(fb.caps, "cap") if m == ShotTypes.Mode.CAPS else UiKit.plural(fb.goals, "goal"))
+		_watch_name.text = nm
+		var parts: Array[String] = [ShotTypes.mode_name(m), ShotTypes.style_name(int(p.style))]
+		if int(p.style) == ShotTypes.Style.FLIGHT:
+			parts.append("%s %d°" % [ShotTypes.trajectory_name(int(p.traj)), int(round(session.launch_angle_for(int(p.traj))))])
+			if absf(float(p.spin)) >= 0.025:
+				parts.append("%s %d%%" % ["TOP" if float(p.spin) > 0.0 else "BACK", int(round(absf(float(p.spin)) * 100.0))])
+		parts.append("AIM %d°" % int(round(float(p.aim))))
+		_watch_detail.text = "  ·  ".join(parts)
+	_watch_card.visible = true
+	return true
 
 
 func _flash_turn(text: String, col: Color) -> void:

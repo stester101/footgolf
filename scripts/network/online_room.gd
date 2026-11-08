@@ -8,6 +8,7 @@ signal ended(message: String)
 signal intent(seat: int, command: Dictionary)
 signal event(data: Dictionary)
 signal resync(seat: int)
+signal preview(seat: int, data: Dictionary)
 
 var app: Node
 var transport: NetTransport
@@ -134,6 +135,8 @@ func _receive(data: Dictionary) -> void:
 		"intent": intent.emit(int(data.seat), data.command)
 		"event": event.emit(data.event)
 		"resync": resync.emit(int(data.seat))
+		"preview":
+			if data.get("data") is Dictionary: preview.emit(int(data.get("seat", -1)), data.data)
 		"ended": _finish(String(data.message))
 
 func _finish(reason: String) -> void:
@@ -172,6 +175,11 @@ func start_game(course_id: String, mulligans: int) -> void:
 
 func send_intent(command: Dictionary) -> void:
 	transport.send({"type": "intent", "command": command})
+
+## Live-aim info for spectators. Never authoritative; the relay forwards it to the other seats.
+func send_preview(data: Dictionary) -> void:
+	if active and started and not paused:
+		transport.send({"type": "preview", "data": data})
 
 func send_event(data: Dictionary, target: int = -1) -> void:
 	transport.send({"type": "event", "event": data, "target": target})
