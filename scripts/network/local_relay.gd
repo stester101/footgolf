@@ -282,7 +282,7 @@ func _handle(c: Conn, raw: String) -> String:
 	elif kind == "leave":
 		_close_room(cur, "A player left the room.")
 	else:
-		return "Action is not allowed"
+		return "Action is not allowed (%s)" % kind
 	return ""
 
 ## Private IPv4 addresses of this device (not loopback), for showing to the host.
