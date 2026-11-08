@@ -586,7 +586,12 @@ func _open_online_join() -> void:
 		found_label.add_theme_color_override("font_color", Color.WHITE)
 		found_note.text = "Make sure you are connected to the host's hotspot."
 		again.disabled = true
-		var n := finder.start()
+		# Try the last host address first, then the usual hotspot gateways.
+		var list := HostFinder.candidate_hosts(IP.get_local_addresses())
+		var last := String(_online_cfg().get_value("online", "host_ip", "")).get_slice(":", 0)
+		if last != "" and NetTransport.is_private_host(last) and not list.has(last):
+			list.insert(0, last)
+		var n := finder.start(list)
 		if n == 0:
 			finder.finished.emit([])
 		refresh_join.call()
@@ -624,10 +629,10 @@ func _open_online_join() -> void:
 		if code_field.text.strip_edges().length() != 6:
 			status_label.text = "Enter the six-character room code from the host's screen."
 			return
-		if manual.visible:
-			var c := _online_cfg()
-			c.set_value("online", "host_ip", address.text.strip_edges())
-			c.save("user://online.cfg")
+		# Remember the host address (auto-found or typed); kept in user:// so it survives app updates.
+		var c := _online_cfg()
+		c.set_value("online", "host_ip", host_ip if join_port == LocalRelay.DEFAULT_PORT else "%s:%d" % [host_ip, join_port])
+		c.save("user://online.cfg")
 		finder.cancel()
 		App.online.connect_room("ws://%s:%d" % [host_ip, join_port], _online_name(), code_field.text.strip_edges())
 	join.pressed.connect(join_game)
