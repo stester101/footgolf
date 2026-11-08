@@ -95,8 +95,18 @@ func _ready() -> void:
 	add_child(_marker)
 	rig = CameraRig.new()
 	add_child(rig)
-	session = GameSession.new(App.settings.physics, App.repo)
-	App.settings.apply_to(session)
+	if App.online.started:
+		var net := OnlineSession.new(PhysicsConfig.new(), App.repo)
+		net.configure(App.online)
+		net.cfg.apply_dict(App.online.setup.physics)
+		net.holeout_radius_ft = float(App.online.setup.holeout)
+		net.wind_custom = bool(App.online.setup.wind_custom)
+		net.wind_custom_speed = float(App.online.setup.wind_speed)
+		net.wind_custom_bearing = float(App.online.setup.wind_bearing)
+		session = net
+	else:
+		session = GameSession.new(App.settings.physics, App.repo)
+		App.settings.apply_to(session)
 	session.hole_started.connect(_on_hole_started)
 	session.shot_started.connect(func(_r: ShotRequest) -> void: _on_shot_started())
 	session.state_changed.connect(_on_state_changed)
@@ -118,8 +128,19 @@ func _ready() -> void:
 	# after ui.setup(): the summary card exists before preloading reports progress into it
 	session.hole_completed.connect(func(_hs: HoleState) -> void: _start_preload())
 	DisplayServer.screen_set_keep_on(true)
-	App.telemetry.attach(session, course_id, String(App.course_info(course_id).get("name", course_id)))
-	session.start_round(App.load_holes(course_id), -1, FootballerPool.ReuseRule.ONCE_PER_ROUND, mulligans, players)
+	var defs := App.load_holes(course_id)
+	var seed_value := -1
+	if App.online.started:
+		seed_value = int(App.online.setup.seed)
+		for h in defs:
+			h.par = int(App.online.setup.pars.get(h.id, h.par))
+	else:
+		App.telemetry.attach(session, course_id, String(App.course_info(course_id).get("name", course_id)))
+	session.start_round(defs, seed_value, FootballerPool.ReuseRule.ONCE_PER_ROUND, mulligans, players)
+	if App.online.started:
+		for i in App.online.players.size():
+			session.player_names[i] = String(App.online.players[i].name)
+		_add_online_status()
 	if open_dev_on_start:
 		toggle_dev_panel()
 
@@ -235,6 +256,8 @@ func _on_hole_started(_i: int) -> void:
 
 
 func _on_state_changed(s: int) -> void:
+	if session is OnlineSession and ui != null and s in [ShotTypes.State.AIMING, ShotTypes.State.ROUND_COMPLETE]:
+		ui.close_all_overlays()
 	if s == ShotTypes.State.AIMING and rig.mode == CameraRig.Mode.OVERHEAD and ui.overhead and not _tap_place:
 		if session.current_hole_state().strokes == 0 and session.current_hole_state().shots.is_empty():
 			_set_overhead(false)
@@ -273,6 +296,9 @@ func _toggle_camera() -> void:
 
 
 func toggle_dev_panel() -> void:
+	if session is OnlineSession:
+		ui.toast("Developer controls are disabled in online rounds.")
+		return
 	if dev_panel != null and is_instance_valid(dev_panel):
 		dev_panel.queue_free()
 		dev_panel = null
@@ -492,3 +518,26 @@ func handle_back() -> void:
 		_set_overhead(false)
 	else:
 		ui.show_pause()
+
+
+func _add_online_status() -> void:
+	var label := UiKit.label("", 17, UiKit.C_CYAN)
+	label.position = Vector2(20, 4)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_canvas.add_child(label)
+	var update := func() -> void:
+		if not is_instance_valid(label): return
+		if App.online.paused:
+			label.text = App.online.status
+		else:
+			label.text = "ONLINE · %s · %s" % [App.online.code,
+				"Your turn" if App.online.seat == session.turn else "Watching " + session.active_name()]
+	App.online.changed.connect(update)
+	session.selection_changed.connect(update)
+	label.tree_exiting.connect(func() -> void:
+		if App.online.changed.is_connected(update): App.online.changed.disconnect(update))
+	update.call()
+
+func _exit_tree() -> void:
+	if session is OnlineSession:
+		(session as OnlineSession).dispose()

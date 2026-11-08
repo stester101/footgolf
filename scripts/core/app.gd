@@ -9,11 +9,13 @@ var repo := FootballerRepository.new()
 var profiles := PlayerProfileStore.new()
 ## On-device shot/hole/round log (user://telemetry); exported from Settings.
 var telemetry := TelemetryLog.new()
+var online := OnlineRoom.new()
 var dev_mode := false
 var build_info := {}
 
 
 func _ready() -> void:
+	add_child(online)
 	settings.load_settings()
 	profiles.load_profiles()
 	load_dataset()

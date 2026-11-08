@@ -5,7 +5,7 @@ extends Control
 ## Navigation (a stack of pages; every page has the same Back control and Android Back pops one):
 ##   Main menu
 ##     Single Player / Course Select -> Round Setup -> Start Round -> gameplay
-##     Multiplayer (Coming Soon; future: Host / Join -> Lobby -> Course Select -> Round Setup)
+##     Online Multiplayer -> Host / Join -> Lobby -> Round
 ##     Settings -> Gameplay / Controls / Audio + Visual / Developer
 ##     Statistics -> Overview / Round History / Records
 ##     How to Play (tutorial)
@@ -88,6 +88,12 @@ func _pop() -> void:
 	if _stack.size() <= 1:
 		return
 	var p: Control = _stack.pop_back()
+	if bool(p.get_meta("online_page", false)):
+		App.online.leave()
+		# Leaving the lobby also removes its connection page.
+		if not _stack.is_empty() and bool(_stack.back().get_meta("online_page", false)):
+			var previous: Control = _stack.pop_back()
+			previous.queue_free()
 	p.queue_free()
 	_stack.back().visible = true
 
@@ -355,26 +361,114 @@ func _build_home() -> Control:
 	return root
 
 
-## Multiplayer is not built yet: a disabled card marked Coming Soon. Future flow:
-## Host / Join -> Lobby -> Course Select -> Round Setup (no networking in this version).
+## Online is separate from the existing solo/pass-and-play setup.
 func _multiplayer_card() -> Control:
-	var b := _nav_row("people", "Multiplayer", "", func() -> void: pass, "menu_multiplayer")
-	b.disabled = true
-	b.set_meta("press_text", "Multiplayer")
-	b.add_theme_stylebox_override("disabled", UiKit.skin("btn", 6, 0, 0))
-	var pill := PanelContainer.new()
-	pill.add_theme_stylebox_override("panel", UiKit.skin("select", 6, 14, 3))
-	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var pl := UiKit.label("Coming Soon", 19, Color.WHITE)
-	pl.add_theme_font_override("font", UiKit.font_semi())
-	pill.add_child(pl)
-	# put the pill under the title (second line of the title column)
-	var tv: VBoxContainer = ((b.get_child(0) as MarginContainer).get_child(0) as HBoxContainer).get_child(1) as VBoxContainer
-	tv.add_child(pill)
-	pill.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	b.modulate = Color(1, 1, 1, 0.8)
-	return b
+	return _nav_row("people", "Online Multiplayer", "Private room · 2–4 phones", _open_online, "menu_multiplayer")
+
+
+func _online_input(body: VBoxContainer, title: String, value: String, hint: String) -> LineEdit:
+	body.add_child(_caption(title))
+	var field := LineEdit.new()
+	field.text = value
+	field.placeholder_text = hint
+	field.custom_minimum_size.y = 64
+	field.add_theme_font_size_override("font_size", 23)
+	body.add_child(field)
+	return field
+
+
+func _open_online() -> void:
+	var pg := _page("Online Multiplayer")
+	var body: VBoxContainer = pg.body
+	(pg.root as Control).set_meta("online_page", true)
+	var config := ConfigFile.new()
+	config.load("user://online.cfg")
+	var default_url := String(ProjectSettings.get_setting("network/relay_url", ""))
+	var address := _online_input(body, "RELAY ADDRESS", String(config.get_value("online", "url", default_url)), "wss://your-relay.example")
+	var nickname := _online_input(body, "YOUR NAME", String(config.get_value("online", "name", "Player")), "Name")
+	nickname.max_length = 24
+	var code_field := _online_input(body, "ROOM CODE", "", "Enter code to join")
+	code_field.max_length = 6
+	body.add_child(_note("Live turns on separate phones. Solo and pass-and-play remain available from the main menu."))
+	var status_label := UiKit.text("A deployed relay address is required for internet play.", 21, UiKit.C_MUTED)
+	body.add_child(status_label)
+	var connect_room := func(joining: bool) -> void:
+		if address.text.strip_edges().is_empty():
+			status_label.text = "Set the relay address first."
+			return
+		if joining and code_field.text.strip_edges().length() != 6:
+			status_label.text = "Enter the six-character room code."
+			return
+		config.set_value("online", "url", address.text.strip_edges())
+		config.set_value("online", "name", nickname.text.strip_edges())
+		config.save("user://online.cfg")
+		App.online.connect_room(address.text, nickname.text, code_field.text.strip_edges() if joining else "")
+	var host := _primary_button("Host game", func() -> void: connect_room.call(false), "online_host")
+	var join := _primary_button("Join game", func() -> void: connect_room.call(true), "online_join")
+	(pg.footer as VBoxContainer).add_child(host)
+	(pg.footer as VBoxContainer).add_child(join)
+	var update := func() -> void:
+		if not is_instance_valid(status_label): return
+		status_label.text = App.online.status
+		host.disabled = App.online.active
+		join.disabled = App.online.active
+		if App.online.seat >= 0 and not bool((pg.root as Control).get_meta("lobby_open", false)):
+			(pg.root as Control).set_meta("lobby_open", true)
+			_open_online_lobby()
+	App.online.changed.connect(update)
+	(pg.root as Control).tree_exiting.connect(func() -> void:
+		if App.online.changed.is_connected(update): App.online.changed.disconnect(update))
+	_push(pg.root)
+
+
+func _open_online_lobby() -> void:
+	var pg := _page("Private Lobby")
+	(pg.root as Control).set_meta("online_page", true)
+	var body: VBoxContainer = pg.body
+	body.add_child(UiKit.label("ROOM  " + App.online.code, 38, Color.WHITE))
+	var roster := UiKit.vbox(10)
+	body.add_child(roster)
+	var courses := OptionButton.new()
+	courses.custom_minimum_size.y = 64
+	var course_list := App.courses()
+	for c in course_list: courses.add_item(String(c.name))
+	body.add_child(_caption("COURSE (HOST SELECTS)"))
+	body.add_child(courses)
+	courses.disabled = App.online.seat != 0
+	body.add_child(_note("Host gameplay settings are frozen at start. Shared footballer pool. Mulligans: %s." % ("Unlimited" if _last_mulligans < 0 else str(_last_mulligans))))
+	body.add_child(_note("A lost connection pauses the round for up to 60 seconds. Leaving ends the room. Host transfer is not included yet."))
+	var status_label := UiKit.text("", 21, UiKit.C_MUTED)
+	body.add_child(status_label)
+	var ready := CheckButton.new()
+	ready.text = "Ready to play"
+	ready.custom_minimum_size.y = 64
+	ready.toggled.connect(func(value: bool) -> void: App.online.set_ready(value))
+	body.add_child(ready)
+	var start := _primary_button("Start online round", func() -> void:
+		App.online.start_game(String(course_list[courses.selected].id), _last_mulligans), "online_start")
+	start.visible = App.online.seat == 0
+	(pg.footer as VBoxContainer).add_child(start)
+	var update := func() -> void:
+		if not is_instance_valid(roster): return
+		for child in roster.get_children():
+			roster.remove_child(child)
+			child.queue_free()
+		var all_ready := App.online.players.size() >= 2 and not App.online.paused
+		var colors := [Color("#64CC54"), Color("#F16C72"), Color("#E9CA57"), Color("#5C9FEB")]
+		for i in App.online.players.size():
+			var player: Dictionary = App.online.players[i]
+			var suffix := "Ready" if bool(player.ready) else "Not ready"
+			if not bool(player.connected): suffix = "Reconnecting"
+			roster.add_child(UiKit.label("P%d · %s · %s" % [i + 1, player.name, suffix], 24, colors[i]))
+			all_ready = all_ready and bool(player.ready) and bool(player.connected)
+			if i == App.online.seat: ready.set_pressed_no_signal(bool(player.ready))
+		start.disabled = not all_ready
+		status_label.text = App.online.status
+	App.online.changed.connect(update)
+	(pg.root as Control).tree_exiting.connect(func() -> void:
+		if App.online.changed.is_connected(update): App.online.changed.disconnect(update))
+	update.call()
+	_push(pg.root)
 
 
 # ------------------------------------------------------------------ course select + round setup

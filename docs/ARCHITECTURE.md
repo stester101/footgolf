@@ -64,4 +64,6 @@ from JSON lines/clusters; each has a trunk cylinder + canopy ellipsoid collision
 ## Future multiplayer seams
 `FootballerPool.used_footballer_ids`, immutable `ShotRequest`s with seeds, and a UI that never
 mutates authoritative state are intended to let a server-authoritative implementation replace
-`GameSession` without rewriting the shot mechanic. No networking exists in V0.1.
+`GameSession` without rewriting the shot mechanic. The local relay prototype now implements that seam with `OnlineSession`, `OnlineRoom`,
+`NetTransport`, and a separate Python relay. See `docs/MULTIPLAYER.md` for ownership,
+protocol limits, validation and deployment status. Solo/pass-and-play retain `GameSession`.

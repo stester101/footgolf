@@ -1,5 +1,13 @@
 # Product decisions log
 
+## 2026-11-08 — Online relay implementation authorized
+- Owner selected relay-based online play and instructed implementation. Solo and pass-and-play remain.
+- Host-authoritative WebSocket relay prototype implemented locally; see `docs/MULTIPLAYER.md`.
+- Provisional disconnect policy is pause/reconnect for 60 seconds, then end the room. Any explicit
+  departure ends the room. Host migration/removal and persistent resume are not implemented.
+- No public deployment, commit, push or APK was performed for this multiplayer work.
+
+
 ## 2026-11-07 — Independent distance source and shot style, mulligans, golf-ball bounce
 - Caps gives yards and Goals gives feet. Either can be played as a flight or a roll from any lie.
   Flight uses first-contact carry calibration and offers trajectory and spin; roll uses ground-travel

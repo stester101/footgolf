@@ -12,6 +12,10 @@ func _ready() -> void:
 	get_tree().quit_on_go_back = false
 	_canvas = CanvasLayer.new()
 	add_child(_canvas)
+	App.online.round_started.connect(_start_online)
+	App.online.ended.connect(func(reason: String) -> void:
+		show_menu()
+		_menu._open_placeholder("Online round ended", reason))
 	show_menu()
 	if OS.get_cmdline_user_args().has("--smoke-test"):
 		var d := SmokeDriver.new()
@@ -20,6 +24,8 @@ func _ready() -> void:
 
 
 func show_menu() -> void:
+	if App.online.started:
+		App.online.leave()
 	if _round != null:
 		_round.queue_free()
 		_round = null
@@ -35,6 +41,8 @@ func start_round(course_id: String, dev: bool = false, mulligans: int = 0, playe
 	if _menu != null:
 		_menu.queue_free()
 		_menu = null
+	if App.online.active and not App.online.started:
+		App.online.leave()
 	App.dev_mode = dev
 	_round = ROUND_SCENE.instantiate()
 	_round.open_dev_on_start = dev
@@ -45,6 +53,10 @@ func start_round(course_id: String, dev: bool = false, mulligans: int = 0, playe
 	App.settings.save()
 	_round.exit_to_menu.connect(show_menu)
 	add_child(_round)
+
+
+func _start_online() -> void:
+	start_round(String(App.online.setup.course), false, int(App.online.setup.mulligans), App.online.players.size())
 
 
 func _notification(what: int) -> void:

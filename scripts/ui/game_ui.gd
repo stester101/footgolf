@@ -784,7 +784,7 @@ func refresh() -> void:
 	if fb != null:
 		_player_flag.texture = Flags.texture(fb.country_code)
 		var nm := fb.name
-		if App.settings.show_stats:
+		if (bool(App.online.setup.get("show_stats", false)) if App.online.started else App.settings.show_stats):
 			nm += "  ·  " + (UiKit.plural(fb.caps, "cap") if session.mode == ShotTypes.Mode.CAPS else UiKit.plural(fb.goals, "goal"))
 		_player_name.text = nm
 	var lie_hint := Surface.effect_hint(lie, session.cfg.surfaces)
@@ -816,6 +816,8 @@ func refresh() -> void:
 	_spin_label.text = "NO SPIN" if (not flight or absf(session.spin) < 0.025) else "%s %d%%" % ["TOP" if session.spin > 0.0 else "BACK", int(round(absf(session.spin) * 100.0))]
 	# one action button: Choose footballer -> Take shot -> Skip while the ball is moving
 	var can_act := aiming and _overlays.is_empty()
+	if session is OnlineSession:
+		can_act = can_act and (session as OnlineSession).controls_turn()
 	if moving:
 		_shot_btn.set_meta("ui_id", "skip")
 		_shot_label.text = "SKIP"
@@ -828,6 +830,8 @@ func refresh() -> void:
 		_shot_btn.set_meta("ui_id", "take_shot")
 		_shot_label.text = "TAKE SHOT"
 		_shot_btn.disabled = not can_act
+	if session is OnlineSession and not moving and not (session as OnlineSession).controls_turn():
+		_shot_label.text = "WAITING"
 	var shot_col := Color(1, 1, 1, 0.5) if _shot_btn.disabled else Color.WHITE
 	_shot_label.add_theme_color_override("font_color", shot_col)
 	_shot_icon.set_color(shot_col)
@@ -1002,7 +1006,7 @@ func show_picker() -> void:
 		return
 	var p := FootballerPicker.new()
 	p.context_text = "Ball %s to pin" % Units.fmt_len(session.distance_to_pin_m())
-	p.show_stats = App.settings.show_stats
+	p.show_stats = (bool(App.online.setup.get("show_stats", false)) if App.online.started else App.settings.show_stats)
 	push_overlay(p)
 	p.setup(session)
 	p.picked.connect(func(_id: String) -> void: _remove_overlay(p))
@@ -1032,7 +1036,8 @@ func show_hole_intro() -> void:
 	v.add_child(UiKit.text(h.display_name, 44, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UiKit.text("Par %d · %d yd" % [h.par, int(h.yards)], 32, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UiKit.text("Round %s" % RoundState.fmt_relative(session.round_state.relative_to_par()), 22, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UiKit.primary(UiKit.button("Tee off", func() -> void:
+	v.add_child(UiKit.primary(UiKit.button("Waiting for host" if session is OnlineSession and App.online.seat != 0 else "Tee off", func() -> void:
+		if session is OnlineSession and App.online.seat != 0: return
 		_remove_overlay(root)
 		session.begin_play(), 90, 32)))
 	root.color = Color(0, 0, 0, 0.15)
@@ -1284,7 +1289,8 @@ func _on_hole_completed(hs: HoleState) -> void:
 		uv.add_child(_next_bar)
 		_next_status = UiKit.label("Preparing course…", 18, UiKit.C_MUTED)
 		uv.add_child(_next_status)
-	_next_btn = UiKit.primary(UiKit.button("FINISH ROUND" if last else "NEXT HOLE", func() -> void:
+	_next_btn = UiKit.primary(UiKit.button("WAITING FOR HOST" if session is OnlineSession and App.online.seat != 0 else ("FINISH ROUND" if last else "NEXT HOLE"), func() -> void:
+		if session is OnlineSession and App.online.seat != 0: return
 		_remove_overlay(root)
 		session.next_hole(), 90, 32))
 	_next_btn.add_theme_font_override("font", UiKit.font_caps())
