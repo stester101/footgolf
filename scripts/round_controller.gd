@@ -339,7 +339,7 @@ func _process(delta: float) -> void:
 	session.advance(delta, App.settings.sim_speed * (4.0 if ui.fast_forward else 1.0))
 	var bpos := session.ball_render_pos()
 	var moving := session.is_ball_moving()
-	var aim := session.aim_dir()
+	var aim := _watched_aim().get("dir", session.aim_dir()) as Vector3
 	rig.update_rig(delta, bpos, aim, moving,
 		moving and session.sim != null and session.sim.phase == BallSim.Phase.ROLL)
 	var cam_pos := rig.cam.global_position
@@ -381,20 +381,35 @@ func _process(delta: float) -> void:
 	_update_trail(bpos, moving)
 
 
+## Online spectators see the active player's live aim (cosmetic preview, never authoritative).
+## Returns {} when this phone is not watching a fresh preview.
+func _watched_aim() -> Dictionary:
+	if session is OnlineSession:
+		var p := (session as OnlineSession).watch_preview()
+		if not p.is_empty():
+			return {"dir": Units.bearing_to_dir(float(p.aim)), "style": int(p.style), "traj": int(p.traj)}
+	return {}
+
+
 func _update_aim_guide(bpos: Vector3) -> void:
+	var watched := _watched_aim()
 	var show := session.state == ShotTypes.State.AIMING
+	if session is OnlineSession and (session as OnlineSession).is_spectating() and watched.is_empty():
+		show = false  # no fresh preview from the active player: do not show a stale local arrow
 	aim_line.visible = show
 	if not show:
 		return
 	var over := rig.mode == CameraRig.Mode.OVERHEAD
 	var k := clampf(rig.cam.size / 70.0, 1.0, 8.0) if over else 1.0
-	var d := session.aim_dir()
+	var d: Vector3 = watched.get("dir", session.aim_dir())
+	var style_now: int = watched.get("style", session.style)
+	var traj_now: int = watched.get("traj", session.trajectory)
 	var start := bpos + Vector3.UP * (0.06 * k)
 	# smaller when putting and as the ball nears the pin
-	var g := 0.5 if session.style == ShotTypes.Style.ROLL else clampf(session.distance_to_pin_m() / 40.0, 0.55, 1.0)
+	var g := 0.5 if style_now == ShotTypes.Style.ROLL else clampf(session.distance_to_pin_m() / 40.0, 0.55, 1.0)
 	var finish := bpos + d * AIM_GUIDE_LEN * g * k
-	if session.style == ShotTypes.Style.FLIGHT:
-		finish.y = start.y + minf(AIM_GUIDE_LEN * g * tan(deg_to_rad(session.launch_angle_for(session.trajectory))), AIM_GUIDE_LEN * g) * k
+	if style_now == ShotTypes.Style.FLIGHT:
+		finish.y = start.y + minf(AIM_GUIDE_LEN * g * tan(deg_to_rad(session.launch_angle_for(traj_now))), AIM_GUIDE_LEN * g) * k
 	else:
 		finish.y = session.hole.contact_height(finish.x, finish.z) + 0.08 * k
 	aim_line.draw_arrow(start, finish, rig.cam.global_position, 0.35 * g * k,

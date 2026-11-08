@@ -11,6 +11,7 @@ const GRACE_MS := 60000
 const RATE_LIMIT := 40
 const CODE_CHARS := "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 const DEFAULT_PORT := 8765
+const PREVIEW_MAX_CHARS := 600
 
 class Peer extends RefCounted:
 	var name := ""
@@ -266,6 +267,15 @@ func _handle(c: Conn, raw: String) -> String:
 			_send(cur.peers[int(target)].conn, event)
 		else:
 			_broadcast(cur, event)
+	elif kind == "preview" and cur.started:
+		# Throttled, non-authoritative live-aim info from the active player. Forwarded to the other
+		# seats tagged with the sender's relay-assigned seat; dropped silently if oversized/invalid.
+		var data = msg.get("data")
+		if data is Dictionary and JSON.stringify(data).length() <= PREVIEW_MAX_CHARS:
+			var fwd := {"type": "preview", "seat": seat, "data": data}
+			for p: Peer in cur.peers:
+				if p != me:
+					_send(p.conn, fwd)
 	elif kind == "leave":
 		_close_room(cur, "A player left the room.")
 	else:
