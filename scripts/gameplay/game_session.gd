@@ -105,14 +105,23 @@ func _switch_to(i: int) -> void:
 	undo_stack.clear()
 
 
-## Next player after the current one who has not finished this hole, or -1 when everyone has.
+## Next player to hit: among players who have not finished this hole, the one FURTHEST from the cup
+## (golf rule, owner decision). Ties go to the next player in seat order. -1 when everyone has finished.
 func _next_unfinished() -> int:
 	var n := slots.size()
+	var best := -1
+	var best_d := -1.0
+	var cup := hole.cup_position()
 	for k in range(1, n + 1):
 		var i := (turn + k) % n
-		if not ((slots[i] as PlayerSlot).round_state.current() as HoleState).complete:
-			return i
-	return -1
+		var sl := slots[i] as PlayerSlot
+		if (sl.round_state.current() as HoleState).complete:
+			continue
+		var d := Units.horizontal_distance(sl.ball_pos, cup)
+		if d > best_d + 0.01:
+			best = i
+			best_d = d
+	return best
 
 
 func _init(p_cfg: PhysicsConfig, p_repo: FootballerRepository) -> void:
@@ -526,7 +535,7 @@ func _resolve() -> void:
 	var at_rest := sim.phase == BallSim.Phase.REST
 	var cup := hole.cup_position()
 	var dist := Units.horizontal_distance(final, cup)
-	var holed := ScoringService.is_holed(in_cup, at_rest, dist, holeout_radius_ft)
+	var holed := ScoringService.is_holed(in_cup, at_rest, dist, holeout_radius_ft, cfg.cup_radius)
 	var hs := current_hole_state()
 	ScoringService.apply_shot(hs, penalty, holed)
 	r.penalty = penalty

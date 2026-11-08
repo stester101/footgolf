@@ -24,7 +24,8 @@ static func clamp_radius_ft(ft: float) -> float:
 ## Hole-out decision for a resolved shot.
 ## in_cup: the simulation captured the ball in the physical cup.
 ## at_rest: the ball has stopped (never true while rolling).
-static func is_holed(in_cup: bool, at_rest: bool, dist_to_cup_m: float, radius_ft: float) -> bool:
+## The gimme distance is measured from the EDGE of the cup (owner decision), so cup_radius_m is added.
+static func is_holed(in_cup: bool, at_rest: bool, dist_to_cup_m: float, radius_ft: float, cup_radius_m: float = 0.0) -> bool:
 	if in_cup:
 		return true
 	if not at_rest:
@@ -32,7 +33,7 @@ static func is_holed(in_cup: bool, at_rest: bool, dist_to_cup_m: float, radius_f
 	var r_ft := clamp_radius_ft(radius_ft)
 	if r_ft <= 0.0:
 		return false  # 0 ft: physical cup entry required
-	return dist_to_cup_m <= Units.feet_to_m(r_ft)
+	return dist_to_cup_m <= Units.feet_to_m(r_ft) + cup_radius_m
 
 
 ## Applies a resolved shot to a hole state. Returns the completion reason ("" if still in play).

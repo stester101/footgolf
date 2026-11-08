@@ -241,7 +241,7 @@ func _build_env_tab() -> VBoxContainer:
 		ws.set_value_no_signal(0.0)
 		_save()
 		_say("Wind zeroed")))
-	var cup_spin := UiKit.spin(4.25, 40, 0.25, session.cfg.cup_diameter_in(), Callable())
+	var cup_spin := UiKit.spin(4.25, 72, 0.25, session.cfg.cup_diameter_in(), Callable())
 	cup_spin.value_changed.connect(func(val: float) -> void:
 		session.cfg.set_cup_diameter_in(val)
 		_save())

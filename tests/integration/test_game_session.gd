@@ -453,7 +453,7 @@ func test_bigger_cup_default_and_setting() -> void:
 	assert_near(cfg.cup_radius, PhysicsConfig.REGULATION_CUP_RADIUS, 0.0005)
 	assert_near(cfg.cup_capture_speed_eff(), cfg.cup_capture_speed, 0.01, "regulation cup: base capture speed")
 	cfg.set_cup_diameter_in(100.0)
-	assert_near(cfg.cup_diameter_in(), 40.0, 1e-6, "clamped to 40 in")
+	assert_near(cfg.cup_diameter_in(), 72.0, 1e-6, "clamped to 72 in")
 
 
 func test_pass_and_play_alternates_turns_with_separate_scores() -> void:
@@ -472,6 +472,8 @@ func test_pass_and_play_alternates_turns_with_separate_scores() -> void:
 	var tee := s.hole.tee_position(s.cfg.ball_radius)
 	assert_true(s.ball_pos.distance_to(tee) < 0.01, "player 2 plays from the tee, not player 1's ball")
 	TestHelpers.shoot(s, ShotTypes.Mode.GOALS, 0, 1)
-	assert_eq(s.turn, 0, "back to player 1")
+	assert_eq(s.turn, 1, "player 2 is still furthest from the cup (0-distance shot), so plays again")
 	assert_eq(s.slot_round_state(1).current().strokes, 1)
+	TestHelpers.shoot(s, ShotTypes.Mode.CAPS, 60, 2)
+	assert_eq(s.turn, 0, "after a 60-cap shot player 2 is nearer the cup than player 1 (still on the tee), so player 1 is furthest")
 	TestHelpers.cleanup_repo(s.repo)

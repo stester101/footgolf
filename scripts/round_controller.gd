@@ -136,7 +136,7 @@ func _ready() -> void:
 			h.par = int(App.online.setup.pars.get(h.id, h.par))
 	else:
 		App.telemetry.attach(session, course_id, String(App.course_info(course_id).get("name", course_id)))
-	session.start_round(defs, seed_value, FootballerPool.ReuseRule.ONCE_PER_ROUND, mulligans, players)
+	session.start_round(defs, seed_value, (FootballerPool.ReuseRule.ONCE_PER_MODE if (MainMenu.reuse_per_mode and not App.online.started) else FootballerPool.ReuseRule.ONCE_PER_ROUND), mulligans, players)
 	for i in mini(players, MainMenu.player_names.size()):
 		session.player_names[i] = String(MainMenu.player_names[i])
 	if App.online.started:

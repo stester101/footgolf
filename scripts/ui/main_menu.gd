@@ -19,6 +19,7 @@ const WORD_GREEN := Color("#3AB52B")
 static var _last_mulligans := 0
 static var _last_players := 1
 ## Names for pass-and-play players (edited in Round Setup).
+static var reuse_per_mode := false  # Round Setup: a footballer may be used once for Caps AND once for Goals
 static var player_names: Array = ["Player 1", "Player 2", "Player 3", "Player 4"]
 
 var _pages: Control
@@ -641,7 +642,7 @@ func _open_round_setup(course_id: String) -> void:
 	rules.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var rv := UiKit.vbox(6)
 	for pair in [["Hole size", "%s in" % _trim(App.settings.physics.cup_diameter_in())],
-			["Auto hole-out", "%s ft" % _trim(App.settings.holeout_radius_ft)],
+			["Gimme (from edge)", "%s ft" % _trim(App.settings.holeout_radius_ft)],
 			["Maximum score", "None"]]:
 		var rr := UiKit.hbox(10)
 		var rl := UiKit.label(String(pair[0]), 22, UiKit.C_MUTED)
@@ -653,7 +654,15 @@ func _open_round_setup(course_id: String) -> void:
 		rv.add_child(rr)
 	rules.add_child(rv)
 	body.add_child(rules)
-	body.add_child(_note("Change hole size and auto hole-out in Settings > Gameplay."))
+	body.add_child(_note("Change hole size and gimme distance in Settings > Gameplay."))
+	var rcb := CheckBox.new()
+	rcb.text = "Footballer once per mode (Caps and Goals)"
+	rcb.button_pressed = reuse_per_mode
+	rcb.add_theme_font_size_override("font_size", 22)
+	rcb.set_meta("ui_id", "reuse_per_mode")
+	rcb.toggled.connect(func(on: bool) -> void: reuse_per_mode = on)
+	body.add_child(rcb)
+	body.add_child(_note("Off (default): each footballer is used once per match. On: the same footballer may take one Caps shot and one Goals shot."))
 	(pg["footer"] as VBoxContainer).add_child(_primary_button("Start round", func() -> void:
 		play_requested.emit(course_id, false, _last_mulligans, _last_players), "start_round"))
 	_push(pg["root"])
@@ -689,13 +698,13 @@ func _open_settings_gameplay() -> void:
 	var pg := _page("Gameplay")
 	var body: VBoxContainer = pg["body"]
 	var st: SettingsStore = App.settings
-	body.add_child(_setting_row("Auto hole-out radius (ft)", UiKit.spin(0, 10, 0.5, st.holeout_radius_ft, func(val: float) -> void:
+	body.add_child(_setting_row("Gimme distance (ft from cup edge)", UiKit.spin(0, 10, 0.5, st.holeout_radius_ft, func(val: float) -> void:
 		st.holeout_radius_ft = ScoringService.clamp_radius_ft(val)
 		st.save())))
-	body.add_child(_setting_row("Hole size (diameter, in)", UiKit.spin(4.25, 40, 0.25, st.physics.cup_diameter_in(), func(val: float) -> void:
+	body.add_child(_setting_row("Hole size (diameter, in)", UiKit.spin(4.25, 72, 0.25, st.physics.cup_diameter_in(), func(val: float) -> void:
 		st.physics.set_cup_diameter_in(val)
 		st.save())))
-	body.add_child(_note("Regulation is 4.25 in. The game default is a friendlier 12 in. 0 ft hole-out means the ball must drop."))
+	body.add_child(_note("Regulation is 4.25 in. The game default is a friendlier 12 in. Gimme: a ball at rest within this distance of the cup edge is holed automatically (1 stroke). 0 ft = no gimme, the ball must drop. A 5 ft hole with a 3 ft gimme is allowed."))
 	body.add_child(_nav_row("flag", "Edit hole pars", "Applies to rounds started afterwards", _show_par_editor))
 	_push(pg["root"])
 

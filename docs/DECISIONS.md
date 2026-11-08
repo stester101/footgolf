@@ -112,3 +112,8 @@ Changes to locked rules in `docs/SPECIFICATION.md`, made explicitly by the produ
 
 ## 2026-11-08 — Settings v3 physics migration
 - Untouched settings_version 2 physics defaults (bounce thresholds and surface factors from before the golf-ball tuning) are replaced by the v3 defaults on upgrade. Any other saved value is treated as a deliberate edit and kept.
+
+## 2026-11-08: gimme from cup edge, bigger cups, once-per-mode option (owner)
+- The auto hole-out ("gimme") distance is measured from the EDGE of the cup (centre distance <= gimme + cup radius). 0 ft = no gimme, physical entry only. Cup diameter may now be up to 72 in, so e.g. a 5 ft hole with a 3 ft gimme works.
+- Round Setup has an optional "Footballer once per mode" rule (same footballer once for Caps and once for Goals). Default off keeps once per match. Not offered for online rounds.
+- New-shot defaults: Goals + Putt on the green, Caps + Approach elsewhere. Furthest from the hole plays first in pass-and-play (next).

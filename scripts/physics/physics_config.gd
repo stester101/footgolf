@@ -42,7 +42,7 @@ func cup_diameter_in() -> float:
 
 
 func set_cup_diameter_in(inches: float) -> void:
-	cup_radius = clampf(inches, 4.25, 40.0) * 0.0254 * 0.5
+	cup_radius = clampf(inches, 4.25, 72.0) * 0.0254 * 0.5
 
 
 ## Bigger cups also accept slightly faster rolling balls (sqrt scaling, capped).
