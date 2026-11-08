@@ -172,7 +172,8 @@ func take_shot() -> bool:
 	var sent := _request("shot", {"id": selected_id, "aim": aim_bearing_deg,
 		"mode": mode, "style": style, "spin": spin, "trajectory": trajectory})
 	if sent:
-		_pre_shot.clear()  # used up: the next shot starts from the normal defaults again
+		_pre_shot.clear()
+		_preselect = ""  # this pick is used by this shot; never carry it to the next one  # used up: the next shot starts from the normal defaults again
 	return sent
 
 func begin_play() -> void:

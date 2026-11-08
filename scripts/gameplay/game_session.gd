@@ -416,6 +416,7 @@ func take_shot() -> bool:
 	_next_is_replacement = false
 	_set_state(ShotTypes.State.SHOT_COMMITTED)
 	_launch(req, plan)
+	selected_id = ""  # the footballer is spent: every new shot starts with nobody selected
 	return true
 
 
