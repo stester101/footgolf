@@ -2,7 +2,7 @@ name: Build latest Foot Golf APK
 
 on:
   push:
-    branches: [main]
+    branches: ['**']
   workflow_dispatch:
 
 permissions:
@@ -33,9 +33,9 @@ jobs:
           echo 'export/android/debug_keystore_user = "androiddebugkey"' >> "$HOME/.config/godot/editor_settings-4.7.tres"
           echo 'export/android/debug_keystore_pass = "android"' >> "$HOME/.config/godot/editor_settings-4.7.tres"
       - name: Import Godot resources
-        run: "$HOME/godot/godot" --headless --path . --editor --import --quit
+        run: $HOME/godot/godot --headless --path . --editor --import --quit
       - name: Export latest debug APK
-        run: "$HOME/godot/godot" --headless --path . --export-debug Android builds/football-golf-latest-debug.apk
+        run: $HOME/godot/godot --headless --path . --export-debug Android builds/football-golf-latest-debug.apk
       - name: Verify APK structure and signature
         run: bash tools/scripts/verify_apk.sh builds/football-golf-latest-debug.apk "$ANDROID_HOME/build-tools/35.0.0/apksigner"
       - name: Upload installable APK
