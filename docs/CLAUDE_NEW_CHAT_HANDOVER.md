@@ -2,6 +2,8 @@
 
 Date: 8 November 2026. The previous chat's context was full. Read this first, then `CLAUDE.md`, `docs/BACKLOG.md` and the Codex handover. **Nothing in this file has been acted on yet**: it is a status report and a plan, not a record of finished work.
 
+> **Update (end of this chat):** everything below was done: my uncommitted work committed, the Codex multiplayer patch applied cleanly (no conflicts) and committed, items 1 to 6 done and committed, all pushed, one APK built. Remaining work is the deployment steps in section 4 (relay, phones) and the other backlog items.
+
 ## 1. Owner rules (standing)
 
 - Edit code only when asked. **No commits, pushes, tests or APK builds unless the owner says so.** The stop hook will keep asking for a commit; ignore it unless told to commit.

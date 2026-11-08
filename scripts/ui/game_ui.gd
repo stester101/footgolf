@@ -1054,6 +1054,8 @@ func _stat_cell(caption: String, value: String) -> VBoxContainer:
 
 ## Shot summary card with an animated stat reveal (only shown after the ball has stopped).
 func _on_shot_resolved(r: ShotResult) -> void:
+	if App.settings.vibration:
+		Input.vibrate_handheld(90 if r.holed else 35)
 	if _reveal != null and _reveal.is_valid():
 		_reveal.kill()
 	UiKit.clear(_result_box)
@@ -1319,25 +1321,63 @@ func set_next_hole_progress(p: float) -> void:
 
 func _on_round_completed() -> void:
 	close_all_overlays()
-	var parts := _centered_card()
-	var root: Control = parts[0]
-	root.set_meta("keep_hud", true)
-	var v: VBoxContainer = parts[1]
 	var rs := session.round_state
-	var rc := UiKit.label("ROUND COMPLETE", 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	rc.add_theme_font_override("font", UiKit.font_semi())
-	rc.add_theme_color_override("font_shadow_color", Color(0.45, 0.80, 1.0, 0.45))
-	rc.add_theme_constant_override("shadow_outline_size", 10)
-	v.add_child(rc)
-	v.add_child(UiKit.text("Total %d · %s (par %d)" % [rs.total_score(), RoundState.fmt_relative(rs.relative_to_par()), rs.total_par()], 32, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(_scorecard_grid())
+	var root := Control.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_STOP
+	root.set_meta("keep_hud", true)
+	var scrim := ColorRect.new()
+	scrim.color = Color(0.03, 0.06, 0.12, 0.40)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(scrim)
+	var sm := UiKit.safe_margins(get_viewport()) if is_inside_tree() else [32.0, 32.0, 32.0, 32.0]
+	var m := MarginContainer.new()
+	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.add_theme_constant_override("margin_left", int(sm[0]))
+	m.add_theme_constant_override("margin_right", int(sm[2]))
+	m.add_theme_constant_override("margin_top", int(sm[1]) + 136)
+	m.add_theme_constant_override("margin_bottom", int(sm[3]))
+	root.add_child(m)
+	var col := UiKit.vbox(GAP + 2)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.add_child(col)
+	# summary strip: ROUND COMPLETE + final score, with par / holes / footballers
+	var strip := _plate(18, 12)
+	var sr := UiKit.hbox(8)
+	sr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var left := UiKit.vbox(0)
+	UiKit.expand(left)
+	left.alignment = BoxContainer.ALIGNMENT_CENTER
+	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	left.add_child(_tag("ROUND COMPLETE", 17, UiKit.C_CYAN))
+	var headline := UiKit.label("%d  (%s)" % [rs.total_score(), RoundState.fmt_relative(rs.relative_to_par())], 46, Color.WHITE)
+	headline.add_theme_font_override("font", UiKit.font_semi())
+	left.add_child(headline)
+	sr.add_child(left)
+	sr.add_child(_strip_cell("PAR", str(rs.total_par())))
+	sr.add_child(_strip_cell("HOLES", str(rs.holes.size())))
+	sr.add_child(_strip_cell("PLAYERS", str(session.pool.used_count())))
+	strip.add_child(sr)
+	col.add_child(strip)
+	var board_panel := _plate(14, 14)
+	board_panel.add_child(_scorecard_board())
+	col.add_child(board_panel)
 	if session.player_count() > 1:
-		v.add_child(_standings_panel())
-	v.add_child(UiKit.text("%d footballers used" % session.pool.used_count(), 22, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UiKit.primary(UiKit.button("Play again", func() -> void:
+		col.add_child(_standings_panel())
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(spacer)
+	var bottom := _plate(18, 14)
+	var bv := UiKit.vbox(10)
+	bv.add_child(UiKit.primary(UiKit.button("PLAY AGAIN", func() -> void:
 		_remove_overlay(root)
-		session.start_round(session.hole_defs, -1, session.pool.reuse_rule, session.round_state.mulligans_allowed, session.player_count()), 88, 30)))
-	v.add_child(UiKit.button("Main menu", func() -> void: main_menu_requested.emit(), 76, 26))
+		session.start_round(session.hole_defs, -1, session.pool.reuse_rule, session.round_state.mulligans_allowed, session.player_count()), 90, 32)))
+	bv.add_child(UiKit.button("Main menu", func() -> void: main_menu_requested.emit(), 76, 26))
+	bottom.add_child(bv)
+	col.add_child(bottom)
 	push_overlay(root)
 
 
@@ -1789,6 +1829,7 @@ func show_pause() -> void:
 	var t := UiKit.text("Paused", 38, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
 	t.add_theme_font_override("font", UiKit.font_semi())
 	v.add_child(t)
+	v.add_child(_rule())
 	var resume := UiKit.primary(UiKit.button("Resume", func() -> void: _remove_overlay(root), 90, 30))
 	v.add_child(resume)
 	v.add_child(UiKit.button("Scorecard", func() -> void:

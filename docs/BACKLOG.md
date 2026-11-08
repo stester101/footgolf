@@ -27,6 +27,9 @@ Last updated: 2026-11-08
 - Do NOT run hole-length simulations (owner decision); lengths are set by ranges.
 
 ## Done (committed and in an APK)
+- Quick wins: pin tag with white outline and pointer; vibration on shots and hole-outs (toggle in Audio / Visual); check boxes re-skinned in the shared theme; pause menu header rule; round-complete screen matches hole-complete; editable pass-and-play player names in Round Setup.
+- Favourites (star on rows, Favourites filter), dev custom caps/goals ranges, player colours (green, red, yellow, blue) and turn flash.
+- Relay-based online multiplayer code integrated from the Codex package (relay server, lobby, online session). NOT deployed; no hosted relay, untested on phones. See docs/MULTIPLAYER.md and docs/CLAUDE_NEW_CHAT_HANDOVER.md.
 - Pass-and-play (v1): 2 to 4 local players on one phone, one shot each in turn, per-player ball, strokes and scorecard, shared footballer pool and wind, standings on hole-complete and round-complete. Players are "Player 1..4" (named profiles are still planned).
 - Main menu and navigation redesign: Foot Golf branding and FG logo, new menu, Course Select, Round Setup, Settings sub-pages, Statistics (overview real, history and records placeholders), consistent Back.
 - Picker redesign: compact rows, Filters panel, removable chips. Scorecard redesign and modal fix (menus no longer move or show through the HUD).

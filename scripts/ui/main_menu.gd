@@ -18,6 +18,8 @@ const WORD_GREEN := Color("#3AB52B")
 ## Remembered while the app runs, so Round Setup reopens with the previous choice.
 static var _last_mulligans := 0
 static var _last_players := 1
+## Names for pass-and-play players (edited in Round Setup).
+static var player_names: Array = ["Player 1", "Player 2", "Player 3", "Player 4"]
 
 var _pages: Control
 var _stack: Array[Control] = []
@@ -553,6 +555,22 @@ func _open_round_setup(course_id: String) -> void:
 	body.add_child(cp)
 	# players: 1 = solo, 2 to 4 = pass-and-play on this phone (one shot each, in turn)
 	body.add_child(_caption("PLAYERS"))
+	var names_box := UiKit.vbox(8)
+	var names_upd := func() -> void:
+		names_box.visible = _last_players > 1
+		for i in names_box.get_child_count():
+			(names_box.get_child(i) as Control).visible = i < _last_players
+	for n in 4:
+		var ne := LineEdit.new()
+		ne.text = String(player_names[n])
+		ne.placeholder_text = "Player %d" % (n + 1)
+		ne.custom_minimum_size = Vector2(0, 58)
+		ne.max_length = 14
+		ne.add_theme_font_size_override("font_size", 24)
+		ne.add_theme_color_override("font_color", [Color("#A0F344"), Color("#FF5A5A"), Color("#FFD84A"), Color("#52AAFF")][n])
+		var idx := n
+		ne.text_changed.connect(func(t: String) -> void: player_names[idx] = t.strip_edges() if t.strip_edges() != "" else "Player %d" % (idx + 1))
+		names_box.add_child(ne)
 	var pchoices := HBoxContainer.new()
 	pchoices.add_theme_constant_override("separation", 10)
 	var pbtns: Array[Button] = []
@@ -575,11 +593,14 @@ func _open_round_setup(course_id: String) -> void:
 		var count := n + 1
 		pb.pressed.connect(func() -> void:
 			_last_players = count
-			prefresh.call())
+			prefresh.call()
+			names_upd.call())
 		pbtns.append(pb)
 		pchoices.add_child(pb)
 	prefresh.call()
 	body.add_child(pchoices)
+	body.add_child(names_box)
+	names_upd.call()
 	body.add_child(_note("Pass-and-play: each player takes one shot in turn on this phone. Footballers are shared, so each can be used once per round."))
 	# mulligans
 	body.add_child(_caption("MULLIGANS"))
@@ -706,7 +727,14 @@ func _open_settings_visual() -> void:
 		st.show_trail = on
 		st.save())
 	body.add_child(trail)
-	body.add_child(_note("Audio: none yet (silent). Sound and vibration are planned."))
+	var vib := CheckButton.new()
+	vib.text = "Vibration on shots and hole-outs"
+	vib.button_pressed = st.vibration
+	vib.toggled.connect(func(on: bool) -> void:
+		st.vibration = on
+		st.save())
+	body.add_child(vib)
+	body.add_child(_note("Audio: none yet (silent). Sound is planned."))
 	_push(pg["root"])
 
 

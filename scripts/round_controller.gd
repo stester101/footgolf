@@ -137,6 +137,8 @@ func _ready() -> void:
 	else:
 		App.telemetry.attach(session, course_id, String(App.course_info(course_id).get("name", course_id)))
 	session.start_round(defs, seed_value, FootballerPool.ReuseRule.ONCE_PER_ROUND, mulligans, players)
+	for i in mini(players, MainMenu.player_names.size()):
+		session.player_names[i] = String(MainMenu.player_names[i])
 	if App.online.started:
 		for i in App.online.players.size():
 			session.player_names[i] = String(App.online.players[i].name)

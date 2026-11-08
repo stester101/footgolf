@@ -66,10 +66,11 @@ func _marker(world: Vector3, tag: String, value: String, sub: String, offset: Ve
 		attach.y = rect.position.y
 	draw_line(attach, pt, UiKit.C_TEXT, 2.5, true)
 	draw_arc(pt, 8.0, 0.0, TAU, 24, UiKit.C_TEXT, 3.0, true)
-	var sb := UiKit.box(UiKit.C_SURFACE, 6, 0)
-	sb.set_border_width_all(1)
-	sb.border_color = UiKit.C_DIVIDER
-	draw_style_box(sb, rect)
+	var sk: UiSkin = UiKit.skin("glass", 4, 0, 0).duplicate()
+	sk.border = Color(1, 1, 1, 0.9)
+	draw_style_box(sk, rect)
+	if pt.y >= rect.end.y:  # white pointer toward the anchor
+		draw_colored_polygon(PackedVector2Array([Vector2(attach.x - 8, rect.end.y - 1), Vector2(attach.x + 8, rect.end.y - 1), Vector2(attach.x, rect.end.y + 11)]), Color(1, 1, 1, 0.95))
 	var x := rect.position.x + 14.0
 	var base_y := rect.position.y + (35.0 if sub == "" else 34.0)
 	if tag != "":

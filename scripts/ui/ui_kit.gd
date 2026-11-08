@@ -237,6 +237,12 @@ static func make_theme() -> Theme:
 	t.set_color("font_color", "PopupMenu", C_TEXT)
 	t.set_color("font_hover_color", "PopupMenu", C_TEXT)
 	t.set_font_size("font_size", "PopupMenu", 24)
+	# switches and check boxes: recessed row, same text colours as buttons
+	for st in ["normal", "pressed", "hover_pressed", "disabled"]:
+		t.set_stylebox(st, "CheckButton", skin("recess", 6, 14, 10))
+	t.set_stylebox("hover", "CheckButton", skin("btn", 6, 14, 10))
+	for c in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color", "font_focus_color"]:
+		t.set_color(c, "CheckButton", C_TEXT)
 	return t
 
 
