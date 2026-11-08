@@ -27,6 +27,10 @@ var show_aim_arrow := true
 var show_trail := true
 var lie_exact := false
 var show_stats := true
+## Tee box colour: "blue" (back), "yellow" (default), "red" (forward).
+var tee_color := "yellow"
+## true = one of each hole's pin_options per hole from the round seed; false = the fixed pin.
+var pin_varied := true
 
 
 ## Round Setup defaults from the saved settings.
@@ -51,7 +55,7 @@ func write_defaults(st: SettingsStore) -> void:
 	st.round_defaults = {
 		"reuse_per_mode": reuse_per_mode, "wind_mode": wind_mode, "wind_scale": wind_scale,
 		"max_score_mode": max_score_mode, "max_over_par_custom": max_over_par_custom,
-		"show_aim_arrow": show_aim_arrow,
+		"show_aim_arrow": show_aim_arrow, "tee_color": tee_color, "pin_varied": pin_varied,
 	}
 	st.save()
 
@@ -63,6 +67,9 @@ func apply_dict(d: Dictionary) -> void:
 	max_score_mode = clampi(int(d.get("max_score_mode", max_score_mode)), MaxScore.NONE, MaxScore.CUSTOM)
 	max_over_par_custom = clampi(int(d.get("max_over_par_custom", max_over_par_custom)), CUSTOM_OVER_MIN, CUSTOM_OVER_MAX)
 	show_aim_arrow = bool(d.get("show_aim_arrow", show_aim_arrow))
+	var tc := String(d.get("tee_color", tee_color))
+	tee_color = tc if tc in HoleDefinition.TEE_COLORS else "yellow"
+	pin_varied = bool(d.get("pin_varied", pin_varied))
 
 
 ## Complete, JSON-safe encoding (online setup: the host freezes this and every phone decodes it).
@@ -72,6 +79,7 @@ func to_dict() -> Dictionary:
 		"wind_mode": wind_mode, "wind_scale": wind_scale, "max_score_mode": max_score_mode,
 		"max_over_par_custom": max_over_par_custom, "show_aim_arrow": show_aim_arrow,
 		"show_trail": show_trail, "lie_exact": lie_exact, "show_stats": show_stats,
+		"tee_color": tee_color, "pin_varied": pin_varied,
 	}
 
 
@@ -100,6 +108,8 @@ func duplicate_config() -> RoundConfig:
 	c.show_trail = show_trail
 	c.lie_exact = lie_exact
 	c.show_stats = show_stats
+	c.tee_color = tee_color
+	c.pin_varied = pin_varied
 	return c
 
 

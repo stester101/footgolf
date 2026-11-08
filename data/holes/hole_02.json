@@ -21,6 +21,30 @@
     8,
     11
    ]
+  },
+  {
+   "center": [
+    0.0,
+    -21.9
+   ],
+   "size": [
+    7,
+    7
+   ],
+   "rot_deg": 0.0,
+   "option": "blue"
+  },
+  {
+   "center": [
+    0.0,
+    19.0
+   ],
+   "size": [
+    7,
+    7
+   ],
+   "rot_deg": 0.0,
+   "option": "red"
   }
  ],
  "fairway": [
@@ -760,5 +784,58 @@
  ],
  "camera": {
   "overhead_padding": 1.1
- }
+ },
+ "tee_options": {
+  "blue": {
+   "pos": [
+    0.0,
+    -21.9
+   ],
+   "yards": 184
+  },
+  "yellow": {
+   "pos": [
+    0,
+    0
+   ],
+   "yards": 160
+  },
+  "red": {
+   "pos": [
+    0.0,
+    19.0
+   ],
+   "yards": 139
+  }
+ },
+ "pin_options": [
+  {
+   "name": "middle",
+   "pos": [
+    35.6,
+    135.6
+   ]
+  },
+  {
+   "name": "front",
+   "pos": [
+    30.3,
+    128.2
+   ]
+  },
+  {
+   "name": "back",
+   "pos": [
+    42.9,
+    141.0
+   ]
+  },
+  {
+   "name": "left",
+   "pos": [
+    28.9,
+    142.1
+   ]
+  }
+ ]
 }

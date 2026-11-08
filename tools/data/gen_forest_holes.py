@@ -14,7 +14,10 @@ Hole lengths follow the owner's ranges (par 3 50-100, par 4 100-200, par 5 200-3
 original layout length the feature fractions were authored for; features are remapped (smap) so tee and green
 surrounds keep their metres. No length simulations are run here.
 """
-import json, math, random, os
+import json, math, random, os, sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import tee_pin_options  # adds tee_options / pin_options (blue-yellow-red tees, varied pins)
 
 YD = 0.9144
 
@@ -118,7 +121,7 @@ def build(spec):
     d["fairway"] = [{"points": [[r1(x), r1(z)] for x, z in P.pts], "width": spec["fw_width"]}]
     gr = spec.get("green", (13, 11))
     d["greens"] = [{"center": [r1(green_c[0]), r1(green_c[1])], "radii": list(gr), "rot_deg": round(rng.uniform(-30, 30), 1),
-                    "tilt": [round(rng.uniform(-0.02, 0.02), 3), round(rng.uniform(-0.02, 0.02), 3)]}]
+                    "tilt": list(spec["tilt"]) if "tilt" in spec else [round(rng.uniform(-0.02, 0.02), 3), round(rng.uniform(-0.02, 0.02), 3)]}]
     bunkers = []
     for (f, t, ra, rb, depth) in spec.get("bunkers", []):
         f = ff(f)
@@ -322,7 +325,7 @@ HOLES = RIDGE + COASTAL + LAKESIDE
 if __name__ == "__main__":
     out = os.path.join(os.path.dirname(__file__), "..", "..", "data", "holes")
     for spec in HOLES:
-        d = build(spec)
+        d = tee_pin_options.augment(build(spec))
         with open(os.path.join(out, spec["id"] + ".json"), "w") as f:
             json.dump(d, f, indent=1)
         print(spec["id"], spec["name"], "trees(lines)", len(d["tree_lines"]), "bounds", d["bounds"])

@@ -153,10 +153,12 @@ func start_round(defs: Array, round_seed: int = -1,
 		pool_rule: int = FootballerPool.ReuseRule.ONCE_PER_ROUND,
 		mulligans: int = 0, players: int = 1) -> void:
 	hole_defs = defs
+	var seed_val := round_seed if round_seed >= 0 else int(Time.get_unix_time_from_system()) & 0x7fffffff
+	for d0 in defs:  # chosen tee + seeded pin per hole (same on every phone for the same seed)
+		(d0 as HoleDefinition).apply_round_options(rules.tee_color, rules.pin_varied, seed_val)
 	pool.reset()
 	if not pool.set_reuse_rule(pool_rule):
 		pool.set_reuse_rule(FootballerPool.ReuseRule.ONCE_PER_ROUND)
-	var seed_val := round_seed if round_seed >= 0 else int(Time.get_unix_time_from_system()) & 0x7fffffff
 	slots.clear()
 	player_names.clear()
 	for p in clampi(players, 1, 4):

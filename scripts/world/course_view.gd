@@ -560,7 +560,7 @@ func set_cup_radius(r: float) -> void:
 
 func _build_tee_markers() -> void:
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(1.0, 0.85, 0.1)  # yellow tee markers
+	mat.albedo_color = hole.tee_marker_color()  # blue / yellow / red tees
 	mat.roughness = 0.4
 	var d := (hole.pin - hole.tee).normalized()
 	var side := Vector2(-d.y, d.x)
