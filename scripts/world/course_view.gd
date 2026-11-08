@@ -8,6 +8,7 @@ extends Node3D
 
 const GRASS_RADIUS := 9.0
 const GRASS_MAX_DENSITY := 7.0  # tufts per m² in full rough
+const CLOUD_SHADOW_AMT := 0.18  # High graphics: darkening under a drifting cloud shadow
 
 var hole: HoleDefinition
 var pin_label: Label3D
@@ -19,6 +20,10 @@ var _cup_disc: MeshInstance3D
 var _cup_ring: MeshInstance3D
 var _pin_root: Node3D
 var _terrain_mat: ShaderMaterial
+var _grass_mat: ShaderMaterial
+var _flag_mat: ShaderMaterial
+var _flag_pivot: Node3D
+var _sky_life: SkyLife
 var _grass: MultiMeshInstance3D
 var _grass_at := Vector3.INF
 var _jobs: Array = []  # [{w: float, run: Callable(deadline) -> bool, part: Callable() -> float}]
@@ -52,6 +57,10 @@ func begin_build(p_hole: HoleDefinition, p_cup_radius: float = 0.1524) -> void:
 	_cup_ring = null
 	_pin_root = null
 	_grass = null
+	_grass_mat = null
+	_flag_mat = null
+	_flag_pivot = null
+	_sky_life = null
 	_grass_at = Vector3.INF
 	pin_label = null
 	progress = 0.0
@@ -84,6 +93,11 @@ func _job_ground_water(_deadline: int) -> bool:
 func _job_tree_meshes(_deadline: int) -> bool:
 	_build_tree_multimeshes()
 	_build_backdrop()
+	if HoleAtmosphere.high_quality:
+		_sky_life = SkyLife.new()
+		_sky_life.name = "SkyLife"
+		add_child(_sky_life)
+		_sky_life.build(hole)
 	return true
 
 
@@ -139,6 +153,10 @@ func _build_terrain() -> void:
 	_terrain_mat.set_shader_parameter("map_origin", hole.bounds.position)
 	_terrain_mat.set_shader_parameter("map_size", Vector2(terrain.map_w, terrain.map_h) * terrain.map_mpp)
 	_terrain_mat.set_shader_parameter("macro_amt", 1.0 if HoleAtmosphere.high_quality else 0.0)
+	if HoleAtmosphere.high_quality:
+		var cover: float = HoleAtmosphere.for_hole(hole)["cover"]
+		_terrain_mat.set_shader_parameter("cloud_shadow", CLOUD_SHADOW_AMT)
+		_terrain_mat.set_shader_parameter("cloud_thr", lerpf(0.62, 0.50, clampf((cover - 0.3) / 0.35, 0.0, 1.0)))
 	mi.material_override = _terrain_mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
@@ -340,8 +358,11 @@ func _build_backdrop() -> void:
 func _build_grass() -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = _grass_shader
-	for p in ["stripe_dir", "surface_tex", "kind_tex", "noise_tex", "map_origin", "map_size", "macro_amt"]:
-		mat.set_shader_parameter(p, _terrain_mat.get_shader_parameter(p))
+	for p in ["stripe_dir", "surface_tex", "kind_tex", "noise_tex", "map_origin", "map_size", "macro_amt", "cloud_shadow", "cloud_thr"]:
+		var pv = _terrain_mat.get_shader_parameter(p)
+		if pv != null:
+			mat.set_shader_parameter(p, pv)
+	_grass_mat = mat
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true
@@ -455,6 +476,10 @@ func _build_pin() -> void:
 	pole.position = Vector3(0, 1.15, 0)
 	pole.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_pin_root.add_child(pole)
+	# the pivot sits on the pole so the cloth can be turned downwind (High graphics)
+	_flag_pivot = Node3D.new()
+	_flag_pivot.position = Vector3(0, 2.04, 0)
+	_pin_root.add_child(_flag_pivot)
 	var flag := MeshInstance3D.new()
 	var qm := QuadMesh.new()
 	qm.size = Vector2(0.72, 0.48)
@@ -464,8 +489,9 @@ func _build_pin() -> void:
 	var fmat := ShaderMaterial.new()
 	fmat.shader = _flag_shader
 	flag.material_override = fmat
-	flag.position = Vector3(0.37, 2.04, 0)
-	_pin_root.add_child(flag)
+	_flag_mat = fmat
+	flag.position = Vector3(0.37, 0, 0)
+	_flag_pivot.add_child(flag)
 	pin_label = Label3D.new()
 	pin_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	pin_label.fixed_size = true
@@ -488,6 +514,40 @@ func update_view(cam: Camera3D) -> void:
 		var d := cam.global_position.distance_to(_pin_root.global_position)
 		s = clampf(d / 40.0, 1.0, 4.0)
 	_pin_root.scale = Vector3.ONE * s
+
+
+## Visual wind (presentation only, never read by physics): `wind` is the world-space wind vector
+## (xz, m/s, the direction it blows TOWARD, same as the HUD arrow). High graphics turns on the
+## flag/tree/grass sway shaders and the drifting cloud shadows; Low switches them all off.
+## The tree materials are shared by every hole, so this is called whenever a hole becomes active.
+func set_wind(wind: Vector2) -> void:
+	var high := HoleAtmosphere.high_quality
+	var spd := wind.length()
+	var amt := clampf(spd / HoleAtmosphere.WIND_FULL_MPS, 0.0, 1.0)
+	var dir := wind / spd if spd > 0.01 else Vector2(1.0, 0.0)
+	var mats: Array = []
+	for m in _meshes.values():
+		if m != null and (m as Mesh).get_surface_count() > 0:
+			var sm := (m as Mesh).surface_get_material(0) as ShaderMaterial
+			if sm != null and sm.shader == _foliage_shader:
+				mats.append(sm)
+	if _grass_mat != null:
+		mats.append(_grass_mat)
+	if _flag_mat != null:
+		mats.append(_flag_mat)
+	for sm in mats:
+		(sm as ShaderMaterial).set_shader_parameter("wind_on", 1.0 if high else 0.0)
+		(sm as ShaderMaterial).set_shader_parameter("wind_amt", amt)
+		(sm as ShaderMaterial).set_shader_parameter("wind_dir", dir)
+	if _flag_pivot != null:
+		_flag_pivot.rotation.y = atan2(-dir.y, dir.x) if high else 0.0
+	if high:
+		# cloud shadows drift roughly with the wind (a small base drift keeps them moving in calm)
+		var drift := dir * (2.0 + 2.2 * spd)
+		if _terrain_mat != null:
+			_terrain_mat.set_shader_parameter("cloud_drift", drift)
+		if _grass_mat != null:
+			_grass_mat.set_shader_parameter("cloud_drift", drift)
 
 
 func set_cup_radius(r: float) -> void:

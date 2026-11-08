@@ -78,6 +78,8 @@ var show_trail := true
 var vibration := true
 ## Graphics quality: 0 = Low (original look/cost), 1 = High (sky shader, ground variation, per-hole sun).
 var graphics_quality := 1
+## Optional subtle bloom inside High graphics (default off).
+var graphics_glow := false
 var lie_effect_exact := false  # spin-ball lie read-out: false = range (-10 to -20%), true = this shot's exact value
 var auto_continue := true  # result card continues by itself after a few seconds (progress bar); tap to skip
 var drag_trajectory := true  # trial: drag up/down on the aim view to change trajectory
@@ -117,6 +119,7 @@ func load_settings() -> void:
 	show_trail = bool(d.get("show_trail", true))
 	vibration = bool(d.get("vibration", true))
 	graphics_quality = clampi(int(d.get("graphics_quality", 1)), 0, 1)
+	graphics_glow = bool(d.get("graphics_glow", false))
 	lie_effect_exact = bool(d.get("lie_effect_exact", false))
 	drag_trajectory = bool(d.get("drag_trajectory", true))
 	auto_continue = bool(d.get("auto_continue", true))
@@ -165,6 +168,7 @@ func save() -> void:
 		"show_trail": show_trail,
 		"vibration": vibration,
 		"graphics_quality": graphics_quality,
+		"graphics_glow": graphics_glow,
 		"lie_effect_exact": lie_effect_exact,
 		"drag_trajectory": drag_trajectory,
 		"auto_continue": auto_continue,

@@ -8,6 +8,11 @@ extends RefCounted
 ## Graphics quality: false = Low (the original look and cost), true = High. Set by RoundController
 ## and the settings page from SettingsStore.graphics_quality.
 static var high_quality := true
+## Optional subtle bloom inside High (SettingsStore.graphics_glow, default off).
+static var glow := false
+
+## Wind speed (m/s) that counts as "full strength" for the purely visual wind effects.
+const WIND_FULL_MPS := 7.0
 
 const PRESETS := [
 	{ # clear blue
@@ -46,4 +51,5 @@ static func for_hole(hole: HoleDefinition) -> Dictionary:
 	preset["sun_dir"] = Vector3(sin(az) * cos(el), sin(el), cos(az) * cos(el)).normalized()
 	preset["cover"] = clampf(float(preset["cover"]) + (float((h >> 17) % 21) - 10.0) * 0.006, 0.3, 0.65)
 	preset["offset"] = Vector2(float((h >> 21) % 100) * 0.01, float((h >> 25) % 100) * 0.01)
+	preset["fog"] = (preset["horizon"] as Color).lerp(Color(0.7, 0.82, 0.94), 0.25)
 	return preset

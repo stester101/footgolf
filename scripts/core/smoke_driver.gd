@@ -95,6 +95,12 @@ func _run() -> void:
 			course_name = a.substr(15)
 		if a == "--smoke-gfx=low":
 			App.settings.graphics_quality = 0
+		if a == "--smoke-gfx=high":
+			App.settings.graphics_quality = 1
+		if a == "--smoke-glow":
+			App.settings.graphics_glow = true
+		if a == "--smoke-skylife":
+			SkyLife.preview = true  # birds + jet appear straight ahead at once (for screenshots)
 	if OS.get_cmdline_user_args().has("--smoke-tour"):
 		for step in [["How to Play", "tutorial"], ["Next", "tutorial2"], ["Skip tutorial", ""],
 				["Settings", "settings"], ["Gameplay", "settings_gameplay"], ["Edit hole pars", "par_editor"], ["Done", ""], ["BACK", ""], ["Controls", "settings_controls"], ["BACK", ""],
@@ -136,6 +142,8 @@ func _run() -> void:
 				if not _press("Tee off"):
 					return _fail("no Tee off button")
 				await _frames(3)
+				if SkyLife.preview:
+					await get_tree().create_timer(4.0).timeout  # let the birds/jet spawn
 				await _shot("hole%d_aim" % (session.round_state.current_index + 1))
 			ShotTypes.State.AIMING:
 				if OS.get_cmdline_user_args().has("--smoke-card") and session.shot_counter >= 2 and not _card_done:

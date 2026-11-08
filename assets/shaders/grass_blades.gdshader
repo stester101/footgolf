@@ -8,6 +8,10 @@ render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
 #include "res://assets/shaders/turf.gdshaderinc"
 
 uniform float sway = 1.0;
+// High graphics (wind_on = 1): blades lean downwind and flutter harder in stronger wind.
+uniform float wind_on = 0.0;
+uniform vec2 wind_dir = vec2(1.0, 0.0);
+uniform float wind_amt = 0.3;
 
 varying vec3 root;
 varying float hfrac;
@@ -18,8 +22,15 @@ void vertex() {
 	float t = TIME;
 	float w = sin(t * 1.6 + root.x * 0.45 + root.z * 0.31) * 0.6 + sin(t * 3.7 + root.x * 1.9 - root.z * 1.3) * 0.25;
 	float bend = hfrac * hfrac;
-	VERTEX.x += w * 0.16 * bend * sway;
-	VERTEX.z += w * 0.07 * bend * sway;
+	float sw = sway;
+	if (wind_on > 0.5) {
+		sw *= 0.6 + 1.4 * wind_amt;
+		float gust = 0.5 + 0.5 * sin(t * (0.8 + wind_amt) - dot(root.xz, wind_dir) * 0.08);
+		vec3 dw = vec3(wind_dir.x, 0.0, wind_dir.y) * wind_amt * (0.05 + 0.10 * gust) * bend;
+		VERTEX += inverse(mat3(MODEL_MATRIX)) * dw;
+	}
+	VERTEX.x += w * 0.16 * bend * sw;
+	VERTEX.z += w * 0.07 * bend * sw;
 	NORMAL = normalize(mix(NORMAL, normalize(transpose(mat3(MODEL_MATRIX)) * vec3(0.0, 1.0, 0.0)), 0.75));
 }
 
