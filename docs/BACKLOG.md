@@ -5,7 +5,7 @@ Single list of what the owner has asked for. Keep it short. Move items between s
 Last updated: 2026-11-08
 
 ## In progress
-- Online relay prototype implemented locally, uncommitted/unpushed. Integration with Claude's pending UI/profile edits, relay deployment and phone QA remain. See `docs/MULTIPLAYER.md`.
+- Online relay code is integrated and committed (`a11fc68`), not deployed. Relay hosting, verification of the merged game_ui and phone QA remain. See `docs/MULTIPLAYER.md`.
 
 ## Next (owner ticked these, in this order)
 1. Round-complete screen check in the new style (the scorecard menu is done, waiting for approval).

@@ -13,57 +13,30 @@ Date: 8 November 2026. The previous chat's context was full. Read this first, th
 - Colour/design source of truth: `scripts/ui/ui_kit.gd` (`UiKit.skin`, frosted glass, lime selected, electric-blue primary).
 - Keep the project tracker current and give the owner the link after each update: https://claude.ai/artifact/Nvzb7p1Yxn2ckej6rYV7ec (file `builds/format/tracker.html`, same list as `docs/BACKLOG.md`).
 
-## 2. Verified repository state
+## 2. Verified repository state (checked 2026-11-08, new chat)
 
 | Item | Observed |
 |---|---|
-| Repo / branch | `stester101/footgolf`, `ccr-1f62a11c-rk743j` |
-| Local HEAD = remote head | `5702ab245dc3856ec23ac3cb24f7384341217dbf` (checked with `git ls-remote`) |
-| That commit contains | main menu and navigation redesign, picker redesign, scorecard redesign and modal fix, pass-and-play (2 to 4 local players), settings and statistics pages, Foot Golf branding |
-| Last APK built | from `5702ab2` plus nothing else (pass-and-play, new menu, picker, scorecard) |
-| Godot in this sandbox | 4.7.stable |
+| Local branch | `claude/new-chat-handover-docs-k0mlnq`, HEAD `ec3974a`, working tree clean |
+| Remote | `git fetch origin claude/new-chat-handover-docs-k0mlnq` fails: **ref not found on origin**, so HEAD is not confirmed pushed. The local `origin/...` tracking ref is stale. Push only when the owner says so |
+| Commits on top of `5702ab2` | `230c31c` player names/colours, favourites, custom ranges, handover docs; `a11fc68` relay multiplayer from the Codex package; `ec3974a` quick wins 1 to 6 |
+| In code | `Input.vibrate_handheld` (game_ui.gd), `PLAYER_COLS`, `player_names` in GameSession, `scripts/network/*`, `relay/`, `tests/network/`, `permissions/internet=true` in export_presets.cfg |
 
-### My uncommitted work (still only in this sandbox's working tree; will be lost if the sandbox is reset)
+Not re-run this session: Godot import, tests, renders. Earlier claims (APK built, patch clean) are from the previous chat and unverified here.
 
-- `scripts/ui/game_ui.gd`: pass-and-play player names and colours (P1 green, P2 red, P3 yellow, P4 blue) on the banner, shot-card header, spin markers and selected stat/shot buttons; "PLAYER N · YOUR SHOT" fade between turns (`_apply_player_style`, `_flash_turn`, `PLAYER_COLS`).
-- `scripts/ui/spin_control.gd`: `accent` colour variable for the markers.
-- `scripts/core/settings_store.gd`: `favourites` array, saved and loaded.
-- `scripts/ui/footballer_picker.gd`: favourite stars on rows, Favourites filter chip and star button, and dev-only custom caps/goals ranges (min/max boxes, "Caps 80–120" chip).
-- `scripts/ui/line_icon.gd`: `star` icon.
-- `docs/MULTIPLAYER_BRIEF.md` (untracked), plus this file.
-- **Parse-checked only. Never rendered or tested.** Expect to look at them on screen once.
+## 3. Multiplayer status
 
-## 3. Codex multiplayer package (reviewed, not integrated)
+Relay-based online play (private six-character codes, live turns) is integrated but NOT deployed. Known limits: no hosted `wss://` relay; reconnect only within one app process, 60 s pause then room ends; no host migration, kick or replacement; no live aim preview for waiting players; lobby cannot change mulligans; online pages not visually approved; untested on phones, 4 clients or mobile networks. Never claim it is playable.
 
-Files supplied: `/root/.claude/uploads/60f7d1c0-5866-5e77-a529-10e53dfc592f/9983e9ae-Foot_Golf_Multiplayer_Claude_Source.zip` and its handover `.../ed0fe56d-FOOT_GOLF_MULTIPLAYER_CLAUDE_HANDOVER.md`. Contents: `multiplayer.patch`, `base_files/` (ancestors), `changed_files/` (their versions), `manifest.json`. A copy was unzipped to the scratchpad `.../scratchpad/mpzip/` (may not survive; re-extract from the ZIP with `python3 -I`).
+## 4. Next steps (only when the owner says go)
 
-Observed in this review:
-- Base commit in the manifest is **exactly my HEAD** `5702ab2`. Codex made no commits and pushed nothing.
-- 26 files: relay server and tests (`relay/`, `tests/network/`), network scripts (`scripts/network/`: codec, transport, `online_room.gd`, `online_session.gd`), `tests/integration/test_online_session.gd`, docs (`docs/MULTIPLAYER.md` and notes in ARCHITECTURE, DECISIONS, BACKLOG), `export_presets.cfg` (INTERNET permission), and edits to `app.gd`, `main.gd`, `round_controller.gd`, `main_menu.gd`, `game_ui.gd`.
-- **Overlap with my uncommitted files: only `scripts/ui/game_ui.gd`.** `git apply --check` of the whole patch against my dirty working tree reported no errors. Their game_ui hunks are in `refresh()` (around lines 775 to 820), `show_picker()`, `show_hole_intro()` and `_on_hole_completed()`. My uncommitted hunks are near `refresh()` lines 804 to 814 and in the shot-card and banner builders, so **review `refresh()` by eye after applying**: the textual merge is clean but the logic (their "waiting for host / not your turn" shot state versus my colour and name updates) must be checked together.
-- No overlap in `main_menu.gd`, `round_controller.gd`, `main.gd`, `app.gd`, docs or `export_presets.cfg` with anything uncommitted, because my menu work is already in the base commit. Check `export_presets.cfg` only for the permission line; never copy keystores.
-- Codex tested with Godot 4.6.3 (this sandbox has 4.7). Their claimed checks: relay protocol tests (2), OnlineSession integration test, pass-and-play turn test, headless menu/lobby flow, a two-process relay run with reconnect. Not tested: real course, 4 clients, phones, Android export, hosted relay, mobile networks.
-- Their known limits (do not claim multiplayer is playable yet): no hosted `wss://` relay; reconnect only within one app process, 60 s pause then room ends; no host migration, kick or replacement players; no live aim preview for waiting players; lobby shows but cannot change mulligans; new online pages not visually approved.
+1. Targeted verification: `--import` (no script errors), `tests/network/test_relay.py`, `test_online_session`, `test_game_session`, one solo smoke run, one render of the shot screen (player colours, online waiting state).
+2. Provision a real `wss://` relay (Dockerfile in `relay/`), build one APK with Godot 4.7, two-phone test on different networks.
+3. Open owner questions: `docs/MULTIPLAYER_BRIEF.md` section 6.
 
-## 4. Plan for the next chat (do these only when the owner says go)
+## 5. Owner's quick wins 1 to 6
 
-1. **Protect work.** Back up my uncommitted diff outside the repo (`git diff > backup.patch`, copy untracked files). Ask the owner whether to commit the uncommitted work first as its own commit (recommended: yes, so the merge has a clean base), then push only if the owner says so.
-2. **Integrate in an isolated worktree** at `5702ab2` (or on a new branch off the committed result): `git apply --check` then `git apply --3way --index multiplayer.patch`. Resolve `game_ui.gd` carefully, keeping both sets of behaviour. Do not copy `changed_files/` wholesale.
-3. **Verify the merge, targeted only:** `godot --headless --path . --import` (no script errors), Codex's relay tests (`tests/network/test_relay.py`), `test_online_session`, the existing pass-and-play test (`test_game_session`), and a solo smoke run. Render the shot screen once to confirm the player colours still work and the online waiting state looks right.
-4. **Then, only if asked:** provision and configure a real `wss://` relay endpoint (Docker file in `relay/`), build one APK with Godot 4.7, and play a short round on two phones on different networks (reconnect, background/resume, mulligans, next hole, back to offline).
-5. Open question list for the owner is in `docs/MULTIPLAYER_BRIEF.md` section 6; Codex's implementation already chose relay-based online play with private six-character codes and live turns.
-
-## 5. Owner's pending small requests (not started)
-
-Quick wins list, in the owner's words "1 to 6", requested next after multiplayer prep:
-1. Pin tag restyle (white outline with a pointer), `scripts/ui/hud_markers.gd` `_marker()`.
-2. Vibration on shot, bounce and hole-out, with an Audio / Visual toggle (`Input.vibrate_handheld`).
-3. Re-skin check boxes and number boxes in the shared theme (`UiKit.make_theme`).
-4. Pause menu and confirm dialogs restyled like the Scorecard (`show_pause`, `confirm` in `game_ui.gd`).
-5. Round-complete screen to match the hole-complete layout (`_on_round_completed`).
-6. Editable player names in Round Setup (needs the names passed through `play_requested` to `GameSession.start_round`).
-
-Other backlog items (cup and flag physics, trajectory bar, round setup difficulty options, save/History/records, profiles with favourites per profile, sound) are in `docs/BACKLOG.md`.
+All done and committed in `ec3974a` (pin tag, vibration toggle, themed check boxes, pause header, round-complete layout, editable player names). Remaining items are in `docs/BACKLOG.md`.
 
 ## 6. Useful facts
 
