@@ -12,6 +12,7 @@ extends Control
 ## Only features that exist are functional; the rest are clearly labelled placeholders.
 
 signal play_requested(course_id: String, dev: bool, mulligans: int, players: int)
+signal resume_requested(save_id: String)
 
 const WORD_GREEN := Color("#3AB52B")
 
@@ -344,6 +345,9 @@ func _build_home() -> Control:
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(list)
 	list.add_child(_nav_row("player", "Single Player", "", _open_course_select, "menu_single"))
+	var saved_rounds := RoundSave.list_saves().size()
+	if saved_rounds > 0:
+		list.add_child(_nav_row("flag", "Resume round", "%d unfinished" % saved_rounds, func() -> void: HistoryPages.open_resume(self), "menu_resume"))
 	list.add_child(_multiplayer_card())
 	list.add_child(_nav_row("course", "Course Select", "", _open_course_select, "menu_courses"))
 	list.add_child(_nav_row("gear", "Settings", "", _open_settings, "menu_settings"))
@@ -827,10 +831,8 @@ func _open_statistics() -> void:
 	var pg := _page("Statistics")
 	var body: VBoxContainer = pg["body"]
 	body.add_child(_nav_row("bars", "Overview", "What is recorded on this device", _open_stats_overview, "stats_overview"))
-	body.add_child(_nav_row("list", "Round History", "Finished rounds", func() -> void: _open_placeholder("Round History",
-		"Finished rounds will be listed here once saving and History are built. Shots are already recorded for export (Settings > Developer > Export data)."), "stats_history"))
-	body.add_child(_nav_row("target", "Records", "Personal bests", func() -> void: _open_placeholder("Records",
-		"Personal bests per course and rule set will appear here once History is built."), "stats_records"))
+	body.add_child(_nav_row("list", "Round History", "Finished rounds and scorecards", func() -> void: HistoryPages.open_history(self), "stats_history"))
+	body.add_child(_nav_row("target", "Records", "Personal bests", func() -> void: HistoryPages.open_records(self), "stats_records"))
 	_push(pg["root"])
 
 
@@ -861,7 +863,7 @@ func _open_stats_overview() -> void:
 		p.add_child(v)
 		grid.add_child(p)
 	body.add_child(grid)
-	body.add_child(_note("Recorded on this device. Full statistics (fairways, greens, putts) come with History."))
+	body.add_child(_note("Recorded on this device. Scorecards and personal bests are under Round History and Records."))
 	body.add_child(_nav_row("list", "Export data", "Copy a summary or save CSV / JSON files", _show_export))
 	_push(pg["root"])
 

@@ -24,6 +24,8 @@ const ROUND_COLUMNS := ["round_id", "time", "course_id", "course_name", "round_s
 
 var dir := DIR
 var enabled := true
+## Id of the round most recently logged through attach() (saved with unfinished rounds for resume).
+var last_round_id := ""
 
 
 func _init(p_dir: String = DIR) -> void:
@@ -34,9 +36,15 @@ func _init(p_dir: String = DIR) -> void:
 
 ## Listen to a session. Call before session.start_round(); a later start_round() on the same
 ## session (restart / play again) is detected and logged as a new round.
-func attach(session: GameSession, course_id: String, course_name: String = "") -> void:
+## resume_round_id: continue an existing round's log after Resume (no second round_start record).
+func attach(session: GameSession, course_id: String, course_name: String = "", resume_round_id: String = "") -> void:
 	var ctx := {"course_id": course_id, "course_name": course_name if course_name != "" else course_id,
 		"round_obj": -1, "round_id": "", "started_ms": 0, "round_logged": false}
+	if resume_round_id != "":
+		ctx["round_obj"] = session.round_state.get_instance_id()
+		ctx["round_id"] = resume_round_id
+		ctx["started_ms"] = Time.get_ticks_msec()
+		last_round_id = resume_round_id
 	session.hole_started.connect(_on_hole_started.bind(session, ctx))
 	session.shot_resolved.connect(_on_shot_resolved.bind(session, ctx))
 	session.shot_mulliganed.connect(_on_shot_mulliganed.bind(session, ctx))
@@ -52,6 +60,7 @@ func _ensure_round(session: GameSession, ctx: Dictionary) -> void:
 	ctx["round_id"] = make_round_id(int(Time.get_unix_time_from_system()), session.round_state.round_seed)
 	ctx["started_ms"] = Time.get_ticks_msec()
 	ctx["round_logged"] = false
+	last_round_id = String(ctx["round_id"])
 	append(String(ctx["round_id"]), round_start_record(ctx, session.round_state))
 
 

@@ -37,7 +37,7 @@ To do:
 ## Planned: game features (owner ticked, after the above)
 - Round setup with a frozen difficulty configuration: cup size, hole-out radius, wind range, numeric values on/off, filter and sort switches, max score (par+5 default, other cap, or none), trail and aim aids on/off. Footballer reuse rule: once per round or once per mode.
 - Local profiles with names, favourites tab and stars (pass-and-play itself is done, with default player names).
-- Save and resume (several unfinished rounds), History, personal bests, statistics. No duplicate telemetry after resume.
+- DONE (headless-tested, not seen on a device): save and resume (several unfinished offline rounds, `RoundSave`/`RoundAutosave`, user://saves), History + personal bests (`RoundHistory`, user://history.json, Statistics > Round History / Records, `HistoryPages`). No duplicate telemetry after resume. A save is taken at hole intro / aiming / result / hole complete, never mid-flight (killing the app during a flight resumes at the pre-shot state). Still open: richer statistics (fairways, greens, putts).
 - Sound and vibration.
 
 ## Later / not ticked

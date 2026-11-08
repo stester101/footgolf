@@ -47,6 +47,9 @@ var open_dev_on_start := false
 var course_id := "starter"
 var mulligans := 0
 var players := 1
+## Save id of an unfinished round to resume (see RoundSave); "" starts a new round.
+var resume_id := ""
+var autosave: RoundAutosave
 var _marker: MeshInstance3D
 var _marker_pos := Vector3.INF
 var _shown_cup_r := -1.0
@@ -150,11 +153,24 @@ func _ready() -> void:
 		seed_value = int(App.online.setup.seed)
 		for h in defs:
 			h.par = int(App.online.setup.pars.get(h.id, h.par))
+	var cname := String(App.course_info(course_id).get("name", course_id))
+	var resumed := {}
+	if resume_id != "" and not App.online.started:
+		resumed = RoundSave.load_save(resume_id)
+		if resumed.is_empty() or not RoundSave.restore(session, resumed, defs):
+			resumed = {}
+			ui.toast("That saved round could not be loaded.")
+	if not resumed.is_empty():
+		App.telemetry.attach(session, course_id, cname, String(resumed.get("telemetry_round_id", "")))
 	else:
-		App.telemetry.attach(session, course_id, String(App.course_info(course_id).get("name", course_id)))
-	session.start_round(defs, seed_value, (FootballerPool.ReuseRule.ONCE_PER_MODE if (MainMenu.reuse_per_mode and not App.online.started) else FootballerPool.ReuseRule.ONCE_PER_ROUND), mulligans, players)
-	for i in mini(players, MainMenu.player_names.size()):
-		session.player_names[i] = String(MainMenu.player_names[i])
+		if not App.online.started:
+			App.telemetry.attach(session, course_id, cname)
+		session.start_round(defs, seed_value, (FootballerPool.ReuseRule.ONCE_PER_MODE if (MainMenu.reuse_per_mode and not App.online.started) else FootballerPool.ReuseRule.ONCE_PER_ROUND), mulligans, players)
+		for i in mini(players, MainMenu.player_names.size()):
+			session.player_names[i] = String(MainMenu.player_names[i])
+	if not App.online.started and not App.dev_mode:
+		autosave = RoundAutosave.new()
+		autosave.attach(session, course_id, cname, App.telemetry, resumed)
 	if App.online.started:
 		for i in App.online.players.size():
 			session.player_names[i] = String(App.online.players[i].name)

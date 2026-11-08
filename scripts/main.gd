@@ -35,9 +35,10 @@ func show_menu() -> void:
 	_canvas.add_child(_menu)
 	_menu.setup()
 	_menu.play_requested.connect(func(course_id: String, dev: bool, mulligans: int, players: int) -> void: start_round(course_id, dev, mulligans, players))
+	_menu.resume_requested.connect(func(save_id: String) -> void: start_round(String(RoundSave.load_save(save_id).get("course_id", "")), false, 0, 1, save_id))
 
 
-func start_round(course_id: String, dev: bool = false, mulligans: int = 0, players: int = 1) -> void:
+func start_round(course_id: String, dev: bool = false, mulligans: int = 0, players: int = 1, resume_id: String = "") -> void:
 	if _menu != null:
 		_menu.queue_free()
 		_menu = null
@@ -49,6 +50,7 @@ func start_round(course_id: String, dev: bool = false, mulligans: int = 0, playe
 	_round.course_id = "all" if dev else course_id
 	_round.mulligans = mulligans
 	_round.players = players
+	_round.resume_id = resume_id
 	App.settings.last_course = course_id
 	App.settings.save()
 	_round.exit_to_menu.connect(show_menu)
