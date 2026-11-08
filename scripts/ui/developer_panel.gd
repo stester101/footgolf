@@ -241,11 +241,11 @@ func _build_env_tab() -> VBoxContainer:
 		ws.set_value_no_signal(0.0)
 		_save()
 		_say("Wind zeroed")))
-	var cup_spin := UiKit.spin(4.25, 72, 0.25, session.cfg.cup_diameter_in(), Callable())
+	var cup_spin := UiKit.spin(0.35, 6.0, 0.05, session.cfg.cup_diameter_in() / 12.0, Callable())
 	cup_spin.value_changed.connect(func(val: float) -> void:
-		session.cfg.set_cup_diameter_in(val)
+		session.cfg.set_cup_diameter_in(val * 12.0)
 		_save())
-	v.add_child(_row("Hole size (diameter, in)", cup_spin))
+	v.add_child(_row("Hole size (diameter, ft)", cup_spin))
 	v.add_child(_btn_row([_b("Regulation 4.25", func() -> void: cup_spin.value = 4.25), _b("Default 12", func() -> void: cup_spin.value = 12.0), _b("Huge 24", func() -> void: cup_spin.value = 24.0)]))
 	v.add_child(_row("Hole-out radius (ft, 0 = cup only)", UiKit.spin(0, 10, 0.5, session.holeout_radius_ft, func(val: float) -> void:
 		session.holeout_radius_ft = ScoringService.clamp_radius_ft(val)

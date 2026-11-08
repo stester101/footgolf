@@ -671,7 +671,7 @@ func _open_round_setup(course_id: String) -> void:
 	rules.add_theme_stylebox_override("panel", UiKit.skin("recess", 6, 18, 12))
 	rules.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var rv := UiKit.vbox(6)
-	for pair in [["Hole size", "%s in" % _trim(App.settings.physics.cup_diameter_in())],
+	for pair in [["Hole size", "%s ft" % _trim(snappedf(App.settings.physics.cup_diameter_in() / 12.0, 0.01))],
 			["Gimme (from edge)", "%s ft" % _trim(App.settings.holeout_radius_ft)],
 			["Maximum score", "None"]]:
 		var rr := UiKit.hbox(10)
@@ -731,8 +731,8 @@ func _open_settings_gameplay() -> void:
 	body.add_child(_setting_row("Gimme distance (ft from cup edge)", UiKit.spin(0, 10, 0.5, st.holeout_radius_ft, func(val: float) -> void:
 		st.holeout_radius_ft = ScoringService.clamp_radius_ft(val)
 		st.save())))
-	body.add_child(_setting_row("Hole size (diameter, in)", UiKit.spin(4.25, 72, 0.25, st.physics.cup_diameter_in(), func(val: float) -> void:
-		st.physics.set_cup_diameter_in(val)
+	body.add_child(_setting_row("Hole size (diameter, ft)", UiKit.spin(0.35, 6.0, 0.05, st.physics.cup_diameter_in() / 12.0, func(val: float) -> void:
+		st.physics.set_cup_diameter_in(val * 12.0)
 		st.save())))
 	var lex := CheckButton.new()
 	lex.text = "Show exact lie penalty (off = range)"
@@ -742,7 +742,7 @@ func _open_settings_gameplay() -> void:
 		st.save())
 	body.add_child(lex)
 	body.add_child(_note("The ball on the shot card shows the lie and its distance penalty: a range like -10 to -20%, or the exact value for this shot."))
-	body.add_child(_note("Regulation is 4.25 in. The game default is a friendlier 12 in. Gimme: a ball at rest within this distance of the cup edge is holed automatically (1 stroke). 0 ft = no gimme, the ball must drop. A 5 ft hole with a 3 ft gimme is allowed."))
+	body.add_child(_note("Regulation is about 0.35 ft (4.25 in). The game default is a friendlier 1 ft. Gimme: a ball at rest within this distance of the cup edge is holed automatically (1 stroke). 0 ft = no gimme, the ball must drop. A 5 ft hole with a 3 ft gimme is allowed."))
 	body.add_child(_nav_row("flag", "Edit hole pars", "Applies to rounds started afterwards", _show_par_editor))
 	_push(pg["root"])
 
