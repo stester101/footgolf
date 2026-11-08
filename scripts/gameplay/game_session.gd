@@ -36,9 +36,6 @@ var spin := 0.0
 var trajectory: int = ShotTypes.Trajectory.STANDARD
 var selected_id := ""
 var holeout_radius_ft := ScoringService.DEFAULT_HOLEOUT_FT
-## Real-life gimme (owner decision): within the gimme distance of the cup EDGE the next shot may be conceded,
-## costing one stroke and no footballer. Online rounds keep the old at-rest auto hole-out instead.
-var gimme_enabled := true
 ## Frozen round rules (Round Setup). Set with apply_rules() BEFORE start_round().
 var rules := RoundConfig.new()
 var wind_scale := 1.0
@@ -571,7 +568,7 @@ func _resolve() -> void:
 	var at_rest := sim.phase == BallSim.Phase.REST
 	var cup := hole.cup_position()
 	var dist := Units.horizontal_distance(final, cup)
-	var holed := ScoringService.is_holed(in_cup, at_rest, dist, 0.0 if gimme_enabled else holeout_radius_ft, cfg.cup_radius)
+	var holed := ScoringService.is_holed(in_cup, at_rest, dist, holeout_radius_ft, cfg.cup_radius)
 	var hs := current_hole_state()
 	ScoringService.apply_shot(hs, penalty, holed)
 	if hs.completion == ShotTypes.COMPLETION_MAX_SCORE:
@@ -599,38 +596,6 @@ func _resolve() -> void:
 func acknowledge_result() -> void:
 	if state != ShotTypes.State.SHOT_RESULT:
 		return
-	_advance_after_shot()
-
-
-## A gimme is on offer when the ball is within the gimme distance of the cup edge and it is the player's turn to aim.
-func gimme_available() -> bool:
-	if not gimme_enabled or state != ShotTypes.State.AIMING or hole == null or not hole.has_cup:
-		return false
-	if holeout_radius_ft <= 0.0 or current_hole_state().complete:
-		return false
-	var edge_dist := Units.horizontal_distance(ball_pos, hole.cup_position()) - cfg.cup_radius
-	return edge_dist <= Units.feet_to_m(holeout_radius_ft)
-
-
-## Concede the putt: exactly one stroke, hole complete, no footballer consumed (documented exception to
-## "a shot consumes a footballer"). Counts as the hole result like any other hole-out.
-func take_gimme() -> bool:
-	if not gimme_available():
-		return false
-	undo_stack.push_back(_snapshot())
-	var hs := current_hole_state()
-	hs.strokes += 1
-	hs.complete = true
-	hs.completion = ShotTypes.COMPLETION_GIMME
-	ball_pos = hole.cup_position()
-	last_safe_pos = ball_pos
-	state_version += 1
-	message.emit("Gimme: putt conceded")
-	_advance_after_shot()
-	return true
-
-
-func _advance_after_shot() -> void:
 	var hs := current_hole_state()
 	if selected_id != "" and not pool.is_available(selected_id, mode):
 		selected_id = ""
