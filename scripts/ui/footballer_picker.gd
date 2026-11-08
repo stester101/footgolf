@@ -33,6 +33,8 @@ var _era_btns: Array[Button] = []
 var _caps_opt: OptionButton
 var _goals_opt: OptionButton
 var _sc: ScrollContainer
+## Shown in the header, e.g. the ball-to-pin distance.
+var context_text := ""
 var _list: VBoxContainer
 var _press_scroll := 0
 var _limit := PAGE
@@ -53,6 +55,7 @@ func setup(s: GameSession) -> void:
 	add_child(UiKit.overlay(0.6))
 	var m := MarginContainer.new()
 	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	m.anchor_top = 0.42  # bottom sheet: the shot view stays visible above it
 	var sm := UiKit.safe_margins(get_viewport()) if is_inside_tree() else [16.0, 16.0, 16.0, 16.0]
 	m.add_theme_constant_override("margin_left", int(sm[0]) + 8)
 	m.add_theme_constant_override("margin_right", int(sm[2]) + 8)
@@ -66,6 +69,8 @@ func setup(s: GameSession) -> void:
 	# ---- header
 	var head := UiKit.hbox()
 	head.add_child(UiKit.expand(UiKit.label("Choose footballer", 32)))
+	if context_text != "":
+		head.add_child(UiKit.label(context_text, 20, UiKit.C_MUTED))
 	head.add_child(UiKit.button("Close", func() -> void: closed.emit(), 60, 22))
 	v.add_child(head)
 	if show_stats:

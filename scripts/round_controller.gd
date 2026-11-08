@@ -6,7 +6,7 @@ extends Node3D
 signal exit_to_menu
 
 const AIM_DEG_PER_PX := 0.22
-const AIM_GUIDE_LEN := 5.0
+const AIM_GUIDE_LEN := 3.2
 
 var session: GameSession
 var world_env: WorldEnvironment
@@ -26,6 +26,20 @@ var _tap_place := false
 var _built_hole_id := ""
 var _last_aim := -1.0
 var _last_ball := Vector3.INF
+## Hole-out drop: the ball rolls in from the rim with the shot's line, then falls into the cup.
+const DROP_TIME := 0.9
+var _drop_t := -1.0
+var _drop_dir := Vector3.FORWARD
+var _drop_result: ShotResult = null
+
+
+static func _drop_pos(cup: Vector3, dir: Vector3, cup_r: float, t: float) -> Vector3:
+	var rim := Vector3(cup.x, cup.y, cup.z) + dir * (cup_r * 1.6)
+	var roll := clampf(t / 0.45, 0.0, 1.0)
+	var fall := clampf((t - 0.40) / 0.50, 0.0, 1.0)
+	var xz := Vector3(rim.x, 0.0, rim.z).lerp(Vector3(cup.x, 0.0, cup.z), 1.0 - (1.0 - roll) * (1.0 - roll))
+	var y := lerpf(cup.y + 0.02, cup.y - 0.06, fall * fall)
+	return Vector3(xz.x, y, xz.z)
 var open_dev_on_start := false
 var course_id := "starter"
 var mulligans := 0
@@ -287,7 +301,16 @@ func _process(delta: float) -> void:
 	var dist := cam_pos.distance_to(bpos)
 	var vis_r := clampf(dist * 0.011, 0.045, 2.2) if rig.mode == CameraRig.Mode.BEHIND else clampf(rig.cam.size * 0.006, 0.4, 4.0)
 	ball_mesh.scale = Vector3.ONE * vis_r
-	ball_mesh.position = bpos + Vector3.UP * (vis_r - session.cfg.ball_radius)
+	var draw_pos := bpos
+	if _drop_result == null or session.last_result != _drop_result:
+		if session.last_result != null and session.last_result.holed:
+			_drop_result = session.last_result
+			_drop_t = 0.0
+			_drop_dir = Units.bearing_to_dir(session.last_result.aim_bearing_deg)
+	if _drop_t >= 0.0 and _drop_t < DROP_TIME:
+		draw_pos = _drop_pos(session.hole.cup_position(), _drop_dir, session.cfg.cup_radius, _drop_t)
+		_drop_t += get_process_delta_time()
+	ball_mesh.position = draw_pos + Vector3.UP * (vis_r - session.cfg.ball_radius)
 	ball_mesh.visible = session.state != ShotTypes.State.HOLE_COMPLETE or moving
 	var fwd := -rig.cam.global_transform.basis.z
 	ui.camera_yaw = deg_to_rad(Units.dir_to_bearing(fwd))
@@ -315,11 +338,11 @@ func _update_aim_guide(bpos: Vector3) -> void:
 	var start := bpos + Vector3.UP * (0.06 * k)
 	var finish := bpos + d * AIM_GUIDE_LEN * k
 	if session.style == ShotTypes.Style.FLIGHT:
-		finish.y = start.y + minf(AIM_GUIDE_LEN * tan(deg_to_rad(session.launch_angle_for(session.trajectory))), 5.0) * k
+		finish.y = start.y + minf(AIM_GUIDE_LEN * tan(deg_to_rad(session.launch_angle_for(session.trajectory))), AIM_GUIDE_LEN) * k
 	else:
 		finish.y = session.hole.contact_height(finish.x, finish.z) + 0.08 * k
 	aim_line.draw_arrow(start, finish, rig.cam.global_position, 0.35 * k,
-		Color(UiKit.C_TEXT, 0.92))
+		Color(UiKit.C_TEXT, 0.45))
 
 
 func _update_trail(bpos: Vector3, moving: bool) -> void:

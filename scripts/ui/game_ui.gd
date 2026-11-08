@@ -603,6 +603,14 @@ func refresh() -> void:
 	var neutral := hint.contains("neutral") and hint.contains("normal")
 	_lie_hint.text = "" if neutral else hint
 	_lie_hint.visible = not neutral
+	if lie == Surface.Type.GREEN and h != null:
+		var sl := h.normal_at(session.ball_pos.x, session.ball_pos.z)
+		var pct := Vector2(sl.x, sl.z).length() / maxf(sl.y, 0.01) * 100.0
+		var downhill := Vector3(sl.x, 0.0, sl.z)
+		var right := session.aim_dir().cross(Vector3.UP)
+		var breaks := "" if pct < 0.3 else (" · breaks right" if downhill.dot(right) > 0.0 else " · breaks left")
+		_lie_hint.text = "Green slope %.1f%%%s" % [pct, breaks]
+		_lie_hint.visible = true
 	# --- mode strip
 	_caps_btn.set_pressed_no_signal(session.mode == ShotTypes.Mode.CAPS)
 	_goals_btn.set_pressed_no_signal(session.mode == ShotTypes.Mode.GOALS)
@@ -673,12 +681,13 @@ func _sync_shot_units() -> void:
 	if session.state != ShotTypes.State.AIMING and session.state != ShotTypes.State.HOLE_INTRO:
 		return
 	var round_id := session.round_state.get_instance_id()
-	if _unit_round_id == round_id and _unit_hole_id == session.hole.id and _unit_aim_shot_id == session.shot_counter:
+	var unit_key: int = session.shot_counter * 2 + session.mode
+	if _unit_round_id == round_id and _unit_hole_id == session.hole.id and _unit_aim_shot_id == unit_key:
 		return
 	_unit_round_id = round_id
 	_unit_hole_id = session.hole.id
-	_unit_aim_shot_id = session.shot_counter
-	Units.show_feet = Units.default_feet_for_lie(session.current_lie())
+	_unit_aim_shot_id = unit_key
+	Units.show_feet = session.mode == ShotTypes.Mode.GOALS  # CAPS = yards, GOALS = feet
 	_update_unit_btn()
 	if _target_dist_m >= 0.0:
 		_target_value.text = Units.fmt_len(_target_dist_m)
@@ -754,6 +763,7 @@ func show_picker() -> void:
 	if session.is_ball_moving():
 		return
 	var p := FootballerPicker.new()
+	p.context_text = "Ball %s to pin" % Units.fmt_len(session.distance_to_pin_m())
 	p.show_stats = App.settings.show_stats
 	push_overlay(p)
 	p.setup(session)
