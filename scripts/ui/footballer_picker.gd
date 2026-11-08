@@ -55,7 +55,7 @@ func setup(s: GameSession) -> void:
 	add_child(UiKit.overlay(0.6))
 	var m := MarginContainer.new()
 	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	m.anchor_top = 0.42  # bottom sheet: the shot view stays visible above it
+	m.anchor_top = 0.14  # tall sheet: the banner and pin distance stay visible above it
 	var sm := UiKit.safe_margins(get_viewport()) if is_inside_tree() else [16.0, 16.0, 16.0, 16.0]
 	m.add_theme_constant_override("margin_left", int(sm[0]) + 8)
 	m.add_theme_constant_override("margin_right", int(sm[2]) + 8)

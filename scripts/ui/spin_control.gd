@@ -11,10 +11,28 @@ var _last_tap_ms := 0
 var _touch_index := -1
 
 
+var _ball: ColorRect
+
+
 func _init() -> void:
-	custom_minimum_size = Vector2(150, 150)
+	custom_minimum_size = Vector2(128, 128)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	tooltip_text = "Strike point: up = topspin, down = backspin"
+	# Rendered golf ball behind the guides (lit sphere, dimples, soft shadow; see golf_ball.gdshader)
+	_ball = ColorRect.new()
+	_ball.show_behind_parent = true
+	_ball.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://assets/shaders/golf_ball.gdshader")
+	_ball.material = mat
+	add_child(_ball)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED and _ball != null:
+		var side := _ball_r() * 2.0 * 1.28
+		_ball.size = Vector2(side, side)
+		_ball.position = size * 0.5 - _ball.size * 0.5
 
 
 func set_spin(v: float) -> void:
@@ -23,7 +41,11 @@ func set_spin(v: float) -> void:
 
 
 func _radius() -> float:
-	return minf(size.x, size.y) * 0.5 - 6.0
+	return minf(size.x, size.y) * 0.5 - 5.0
+
+
+func _ball_r() -> float:
+	return _radius() * 0.66
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -63,7 +85,7 @@ func _gui_input(event: InputEvent) -> void:
 
 func _apply_pos(p: Vector2) -> void:
 	var c := size * 0.5
-	_apply(clampf((c.y - p.y) / (_radius() * 0.8), -1.0, 1.0))
+	_apply(clampf((c.y - p.y) / (_ball_r() * 0.8), -1.0, 1.0))
 
 
 func _apply(v: float) -> void:
@@ -78,15 +100,18 @@ func _apply(v: float) -> void:
 func _draw() -> void:
 	var c := size * 0.5
 	var r := _radius()
-	# flat ivory ball, thin outline, quiet guides; no shading or glow
-	draw_circle(c, r, UiKit.C_TEXT)
-	draw_arc(c, r, 0, TAU, 48, UiKit.C_MUTED, 2.5, true)
-	draw_line(c + Vector2(0, -r * 0.82), c + Vector2(0, r * 0.82), Color(UiKit.C_SURFACE, 0.35), 2.0, true)
-	draw_line(c + Vector2(-r * 0.18, 0), c + Vector2(r * 0.18, 0), Color(UiKit.C_SURFACE, 0.35), 2.0, true)
-	for t in [-0.8, -0.4, 0.4, 0.8]:
-		draw_line(c + Vector2(-r * 0.1, -t * r * 0.8), c + Vector2(r * 0.1, -t * r * 0.8), Color(UiKit.C_SURFACE, 0.35), 2.0, true)
-	var dot := c + Vector2(0, -spin * r * 0.8)
-	draw_circle(dot, 11.0, UiKit.C_SURFACE)
-	draw_circle(dot, 8.0, UiKit.C_ACCENT)
-	if modulate.a < 0.99:
-		draw_circle(c, r, Color(UiKit.C_SURFACE, 0.4))
+	var br := _ball_r()
+	# outer ring, ticks and spin arrows; the ball itself is the shader child behind this drawing
+	draw_arc(c, r, 0, TAU, 64, Color(1, 1, 1, 0.55), 2.0, true)
+	for dir in [Vector2.UP, Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT]:
+		draw_line(c + dir * (r - 7.0), c + dir * (r + 1.0), Color(1, 1, 1, 0.7), 2.0, true)
+	var up := PackedVector2Array([c + Vector2(0, -r + 6.0), c + Vector2(-8, -r + 18.0), c + Vector2(8, -r + 18.0)])
+	var dn := PackedVector2Array([c + Vector2(0, r - 6.0), c + Vector2(-8, r - 18.0), c + Vector2(8, r - 18.0)])
+	draw_colored_polygon(up, UiKit.C_ACCENT)
+	draw_colored_polygon(dn, UiKit.C_ACCENT)
+	# strike-point guides on the ball
+	draw_line(c + Vector2(0, -br * 0.9), c + Vector2(0, br * 0.9), Color(0.04, 0.12, 0.25, 0.45), 1.5, true)
+	draw_line(c + Vector2(-br * 0.16, 0), c + Vector2(br * 0.16, 0), Color(0.04, 0.12, 0.25, 0.45), 1.5, true)
+	var dot := c + Vector2(0, -spin * br * 0.8)
+	draw_circle(dot, 10.0, Color(0.04, 0.12, 0.25, 0.9))
+	draw_circle(dot, 7.5, UiKit.C_ACCENT)
