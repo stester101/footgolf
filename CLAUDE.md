@@ -38,7 +38,7 @@ Owner-approved deviations from the spec are logged in `docs/DECISIONS.md`.
 - Hole-out only when AT REST within radius (default 5 ft, 0–10); at 0 ft physical cup entry only.
 - Cup default is 12 in diameter (owner-approved); Caps or Goals allowed from ANY lie incl. the green (owner-approved,
   replaces the old Goals-only green rule); spin and trajectory reset to none/Standard after each shot.
-- Picker never sorts/filters by stats outside TEST MODE.
+- Picker never sorts/filters by stats outside TEST MODE, except the owner-approved Round Setup opt-in "Order picker by caps/goals (numbers hidden)" (default off, docs/DECISIONS.md).
 - Developer Undo ≠ mulligan (keep names separate).
 
 ## Commands

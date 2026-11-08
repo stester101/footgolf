@@ -56,6 +56,10 @@ func courses() -> Array:
 
 
 func course_info(course_id: String) -> Dictionary:
+	if CourseCombo.is_combo(course_id):  # custom combination: "combo:starter+lakeside"
+		var combo := CourseCombo.info(course_id, courses())
+		if not combo.is_empty():
+			return combo
 	for c in courses():
 		if String(c["id"]) == course_id:
 			return c

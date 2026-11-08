@@ -31,6 +31,10 @@ var show_stats := true
 var tee_color := "yellow"
 ## true = one of each hole's pin_options per hole from the round seed; false = the fixed pin.
 var pin_varied := true
+## Owner-approved opt-in (docs/DECISIONS.md): the picker offers Caps/Goals sort orders; numbers stay hidden unless show_stats.
+var order_by_stats := false
+## Mini season: ordered course ids played back to back (empty = a normal single round). See Season.
+var season_courses: Array = []
 
 
 ## Round Setup defaults from the saved settings.
@@ -55,7 +59,7 @@ func write_defaults(st: SettingsStore) -> void:
 	st.round_defaults = {
 		"reuse_per_mode": reuse_per_mode, "wind_mode": wind_mode, "wind_scale": wind_scale,
 		"max_score_mode": max_score_mode, "max_over_par_custom": max_over_par_custom,
-		"show_aim_arrow": show_aim_arrow, "tee_color": tee_color, "pin_varied": pin_varied,
+		"show_aim_arrow": show_aim_arrow, "tee_color": tee_color, "pin_varied": pin_varied, "order_by_stats": order_by_stats,
 	}
 	st.save()
 
@@ -70,6 +74,7 @@ func apply_dict(d: Dictionary) -> void:
 	var tc := String(d.get("tee_color", tee_color))
 	tee_color = tc if tc in HoleDefinition.TEE_COLORS else "yellow"
 	pin_varied = bool(d.get("pin_varied", pin_varied))
+	order_by_stats = bool(d.get("order_by_stats", order_by_stats))
 
 
 ## Complete, JSON-safe encoding (online setup: the host freezes this and every phone decodes it).
@@ -80,6 +85,7 @@ func to_dict() -> Dictionary:
 		"max_over_par_custom": max_over_par_custom, "show_aim_arrow": show_aim_arrow,
 		"show_trail": show_trail, "lie_exact": lie_exact, "show_stats": show_stats,
 		"tee_color": tee_color, "pin_varied": pin_varied,
+		"order_by_stats": order_by_stats, "season_courses": season_courses.duplicate(),
 	}
 
 
@@ -92,6 +98,7 @@ static func from_dict(d: Dictionary) -> RoundConfig:
 	rc.lie_exact = bool(d.get("lie_exact", rc.lie_exact))
 	rc.show_stats = bool(d.get("show_stats", rc.show_stats))
 	rc.apply_dict(d)
+	rc.season_courses = Season.clean_course_ids(d.get("season_courses", []))
 	return rc
 
 
@@ -110,6 +117,8 @@ func duplicate_config() -> RoundConfig:
 	c.show_stats = show_stats
 	c.tee_color = tee_color
 	c.pin_varied = pin_varied
+	c.order_by_stats = order_by_stats
+	c.season_courses = season_courses.duplicate()
 	return c
 
 

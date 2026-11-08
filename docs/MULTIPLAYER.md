@@ -140,3 +140,7 @@ python tests/network/run_smoke.py
 
 The broad physics/calibration/full-round suite was not run. Keep follow-up validation targeted to
 integration edits; a real multi-phone round is the next substantial acceptance check.
+
+## Combined rounds, mini seasons and picker sort online
+- Host lobby has a format row: One course / Combined (course id `combo:a+b`, sent as the normal `course`) / Mini season (`rules.season_courses`, frozen with the rest of RoundConfig; `course` = the first one). `rules.order_by_stats` is also part of the frozen rules.
+- Season: each phone records the finished course from the synced round states (`Season.record_course`), so standings are identical. The host's "Next course" sends `{kind:"season_next", course, pars, season}`; guests adopt the season state, point their setup at the new course and start a fresh `OnlineSession`. Verified headless only with a simulated guest (no real two-phone test).
