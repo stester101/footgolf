@@ -343,11 +343,16 @@ static func _range_text(name: String, r: Array) -> String:
 	return "%s %s" % [name, ("%d+" % int(r[0])) if int(r[0]) >= 0 else ("up to %d" % int(r[1]))]
 
 
+## Favourites belong to the ACTIVE player's profile (a guest slot uses the first profile).
+func _is_fav(footballer_id: String) -> bool:
+	return App.profiles.is_favourite(App.profiles.resolve_id(session.active_profile_id()), footballer_id)
+
+
 func _fav_filter(list: Array) -> Array:
 	if not _fav_only and not (show_stats and (_range_on(_cr) or _range_on(_gr))):
 		return list
 	return list.filter(func(fb: Footballer) -> bool:
-		if _fav_only and not App.settings.favourites.has(fb.id):
+		if _fav_only and not _is_fav(fb.id):
 			return false
 		if show_stats and (not _in_range(fb.caps, _cr) or not _in_range(fb.goals, _gr)):
 			return false
@@ -514,7 +519,7 @@ func _footballer_row(fb: Footballer, used: bool, selected: bool, cb: Callable) -
 	yr.add_theme_font_override("font", UiKit.font_num())
 	yr.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	h.add_child(yr)
-	var fav := App.settings.favourites.has(fb.id)
+	var fav := _is_fav(fb.id)
 	var star := Button.new()
 	star.flat = true
 	star.focus_mode = Control.FOCUS_NONE
@@ -530,12 +535,9 @@ func _footballer_row(fb: Footballer, used: bool, selected: bool, cb: Callable) -
 	star_c.add_child(si)
 	star.add_child(star_c)
 	star.pressed.connect(func() -> void:
-		if App.settings.favourites.has(fb.id):
-			App.settings.favourites.erase(fb.id)
-		else:
-			App.settings.favourites.append(fb.id)
-		App.settings.save()
-		si.set_color(Color("#FFD84A") if App.settings.favourites.has(fb.id) else Color(1, 1, 1, 0.55))
+		var pid := App.profiles.resolve_id(session.active_profile_id())
+		App.profiles.set_favourite(pid, fb.id, not App.profiles.is_favourite(pid, fb.id))
+		si.set_color(Color("#FFD84A") if _is_fav(fb.id) else Color(1, 1, 1, 0.55))
 		if _fav_only:
 			_render())
 	h.add_child(star)

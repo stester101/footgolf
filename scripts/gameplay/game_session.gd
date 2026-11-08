@@ -36,6 +36,9 @@ var spin := 0.0
 var trajectory: int = ShotTypes.Trajectory.STANDARD
 var selected_id := ""
 var holeout_radius_ft := ScoringService.DEFAULT_HOLEOUT_FT
+## Frozen round rules (Round Setup). Set with apply_rules() BEFORE start_round().
+var rules := RoundConfig.new()
+var wind_scale := 1.0
 var wind_custom := false
 var wind_custom_speed := 0.0
 var wind_custom_bearing := 0.0
@@ -70,10 +73,25 @@ class PlayerSlot extends RefCounted:
 var slots: Array = []
 var turn := 0
 var player_names: Array[String] = []
+## Profile id per pass-and-play slot ("" = guest); favourites follow the active player's profile.
+var profile_ids: Array[String] = []
 
 
 func player_count() -> int:
 	return maxi(slots.size(), 1)
+
+
+## Profile of the player whose turn it is ("" = guest).
+func active_profile_id() -> String:
+	return profile_ids[turn] if turn < profile_ids.size() else ""
+
+
+## Freezes the Round Setup rules on this session (cup size is applied to cfg: pass a private PhysicsConfig).
+func apply_rules(rc: RoundConfig) -> void:
+	rules = rc
+	holeout_radius_ft = rc.gimme_ft
+	wind_scale = rc.wind_multiplier()
+	cfg.set_cup_diameter_in(rc.cup_diameter_ft * 12.0)
 
 
 func active_name() -> String:
@@ -151,6 +169,7 @@ func start_round(defs: Array, round_seed: int = -1,
 			hs.hole_id = hd.id
 			hs.hole_name = hd.display_name
 			hs.par = hd.par
+			hs.max_score = ScoringService.max_score_for_par(hd.par, rules.max_over_par())
 			rs.holes.append(hs)
 			rs.hole_ids.append(hd.id)
 		var sl := PlayerSlot.new()
@@ -308,7 +327,7 @@ func current_lie() -> int:
 
 
 func wind_speed() -> float:
-	return wind_custom_speed if wind_custom else (hole.wind_speed if hole != null else 0.0)
+	return wind_custom_speed if wind_custom else (hole.wind_speed * wind_scale if hole != null else 0.0)
 
 
 func wind_bearing() -> float:
@@ -552,6 +571,8 @@ func _resolve() -> void:
 	var holed := ScoringService.is_holed(in_cup, at_rest, dist, holeout_radius_ft, cfg.cup_radius)
 	var hs := current_hole_state()
 	ScoringService.apply_shot(hs, penalty, holed)
+	if hs.completion == ShotTypes.COMPLETION_MAX_SCORE:
+		message.emit("Maximum score reached: hole ends at %d" % hs.max_score)
 	r.penalty = penalty
 	r.holed = holed
 	r.final_pos = final
