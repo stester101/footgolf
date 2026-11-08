@@ -53,6 +53,8 @@ To do:
 - Batch D: trial drag up/down on the aim view changes trajectory (Settings > Audio / Visual toggle, default on).
 - Batch F: pass-and-play, furthest from the cup plays next.
 - Hold-to-fast-forward button (4x) while the ball is moving.
+- Post-shot result panel redesign (docs/FOOT_GOLF_POST_SHOT_UI_HANDOFF.md as supplied): glass panel, lie chip above it (ON THE FAIRWAY / IN THE ROUGH / hazard + penalty), 3-4 divided metrics, Details + blue Continue; hole-out shows the real score name (HOLE IN ONE .. +N) with green Continue, HOLE COMPLETE banner, tap card to skip the reveal. Cup pulse/particles not done. Only viewed mid-animation in smoke screenshots.
+- Pixel-art ground-level lie under the ball on the spin control (grass, rough tufts, sand, green).
 - Lie penalties: rough now 10-20% shorter, bunker 20-40% (flight shots; old saved defaults migrate, custom edits kept). The spin ball sits on the lie colour with the lie name and penalty underneath; Settings > Gameplay "Show exact lie penalty" switches range to this shot's exact value (exact is true, from the shot seed). Rendered once on the tee only; rough/bunker look not seen yet.
 - Country filter list: rows now pass drags through so it scrolls by touch (taps ignored if the list moved); list taller. Star has a gap before the arrow. Player 2 red is now a deeper #D63A44. Not tested by touch on a device.
 - Picker star icon centred in its row; shorter name/year fonts to cut truncation.

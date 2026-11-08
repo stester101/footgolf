@@ -18,10 +18,67 @@ var _ground: Control
 var lie_colour := Color("#3E9A3A")
 
 
-func set_lie_colour(c: Color) -> void:
-	lie_colour = c
+var lie := Surface.Type.FAIRWAY
+
+
+## Ball viewed from ground level: a pixel-art strip of the lie under it (grass, rough, sand, green).
+func set_lie(t: int) -> void:
+	lie = t
+	lie_colour = Surface.lie_colour(t)
 	if _ground != null:
 		_ground.queue_redraw()
+	queue_redraw()
+
+
+static func _noise(x: int, y: int) -> int:
+	return ((x * 73856093) ^ (y * 19349663) ^ 0x5bd1e995) & 0xff
+
+
+## Pixel ground clipped to the dial. foreground = only the blades/grains that overlap the ball.
+func _paint_ground(cv: CanvasItem, foreground: bool) -> void:
+	var c := size * 0.5
+	var r := _radius() - 3.0
+	var px := maxf(3.0, snappedf(r / 15.0, 1.0))
+	var top := c.y + _ball_r() * 0.80  # ball sinks slightly into the lie
+	var base := lie_colour
+	var cols := int(ceil(r * 2.0 / px))
+	for ix in cols:
+		var x := c.x - r + ix * px
+		var dx := x + px * 0.5 - c.x
+		var h := 0  # extra pixels above the ground line for this column
+		var n := _noise(ix, 7)
+		match lie:
+			Surface.Type.ROUGH: h = 2 + n % 4  # tall ragged tufts
+			Surface.Type.BUNKER: h = (n % 3) - 1 if n % 5 == 0 else 0
+			Surface.Type.GREEN: h = 0
+			_: h = n % 2 + (1 if n % 7 == 0 else 0)
+		var y_top := top - h * px
+		if foreground:
+			# front layer: only blades in front of the ball (rough tufts and sand lip)
+			if lie != Surface.Type.ROUGH and lie != Surface.Type.BUNKER:
+				continue
+			if absf(dx) > _ball_r() * 1.0 or h <= 0:
+				continue
+			y_top = top - h * px
+			var y_end := top
+			var y := y_top
+			while y < y_end:
+				if dx * dx + (y + px * 0.5 - c.y) * (y + px * 0.5 - c.y) <= r * r:
+					cv.draw_rect(Rect2(x, y, px, px), base.lightened(0.12 if lie == Surface.Type.ROUGH else 0.05))
+				y += px
+			continue
+		var yy := y_top
+		var row := 0
+		while yy < c.y + r:
+			var yc := yy + px * 0.5
+			if dx * dx + (yc - c.y) * (yc - c.y) <= r * r:
+				var shade := (_noise(ix, row + 31) % 60) / 255.0
+				var col := base.darkened(0.10 + shade * 0.6) if row > 0 else base.lightened(0.15)
+				if lie == Surface.Type.BUNKER:
+					col = base.lightened(shade * 0.5) if _noise(ix, row) % 4 != 0 else base.darkened(0.12)
+				cv.draw_rect(Rect2(x, yy, px, px), col)
+			yy += px
+			row += 1
 
 
 func _init() -> void:
@@ -34,10 +91,8 @@ func _init() -> void:
 	_ground.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ground.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_ground.draw.connect(func() -> void:
-		var c := size * 0.5
-		var r := _radius() - 3.0
-		_ground.draw_circle(c, r, Color(lie_colour, 0.9))
-		_ground.draw_arc(c, r, 0, TAU, 48, Color(0, 0, 0, 0.25), 2.0, true))
+		_ground.draw_circle(size * 0.5, _radius() - 3.0, Color(0.05, 0.14, 0.28, 0.55))  # dark backdrop
+		_paint_ground(_ground, false))
 	add_child(_ground)
 	# Rendered golf ball behind the guides (lit sphere, dimples, soft shadow; see golf_ball.gdshader)
 	_ball = ColorRect.new()
@@ -130,6 +185,7 @@ func _draw() -> void:
 	var dn := PackedVector2Array([c + Vector2(0, r - 6.0), c + Vector2(-8, r - 18.0), c + Vector2(8, r - 18.0)])
 	draw_colored_polygon(up, accent)
 	draw_colored_polygon(dn, accent)
+	_paint_ground(self, true)
 	# strike-point guides on the ball
 	draw_line(c + Vector2(0, -br * 0.9), c + Vector2(0, br * 0.9), Color(0.04, 0.12, 0.25, 0.45), 1.5, true)
 	draw_line(c + Vector2(-br * 0.16, 0), c + Vector2(br * 0.16, 0), Color(0.04, 0.12, 0.25, 0.45), 1.5, true)

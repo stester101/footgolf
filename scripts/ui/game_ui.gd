@@ -64,6 +64,10 @@ var _shot_label: Label
 var _shot_icon: LineIcon
 # result card
 var _result_card: PanelContainer
+var _lie_chip: PanelContainer
+var _lie_chip_label: Label
+var _hole_banner: Label
+var _skippable: Array = []  # reveal nodes to show at once when the player taps the card
 var _result_box: VBoxContainer
 var _reveal: Tween
 var _result_distance_labels: Array[Dictionary] = []
@@ -144,10 +148,21 @@ func setup(s: GameSession) -> void:
 	col.add_child(_toast)
 	_shot_controls = _build_shot_controls()
 	col.add_child(_shot_controls)
-	_result_card = UiKit.panel(UiKit.C_SURFACE)
+	_lie_chip = PanelContainer.new()
+	_lie_chip.add_theme_stylebox_override("panel", UiKit.skin("recess", 6, 18, 6))
+	_lie_chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_lie_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_lie_chip.visible = false
+	_lie_chip_label = UiKit.label("", 22, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_lie_chip_label.add_theme_font_override("font", UiKit.font_semi())
+	_lie_chip.add_child(_lie_chip_label)
+	col.add_child(_lie_chip)
+	_result_card = PanelContainer.new()
+	_result_card.add_theme_stylebox_override("panel", UiKit.skin("glass", 8, 18, 14))
 	_result_card.visible = false
 	_result_box = UiKit.vbox(8)
 	_result_card.add_child(_result_box)
+	_result_card.gui_input.connect(_on_result_card_input)
 	col.add_child(_result_card)
 	_map_controls = _build_map_controls()
 	col.add_child(_map_controls)
@@ -820,6 +835,7 @@ func refresh() -> void:
 	_shot_controls.visible = not show_result and not overhead and not between
 	_utility_row.visible = not between  # never hidden for a modal: that collapsed the layout and made the HUD jump
 	_result_card.visible = show_result and not overhead
+	_lie_chip.visible = _result_card.visible and _lie_chip_label.text != ""
 	_map_controls.visible = overhead and session.state != ShotTypes.State.HOLE_INTRO  # the intro bar owns the bottom edge
 	_right_shot.visible = not overhead
 	_right_map.visible = overhead
@@ -875,7 +891,7 @@ func refresh() -> void:
 
 ## Ball sits on the lie colour with the distance penalty underneath: a range, or this shot's exact value.
 func _update_lie_effect(lie: int, flight: bool) -> void:
-	_spin.set_lie_colour(Surface.lie_colour(lie))
+	_spin.set_lie(lie)
 	var pv := session.lie_effect_preview()
 	var nm := Surface.name_of(lie).to_upper()
 	if not flight or int(pv["max_pct"]) <= 0:
@@ -1133,7 +1149,15 @@ func _on_shot_resolved(r: ShotResult) -> void:
 	_result_box.add_child(head)
 	# big animated stat
 	var unit := "CAPS" if r.mode == ShotTypes.Mode.CAPS else "GOALS"
-	var big := UiKit.label("0 %s" % unit, 46, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	var hs := session.current_hole_state()
+	var holed_done := r.holed and hs.complete
+	var big: Label
+	if holed_done:
+		# State 3: the golf result for the finished hole (strokes relative to par, penalties included)
+		big = UiKit.label(_score_name(hs).trim_suffix("!"), 56, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+		big.add_theme_font_override("font", UiKit.font_semi())
+	else:
+		big = UiKit.label("0 %s" % unit, 46, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
 	_result_box.add_child(big)
 	var sub := UiKit.label("", 20, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	_result_base_label = sub
@@ -1141,16 +1165,28 @@ func _on_shot_resolved(r: ShotResult) -> void:
 	_result_base_mode = r.mode
 	_result_base_style = r.style
 	_refresh_result_distances()
+	if holed_done:
+		sub.text = "%d %s · %s" % [hs.score(), "stroke" if hs.score() == 1 else "strokes", RoundState.fmt_relative(hs.relative_to_par())]
+		_result_base_label = null
 	_result_box.add_child(sub)
 	var grid := UiKit.hbox(6)
-	if r.style == ShotTypes.Style.FLIGHT:
+	if holed_done:
+		grid.add_child(_stat_cell("%s" % unit, "%d" % r.stat_value))
+		grid.add_child(_divider())
+		grid.add_child(_distance_stat_cell("LAST SHOT", r.total_m))
+	elif r.style == ShotTypes.Style.FLIGHT:
 		grid.add_child(_distance_stat_cell("CARRY", r.carry_m))
+		grid.add_child(_divider())
 		grid.add_child(_distance_stat_cell("ROLL", r.roll_m))
+		grid.add_child(_divider())
 		grid.add_child(_distance_stat_cell("TOTAL", r.total_m))
+		grid.add_child(_divider())
+		grid.add_child(_distance_stat_cell("TO PIN", r.remaining_m))
 	else:
 		grid.add_child(_distance_stat_cell("TRAVEL", r.total_m))
+		grid.add_child(_divider())
 		grid.add_child(_stat_cell("LIE", Surface.name_of(r.final_lie)))
-	if not r.holed:
+		grid.add_child(_divider())
 		grid.add_child(_distance_stat_cell("TO PIN", r.remaining_m))
 	_result_box.add_child(grid)
 	var extra: Array[String] = []
@@ -1160,57 +1196,133 @@ func _on_shot_resolved(r: ShotResult) -> void:
 		extra.append("Hit a tree")
 	if r.wind_speed_mps > 0.1 and r.style == ShotTypes.Style.FLIGHT:
 		extra.append("Wind %d mph" % int(round(r.wind_speed_mps * Units.MPS_TO_MPH)))
-	if r.style == ShotTypes.Style.FLIGHT:
-		if absf(r.spin) >= 0.025:
-			extra.append(ShotResult.spin_label(r.spin).capitalize())
-		extra.append("Now on the %s" % Surface.name_of(r.final_lie).to_lower())
+	if r.style == ShotTypes.Style.FLIGHT and absf(r.spin) >= 0.025:
+		extra.append(ShotResult.spin_label(r.spin).capitalize())
+	if not holed_done:
+		extra.append("Strokes %d · par %d" % [hs.raw_total(), hs.par])
 	var extra_l := UiKit.text(" · ".join(extra), 19, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	_result_box.add_child(extra_l)
+	# contextual chip above the panel: the real final lie, or the hazard that was hit
+	var chip := ""
+	if r.penalty > 0:
+		chip = "WATER · +%d PENALTY" % r.penalty if r.hazard == "WATER" else "OUT OF BOUNDS · +%d PENALTY" % r.penalty
+	elif holed_done:
+		chip = "IN THE HOLE"
+	else:
+		chip = _lie_phrase(r.final_lie)
+	_lie_chip_label.text = chip
+	_lie_chip_label.add_theme_color_override("font_color", UiKit.C_WARN if r.penalty > 0 else Color.WHITE)
 	var banner: Label = null
 	if r.penalty > 0:
-		banner = UiKit.text("%s!  +%d penalty · ball dropped safely" % ["WATER" if r.hazard == "WATER" else "OUT OF BOUNDS", r.penalty], 24, UiKit.C_WARN, HORIZONTAL_ALIGNMENT_CENTER)
-	elif r.holed:
-		banner = UiKit.text("IN THE HOLE!", 36, UiKit.C_WARN, HORIZONTAL_ALIGNMENT_CENTER)
-	if banner != null:
+		banner = UiKit.text("Ball dropped safely", 22, UiKit.C_WARN, HORIZONTAL_ALIGNMENT_CENTER)
 		_result_box.add_child(banner)
-	var hs := session.current_hole_state()
-	var status := ""
-	if hs.complete:
-		status = "Hole score %d (%s)" % [hs.score(), RoundState.fmt_relative(hs.relative_to_par())]
-	else:
-		status = "Strokes so far %d · par %d" % [hs.raw_total(), hs.par]
-	_result_box.add_child(UiKit.label(status, 19, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	var details := UiKit.text(r.diagnostic_text(), 16, UiKit.C_MUTED)
 	details.visible = false
-	var row := UiKit.hbox()
-	row.add_child(UiKit.button("Details", func() -> void: details.visible = not details.visible, 70, 21))
+	var row := UiKit.hbox(10)
+	row.add_child(UiKit.button("Details", func() -> void: details.visible = not details.visible, 76, 22))
 	if session.can_mulligan():
 		var left := session.round_state.mulligans_remaining()
 		var retry := UiKit.button("Mulligan%s" % ("" if left < 0 else " · %d" % left),
-			func() -> void: session.use_mulligan(), 80, 23)
+			func() -> void: session.use_mulligan(), 76, 22)
 		row.add_child(retry)
-	var cont := UiKit.primary(UiKit.button("Continue", func() -> void: session.acknowledge_result(), 80, 30))
+	var cont := UiKit.button("Continue", func() -> void: session.acknowledge_result(), 76, 30)
+	if holed_done:
+		for st in ["normal", "hover", "pressed", "hover_pressed"]:
+			cont.add_theme_stylebox_override(st, UiKit.skin("lime" if st != "pressed" and st != "hover_pressed" else "lime", 6, 16, 10))
+		for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+			cont.add_theme_color_override(c, Color("#0E2A07"))
+	else:
+		UiKit.primary(cont)
 	UiKit.expand(cont)
 	row.add_child(cont)
 	_result_box.add_child(details)
 	_result_box.add_child(row)
 	refresh()
-	# --- reveal animation: count the stat up, then fade the breakdown in
+	# --- reveal animation: count the stat up, then fade the breakdown in (tap the card to skip it)
 	var later: Array = [sub, grid, extra_l, banner]
 	for n in later:
 		if n != null:
 			(n as Control).modulate.a = 0.0
+	_skippable = later.duplicate()
 	_result_box.modulate.a = 0.0
 	var tw := create_tween()
 	_reveal = tw
 	tw.tween_property(_result_box, "modulate:a", 1.0, 0.2)
-	var target := r.stat_value
-	tw.tween_method(func(v: float) -> void:
-		if is_instance_valid(big):
-			big.text = "%d %s" % [int(round(v)), unit], 0.0, float(target), clampf(0.25 + target * 0.004, 0.3, 1.1)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if holed_done:
+		_show_hole_banner()
+		big.pivot_offset = big.size * 0.5
+		big.scale = Vector2(0.6, 0.6)
+		big.modulate.a = 0.0
+		tw.tween_interval(0.45)
+		tw.tween_property(big, "modulate:a", 1.0, 0.2)
+		tw.parallel().tween_property(big, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_skippable.append(big)
+	else:
+		var target := r.stat_value
+		tw.tween_method(func(v: float) -> void:
+			if is_instance_valid(big):
+				big.text = "%d %s" % [int(round(v)), unit], 0.0, float(target), clampf(0.25 + target * 0.004, 0.3, 1.1)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	for n in later:
 		if n != null:
 			tw.tween_property(n, "modulate:a", 1.0, 0.18)
+
+
+func _divider() -> VSeparator:
+	var d := VSeparator.new()
+	d.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	d.modulate = Color(1, 1, 1, 0.35)
+	return d
+
+
+func _lie_phrase(lie: int) -> String:
+	match lie:
+		Surface.Type.FAIRWAY: return "ON THE FAIRWAY"
+		Surface.Type.GREEN: return "ON THE GREEN"
+		Surface.Type.ROUGH: return "IN THE ROUGH"
+		Surface.Type.BUNKER: return "IN THE BUNKER"
+		Surface.Type.FRINGE: return "ON THE FRINGE"
+		Surface.Type.TEE: return "ON THE TEE"
+		_: return Surface.name_of(lie).to_upper()
+
+
+## Short, non-blocking "HOLE COMPLETE" banner in the play area; fades itself out. Runs once per hole-out.
+func _show_hole_banner() -> void:
+	if _hole_banner == null or not is_instance_valid(_hole_banner):
+		_hole_banner = UiKit.label("HOLE COMPLETE", 44, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		_hole_banner.add_theme_font_override("font", UiKit.font_semi())
+		_hole_banner.add_theme_constant_override("outline_size", 10)
+		_hole_banner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+		_hole_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_hole_banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+		_hole_banner.anchor_left = 0.0
+		_hole_banner.anchor_right = 1.0
+		_hole_banner.offset_left = 0.0
+		_hole_banner.offset_right = 0.0
+		_hole_banner.offset_top = 340.0
+		add_child(_hole_banner)
+	_hole_banner.modulate.a = 0.0
+	_hole_banner.visible = true
+	var bt := create_tween()
+	bt.tween_interval(0.25)
+	bt.tween_property(_hole_banner, "modulate:a", 1.0, 0.2)
+	bt.tween_interval(0.8)
+	bt.tween_property(_hole_banner, "modulate:a", 0.0, 0.4)
+	bt.tween_callback(func() -> void: _hole_banner.visible = false)
+
+
+func _on_result_card_input(event: InputEvent) -> void:
+	var tap := (event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed) \
+		or (event is InputEventMouseButton and (event as InputEventMouseButton).pressed)
+	if not tap or _reveal == null or not _reveal.is_valid() or not _reveal.is_running():
+		return
+	_reveal.kill()
+	_result_box.modulate.a = 1.0
+	for n in _skippable:
+		if n != null and is_instance_valid(n):
+			(n as Control).modulate.a = 1.0
+			(n as Control).scale = Vector2.ONE
+	if _hole_banner != null and is_instance_valid(_hole_banner):
+		_hole_banner.visible = false
 
 
 # --- hole summary + next-hole loading (round_controller prepares the next hole in slices and
@@ -1225,7 +1337,7 @@ static func _score_name(hs: HoleState) -> String:
 	if hs.strokes == 1 and hs.penalties == 0:
 		return "HOLE IN ONE!"
 	var names := {-3: "ALBATROSS!", -2: "EAGLE!", -1: "BIRDIE!", 0: "PAR", 1: "BOGEY", 2: "DOUBLE BOGEY", 3: "TRIPLE BOGEY"}
-	return String(names.get(hs.relative_to_par(), "HOLED"))
+	return String(names.get(hs.relative_to_par(), RoundState.fmt_relative(hs.relative_to_par()) if hs.relative_to_par() > 0 else "%d UNDER PAR" % -hs.relative_to_par()))
 
 
 func _strip_cell(caption: String, value: String) -> VBoxContainer:
