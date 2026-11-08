@@ -5,7 +5,7 @@ extends RefCounted
 ## (or physically in the cup).
 
 const MAX_OVER_PAR := 5
-const DEFAULT_HOLEOUT_FT := 5.0
+const DEFAULT_HOLEOUT_FT := 0.0
 const MIN_HOLEOUT_FT := 0.0
 const MAX_HOLEOUT_FT := 10.0
 
