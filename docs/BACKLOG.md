@@ -4,6 +4,23 @@ Single list of what the owner has asked for. Keep it short. Move items between s
 
 Last updated: 2026-11-08
 
+## Phone-test notes (8 Nov 2026, owner; code status from a read-only code scan, not tested on device)
+Possibly already done (owner has not tested the latest APK): hole-out drop animation; pass-and-play standings on hole-complete/round-complete; units reset to yd/ft each shot; dev custom caps/goals ranges.
+To do:
+- Hole intro: do not block the hole; or bird's-eye flyover that glides to the tee, then controls appear.
+- Tee boxes (real mesh) and ball sitting on a tee.
+- Manual trajectory by dragging the aim arrow up/down as well as left/right (trial).
+- Bigger cup (e.g. 5 ft) plus separate gimme range (e.g. 3 ft, auto-award, from cup centre; confirm centre vs edge). Needs a "no gimme" option. Both belong in Round Setup difficulty.
+- Pass-and-play: furthest from the hole plays first. Owner wrote "closest plays next"; confirm (golf rule is furthest first).
+- Reset filters, sort, spin and shot setup between rounds (only search/scroll reset today).
+- Picker: clear search text on close, keep filters/sort (today it is kept within a round).
+- Default mode/style/unit by lie: goals + putt + feet on the green, caps + approach + yards elsewhere (style-by-lie exists; mode does not).
+- Allow caps for one shot and goals for the same footballer later in the round (pool supports once-per-mode; needs a Round Setup option).
+- Selected footballer name on the shot view clearly tappable, with a swap icon.
+- Smaller aim arrow, shrinking near the green and when putting.
+- Wind should affect high and low trajectories differently (physics change: calibration tests needed).
+- Idea: four clubs (Driver, Iron, Wedge, Putter). Conflicts with the locked "no clubs" rule in CLAUDE.md/spec; needs an explicit owner decision.
+
 ## In progress
 - Online relay code is integrated and committed (`a11fc68`), not deployed. Relay hosting, verification of the merged game_ui and phone QA remain. See `docs/MULTIPLAYER.md`.
 
