@@ -30,6 +30,9 @@ To do:
 3. Cup and flag physics (physics update): the ball can hit the flagstick if it arrives too fast, bounce off it, and be affected by the hole (rim, lip-out, drop in). Needs ball_sim and cup changes, calibration tests and a matching drop animation.
 4. Trajectory bar on the right edge (from the mockup).
 
+## Parked proposals
+- TV companion / spectator view for the owner's Chromebook-on-TV: `docs/TV_COMPANION_PROPOSAL.md` (low-effort sub-agent draft, not reviewed in depth). Recommends a lightweight HTML/JS spectator page on the relay with a read-only seat; needs the hosted relay first.
+
 ## Planned: game features (owner ticked, after the above)
 - Round setup with a frozen difficulty configuration: cup size, hole-out radius, wind range, numeric values on/off, filter and sort switches, max score (par+5 default, other cap, or none), trail and aim aids on/off. Footballer reuse rule: once per round or once per mode.
 - Local profiles with names, favourites tab and stars (pass-and-play itself is done, with default player names).
@@ -50,6 +53,7 @@ To do:
 - Batch D: trial drag up/down on the aim view changes trajectory (Settings > Audio / Visual toggle, default on).
 - Batch F: pass-and-play, furthest from the cup plays next.
 - Hold-to-fast-forward button (4x) while the ball is moving.
+- Country filter list: rows now pass drags through so it scrolls by touch (taps ignored if the list moved); list taller. Star has a gap before the arrow. Player 2 red is now a deeper #D63A44. Not tested by touch on a device.
 - Picker star icon centred in its row; shorter name/year fonts to cut truncation.
 
 ## Done (committed and in an APK)

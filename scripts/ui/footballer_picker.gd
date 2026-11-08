@@ -51,6 +51,8 @@ var _sort_popup: PopupMenu
 var _chips: HFlowContainer
 var _summary: Label
 var _sc: ScrollContainer
+var _csc: ScrollContainer
+var _press_country_scroll := 0
 var _list: VBoxContainer
 var _debounce: Timer
 var _limit := PAGE
@@ -510,7 +512,7 @@ func _footballer_row(fb: Footballer, used: bool, selected: bool, cb: Callable) -
 	var star := Button.new()
 	star.flat = true
 	star.focus_mode = Control.FOCUS_NONE
-	star.custom_minimum_size = Vector2(48, 56)
+	star.custom_minimum_size = Vector2(56, 60)
 	star.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	for st in ["normal", "hover", "pressed", "disabled"]:
 		star.add_theme_stylebox_override(st, StyleBoxEmpty.new())
@@ -531,6 +533,10 @@ func _footballer_row(fb: Footballer, used: bool, selected: bool, cb: Callable) -
 		if _fav_only:
 			_render())
 	h.add_child(star)
+	var gap := Control.new()  # keeps the star well clear of the arrow so taps do not mis-hit
+	gap.custom_minimum_size = Vector2(14, 0)
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(gap)
 	var chev := LineIcon.make("chevron_right", 26, Color(1, 1, 1, 0.85))
 	chev.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(chev)
@@ -635,8 +641,9 @@ func _build_filter_panel() -> PanelContainer:
 	_country_search.text_changed.connect(func(_t: String) -> void: _filter_country_rows())
 	v.add_child(cs[0])
 	var csc := ScrollContainer.new()
+	_csc = csc
 	csc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	csc.custom_minimum_size = Vector2(0, 150)
+	csc.custom_minimum_size = Vector2(0, 300)
 	csc.scroll_deadzone = 14
 	csc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	var cl := UiKit.vbox(6)
@@ -776,7 +783,11 @@ func _country_row(nat: String) -> Button:
 	b.custom_minimum_size = Vector2(0, 56)
 	b.focus_mode = Control.FOCUS_NONE
 	b.set_meta("nation", nat)
+	b.mouse_filter = Control.MOUSE_FILTER_PASS  # let drags reach the country list so it scrolls by touch
+	b.button_down.connect(func() -> void: _press_country_scroll = _csc.scroll_vertical if _csc != null else 0)
 	b.pressed.connect(func() -> void:
+		if _csc != null and absi(_csc.scroll_vertical - _press_country_scroll) > 4:
+			return  # the list scrolled under the finger: not a tap
 		if _t_nations.has(nat):
 			_t_nations.erase(nat)
 		else:

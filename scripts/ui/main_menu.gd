@@ -568,7 +568,7 @@ func _open_round_setup(course_id: String) -> void:
 		ne.custom_minimum_size = Vector2(0, 58)
 		ne.max_length = 14
 		ne.add_theme_font_size_override("font_size", 24)
-		ne.add_theme_color_override("font_color", [Color("#A0F344"), Color("#FF5A5A"), Color("#FFD84A"), Color("#52AAFF")][n])
+		ne.add_theme_color_override("font_color", [Color("#A0F344"), Color("#D63A44"), Color("#FFD84A"), Color("#52AAFF")][n])
 		var idx := n
 		ne.text_changed.connect(func(t: String) -> void: player_names[idx] = t.strip_edges() if t.strip_edges() != "" else "Player %d" % (idx + 1))
 		names_box.add_child(ne)

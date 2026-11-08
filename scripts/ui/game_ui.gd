@@ -84,7 +84,7 @@ var _card_dist: Label
 var _turn_label: Label
 var _turn_banner: Label
 var _last_turn_key := ""
-const PLAYER_COLS := [Color("#A0F344"), Color("#FF5A5A"), Color("#FFD84A"), Color("#52AAFF")]
+const PLAYER_COLS := [Color("#A0F344"), Color("#D63A44"), Color("#FFD84A"), Color("#52AAFF")]
 const PLAYER_DARK_TEXT := [true, false, true, false]
 var _tint_cache := {}
 var _change_btn: Button
@@ -914,7 +914,7 @@ func _apply_player_style() -> void:
 	_spin.queue_redraw()
 	if not _tint_cache.has(i):
 		var k: UiSkin = UiKit.skin("lime", 4, 4, 4).duplicate()
-		k.top = col.lightened(0.25)
+		k.top = col.lightened(0.25 if i != 1 else 0.1)
 		k.bottom = col.darkened(0.12)
 		_tint_cache[i] = k
 	var txt := Color("#0E2A07") if PLAYER_DARK_TEXT[i] else Color.WHITE
