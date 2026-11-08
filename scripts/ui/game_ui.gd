@@ -1088,79 +1088,134 @@ static func _score_name(hs: HoleState) -> String:
 	return String(names.get(hs.relative_to_par(), "HOLED"))
 
 
-func _summary_cell(caption: String, value: String) -> VBoxContainer:
+func _strip_cell(caption: String, value: String) -> VBoxContainer:
 	var v := UiKit.vbox(0)
-	UiKit.expand(v)
-	v.add_child(UiKit.label(value, 28, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UiKit.label(caption, 16, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	v.custom_minimum_size = Vector2(78, 0)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(_num(value, 28, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(_tag(caption, 14, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	return v
 
 
+## Hole complete: summary strip, scorecard board (only the holes in this round), and the
+## "up next" tile with loading progress and the Next hole button pinned at the bottom.
 func _on_hole_completed(hs: HoleState) -> void:
-	var parts := _centered_card()
-	var root: Control = parts[0]
-	var v: VBoxContainer = parts[1]
 	var rs := session.round_state
-	var kicker := UiKit.label("HOLE %d COMPLETE" % (rs.current_index + 1), 22, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
-	kicker.add_theme_font_override("font", UiKit.font_caps())
-	v.add_child(kicker)
-	var headline := UiKit.label(_score_name(hs).to_upper(), 66, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	headline.add_theme_font_override("font", UiKit.font_display())
-	headline.add_theme_color_override("font_shadow_color", Color(0.45, 0.80, 1.0, 0.45))
-	headline.add_theme_constant_override("shadow_offset_x", 0)
-	headline.add_theme_constant_override("shadow_offset_y", 0)
-	headline.add_theme_constant_override("shadow_outline_size", 10)
-	v.add_child(headline)
-	var hl_rule := ColorRect.new()
-	hl_rule.color = Color(UiKit.C_CYAN, 0.85)
-	hl_rule.custom_minimum_size = Vector2(0, 3)
-	hl_rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(hl_rule)
-	v.add_child(UiKit.text("%s · Par %d · Score %d (%s)" % [hs.hole_name, hs.par, hs.score(), RoundState.fmt_relative(hs.relative_to_par())], 24, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
+	var root := Control.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_STOP
+	var scrim := ColorRect.new()
+	scrim.color = Color(0.03, 0.06, 0.12, 0.40)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(scrim)
+	var sm := UiKit.safe_margins(get_viewport()) if is_inside_tree() else [32.0, 32.0, 32.0, 32.0]
+	var m := MarginContainer.new()
+	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.add_theme_constant_override("margin_left", int(sm[0]))
+	m.add_theme_constant_override("margin_right", int(sm[2]))
+	m.add_theme_constant_override("margin_top", int(sm[1]) + 136)
+	m.add_theme_constant_override("margin_bottom", int(sm[3]))
+	root.add_child(m)
+	var col := UiKit.vbox(GAP + 2)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.add_child(col)
+	# 1. summary strip: kicker + headline, four stats
 	var longest := 0.0
 	for r in hs.shots:
 		if r is ShotResult:
 			longest = maxf(longest, (r as ShotResult).total_m)
-	var stats := UiKit.hbox(6)
-	stats.add_child(_summary_cell("SHOTS", str(hs.strokes)))
-	stats.add_child(_summary_cell("PENALTY", str(hs.penalties)))
-	stats.add_child(_summary_cell("LONGEST", "%d yd" % int(round(Units.m_to_yards(longest)))))
-	stats.add_child(_summary_cell("ROUND", RoundState.fmt_relative(rs.relative_to_par())))
-	v.add_child(stats)
-	v.add_child(_rule())
-	v.add_child(_scorecard_grid())
+	var strip := _plate(18, 12)
+	var sr := UiKit.hbox(8)
+	sr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var left := UiKit.vbox(0)
+	UiKit.expand(left)
+	left.alignment = BoxContainer.ALIGNMENT_CENTER
+	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	left.add_child(_tag("HOLE %d COMPLETE" % (rs.current_index + 1), 17, UiKit.C_CYAN))
+	var name_txt := _score_name(hs).to_upper()
+	var headline := UiKit.label(name_txt, 46 if name_txt.length() <= 7 else 34, Color.WHITE)
+	headline.add_theme_font_override("font", UiKit.font_semi())
+	headline.add_theme_color_override("font_shadow_color", Color(0.45, 0.80, 1.0, 0.40))
+	headline.add_theme_constant_override("shadow_outline_size", 8)
+	headline.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	left.add_child(headline)
+	sr.add_child(left)
+	sr.add_child(_strip_cell("SHOTS", str(hs.strokes)))
+	sr.add_child(_strip_cell("PENALTY", str(hs.penalties)))
+	sr.add_child(_strip_cell("LONGEST", Units.fmt_yards(longest)))
+	sr.add_child(_strip_cell("ROUND", RoundState.fmt_relative(rs.relative_to_par())))
+	strip.add_child(sr)
+	col.add_child(strip)
+	# 2. scorecard board
+	var board_panel := _plate(14, 14)
+	board_panel.add_child(_scorecard_board())
+	col.add_child(board_panel)
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(spacer)
+	# 3. up next + loading + button, pinned at the bottom for the thumb
 	var last := rs.current_index >= rs.holes.size() - 1 or rs.all_complete()
 	var upcoming := rs.upcoming_index()
 	_next_bar = null
 	_next_status = null
 	_next_progress_seen = false
+	var up := _plate(18, 14)
+	var uv := UiKit.vbox(10)
+	uv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if upcoming >= 0 and upcoming < session.hole_defs.size():
 		var nh: HoleDefinition = session.hole_defs[upcoming]
-		v.add_child(_rule())
-		v.add_child(UiKit.text("UP NEXT · HOLE %d" % (upcoming + 1), 18, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-		v.add_child(UiKit.text("%s · Par %d · %d yd" % [nh.display_name, nh.par, int(nh.yards)], 26, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
+		var ur := UiKit.hbox(14)
+		ur.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var tile := PanelContainer.new()
+		tile.add_theme_stylebox_override("panel", UiKit.skin("header", 6, 0, 0))
+		tile.custom_minimum_size = Vector2(76, 76)
+		tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var tc := CenterContainer.new()
+		tc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tc.add_child(_num("%02d" % (upcoming + 1), 36, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
+		tile.add_child(tc)
+		ur.add_child(tile)
+		var uinfo := UiKit.vbox(0)
+		UiKit.expand(uinfo)
+		uinfo.alignment = BoxContainer.ALIGNMENT_CENTER
+		uinfo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		uinfo.add_child(_tag("UP NEXT · HOLE %d" % (upcoming + 1), 17, UiKit.C_CYAN))
+		var nn := UiKit.label(nh.display_name, 32, Color.WHITE)
+		nn.add_theme_font_override("font", UiKit.font_semi())
+		nn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		uinfo.add_child(nn)
+		uinfo.add_child(_num("Par %d · %d yd" % [nh.par, int(nh.yards)], 21, UiKit.C_MUTED))
+		ur.add_child(uinfo)
+		uv.add_child(ur)
 		_next_bar = ProgressBar.new()
 		_next_bar.min_value = 0.0
 		_next_bar.max_value = 1.0
 		_next_bar.step = 0.0
 		_next_bar.show_percentage = false
 		_next_bar.custom_minimum_size = Vector2(0, 10)
-		_next_bar.add_theme_stylebox_override("background", UiKit.box(UiKit.C_RAISED, 3, 0))
-		_next_bar.add_theme_stylebox_override("fill", UiKit.box(UiKit.C_ACCENT, 3, 0))
+		_next_bar.add_theme_stylebox_override("background", UiKit.box(Color(1, 1, 1, 0.14), 4, 0))
+		_next_bar.add_theme_stylebox_override("fill", UiKit.box(UiKit.C_CYAN, 4, 0))
 		_next_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		v.add_child(_next_bar)
-		_next_status = UiKit.label("Preparing course…", 18, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
-		v.add_child(_next_status)
-	_next_btn = UiKit.primary(UiKit.button("Finish round" if last else "Next hole", func() -> void:
+		uv.add_child(_next_bar)
+		_next_status = UiKit.label("Preparing course…", 18, UiKit.C_MUTED)
+		uv.add_child(_next_status)
+	_next_btn = UiKit.primary(UiKit.button("FINISH ROUND" if last else "NEXT HOLE", func() -> void:
 		_remove_overlay(root)
 		session.next_hole(), 90, 32))
-	v.add_child(_next_btn)
+	_next_btn.add_theme_font_override("font", UiKit.font_caps())
+	uv.add_child(_next_btn)
 	if _next_bar != null:
 		_next_btn.disabled = true
 		# safety net: if no loader ever reports in, never leave the button greyed
 		get_tree().create_timer(3.0).timeout.connect(func() -> void:
 			if not _next_progress_seen:
 				set_next_hole_progress(1.0))
+	up.add_child(uv)
+	col.add_child(up)
 	push_overlay(root)
 
 
@@ -1182,7 +1237,7 @@ func _on_round_completed() -> void:
 	var v: VBoxContainer = parts[1]
 	var rs := session.round_state
 	var rc := UiKit.label("ROUND COMPLETE", 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	rc.add_theme_font_override("font", UiKit.font_display())
+	rc.add_theme_font_override("font", UiKit.font_semi())
 	rc.add_theme_color_override("font_shadow_color", Color(0.45, 0.80, 1.0, 0.45))
 	rc.add_theme_constant_override("shadow_outline_size", 10)
 	v.add_child(rc)
@@ -1196,25 +1251,148 @@ func _on_round_completed() -> void:
 	push_overlay(root)
 
 
-func _scorecard_grid() -> GridContainer:
-	var g := GridContainer.new()
-	g.columns = 5
-	for hdr in ["Hole", "Par", "Score", "+/-", "Pen"]:
-		g.add_child(UiKit.label(hdr, 22, UiKit.C_MUTED))
+func _scorecard_grid() -> Control:
+	return _scorecard_board()
+
+
+const BOARD_ROW_HOLES := 9
+
+
+## Broadcast-style scorecard: one block per nine holes, only the holes in this round. Under par
+## is ringed (cyan circle), over par boxed (sand square), the hole being played is highlighted.
+func _scorecard_board() -> VBoxContainer:
 	var rs := session.round_state
-	for i in rs.holes.size():
+	var board := UiKit.vbox(12)
+	board.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var start := 0
+	while start < rs.holes.size():
+		var end := mini(start + BOARD_ROW_HOLES, rs.holes.size())
+		board.add_child(_board_chunk(start, end))
+		start = end
+	var legend := UiKit.hbox(10)
+	legend.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	legend.add_child(_shape_swatch(true, UiKit.C_CYAN))
+	legend.add_child(_board_label("UNDER PAR", 15))
+	legend.add_child(_shape_swatch(false, UiKit.C_WARN))
+	legend.add_child(_board_label("OVER PAR", 15))
+	board.add_child(legend)
+	var total := _board_label("ROUND  ·  PAR %d  ·  SCORE %d  ·  %s  ·  PEN %d" % [rs.total_par(), rs.total_score(),
+		RoundState.fmt_relative(rs.relative_to_par()), rs.total_penalties()], 16, UiKit.C_TEXT)
+	board.add_child(total)
+	return board
+
+
+func _board_label(text: String, size: int = 17, color: Color = UiKit.C_MUTED, align: int = HORIZONTAL_ALIGNMENT_LEFT) -> Label:
+	var l := UiKit.label(text, size, color, align)
+	l.add_theme_font_override("font", UiKit.font_caps())
+	return l
+
+
+func _board_value(text: String, size: int = 22, color: Color = UiKit.C_TEXT, bold: bool = false) -> Label:
+	var l := UiKit.label(text, size, color, HORIZONTAL_ALIGNMENT_CENTER)
+	l.add_theme_font_override("font", UiKit.font_semi() if bold else UiKit.font_num())
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return l
+
+
+func _board_head(text: String, current: bool, first: bool) -> Control:
+	var pc := PanelContainer.new()
+	pc.add_theme_stylebox_override("panel", UiKit.skin("lime" if current else "header", 3, 4, 7))
+	pc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if first:
+		pc.custom_minimum_size.x = 88
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var l := UiKit.label(text, 18, C_LIME_TXT if current else Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT if first else HORIZONTAL_ALIGNMENT_CENTER)
+	l.add_theme_font_override("font", UiKit.font_caps() if first else UiKit.font_semi())
+	pc.add_child(l)
+	return pc
+
+
+func _board_score(hs: HoleState, current: bool) -> Control:
+	var played := hs.complete or hs.raw_total() > 0
+	if not played:
+		return _board_value("–", 22, UiKit.C_MUTED)
+	var rel := hs.relative_to_par()
+	var l := _board_value(str(hs.score()), 22, UiKit.C_TEXT, true)
+	if rel == 0 and not current:
+		return l
+	var cc := CenterContainer.new()
+	cc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var pc := PanelContainer.new()
+	var sb := StyleBoxFlat.new()  # own instance: the shared skins must never be mutated
+	sb.bg_color = Color(UiKit.C_CYAN, 0.22) if current else Color(0, 0, 0, 0)
+	sb.set_border_width_all(2 if rel != 0 else 0)
+	sb.border_color = UiKit.C_CYAN if rel < 0 else UiKit.C_WARN
+	sb.set_corner_radius_all(22 if rel < 0 else 5)
+	pc.add_theme_stylebox_override("panel", sb)
+	pc.custom_minimum_size = Vector2(40, 40)
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pc.add_child(l)
+	cc.add_child(pc)
+	return cc
+
+
+func _shape_swatch(circle: bool, color: Color) -> Control:
+	var pc := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0, 0, 0, 0)
+	sb.set_border_width_all(2)
+	sb.border_color = color
+	sb.set_corner_radius_all(11 if circle else 3)
+	pc.add_theme_stylebox_override("panel", sb)
+	pc.custom_minimum_size = Vector2(22, 22)
+	pc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return pc
+
+
+func _board_chunk(start: int, end: int) -> Control:
+	var rs := session.round_state
+	var g := GridContainer.new()
+	g.columns = (end - start) + 2
+	g.add_theme_constant_override("h_separation", 2)
+	g.add_theme_constant_override("v_separation", 8)
+	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var par_sum := 0
+	var score_sum := 0
+	var rel_sum := 0
+	var pen_sum := 0
+	var any_played := false
+	for i in range(start, end):
 		var hs: HoleState = rs.holes[i]
-		var played := hs.complete or hs.raw_total() > 0
-		g.add_child(UiKit.label("%d%s" % [i + 1, "" if hs.complete else ("*" if played else "")], 24))
-		g.add_child(UiKit.label(str(hs.par), 24))
-		g.add_child(UiKit.label(str(hs.score()) if played else "–", 24))
-		g.add_child(UiKit.label(RoundState.fmt_relative(hs.relative_to_par()) if played else "–", 24))
-		g.add_child(UiKit.label(str(hs.penalties), 24))
-	g.add_child(UiKit.label("Total", 24, UiKit.C_WARN))
-	g.add_child(UiKit.label(str(rs.total_par()), 24, UiKit.C_WARN))
-	g.add_child(UiKit.label(str(rs.total_score()), 24, UiKit.C_WARN))
-	g.add_child(UiKit.label(RoundState.fmt_relative(rs.relative_to_par()), 24, UiKit.C_WARN))
-	g.add_child(UiKit.label(str(rs.total_penalties()), 24, UiKit.C_WARN))
+		par_sum += hs.par
+		pen_sum += hs.penalties
+		if hs.complete or hs.raw_total() > 0:
+			any_played = true
+			score_sum += hs.score()
+			rel_sum += hs.relative_to_par()
+	g.add_child(_board_head("HOLE", false, true))
+	for i in range(start, end):
+		g.add_child(_board_head(str(i + 1), i == rs.current_index, false))
+	g.add_child(_board_head("TOT", false, false))
+	g.add_child(_board_label("PAR", 16))
+	for i in range(start, end):
+		g.add_child(_board_value(str((rs.holes[i] as HoleState).par)))
+	g.add_child(_board_value(str(par_sum), 22, UiKit.C_TEXT, true))
+	g.add_child(_board_label("SCORE", 16))
+	for i in range(start, end):
+		g.add_child(_board_score(rs.holes[i] as HoleState, i == rs.current_index))
+	g.add_child(_board_value(str(score_sum) if any_played else "–", 22, UiKit.C_TEXT, true))
+	g.add_child(_board_label("+/−", 16))
+	for i in range(start, end):
+		var hs2: HoleState = rs.holes[i]
+		var played := hs2.complete or hs2.raw_total() > 0
+		var rel := hs2.relative_to_par()
+		var col := UiKit.C_MUTED if not played else (UiKit.C_CYAN if rel < 0 else (UiKit.C_WARN if rel > 0 else UiKit.C_TEXT))
+		g.add_child(_board_value(RoundState.fmt_relative(rel) if played else "–", 21, col))
+	g.add_child(_board_value(RoundState.fmt_relative(rel_sum) if any_played else "–", 21, UiKit.C_TEXT, true))
+	g.add_child(_board_label("PEN", 16))
+	for i in range(start, end):
+		var pen: int = (rs.holes[i] as HoleState).penalties
+		g.add_child(_board_value(str(pen) if pen > 0 else "–", 21, UiKit.C_WARN if pen > 0 else UiKit.C_MUTED))
+	g.add_child(_board_value(str(pen_sum) if pen_sum > 0 else "–", 21, UiKit.C_TEXT, true))
 	return g
 
 
