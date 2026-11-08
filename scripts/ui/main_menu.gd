@@ -93,6 +93,11 @@ func _pop() -> void:
 	var p: Control = _stack.pop_back()
 	if bool(p.get_meta("online_page", false)):
 		App.online.leave()
+		if App.local_relay.is_running():
+			# Give the relay a moment to tell guests the room closed, then shut it down.
+			get_tree().create_timer(1.0).timeout.connect(func() -> void:
+				if App.local_relay.rooms.is_empty():
+					App.local_relay.stop())
 		# Leaving the lobby also removes its connection page.
 		if not _stack.is_empty() and bool(_stack.back().get_meta("online_page", false)):
 			var previous: Control = _stack.pop_back()
@@ -386,33 +391,54 @@ func _open_online() -> void:
 	(pg.root as Control).set_meta("online_page", true)
 	var config := ConfigFile.new()
 	config.load("user://online.cfg")
-	var default_url := String(ProjectSettings.get_setting("network/relay_url", ""))
-	var address := _online_input(body, "RELAY ADDRESS", String(config.get_value("online", "url", default_url)), "wss://your-relay.example")
 	var nickname := _online_input(body, "YOUR NAME", String(config.get_value("online", "name", "Player")), "Name")
 	nickname.max_length = 24
+	body.add_child(_note("Play together in the same room: everyone on the same Wi-Fi, or on the Wi-Fi hotspot of the host's phone (no internet needed). The host phone runs the game server: keep the app open on it."))
+	body.add_child(_caption("JOIN: HOST PHONE ADDRESS"))
+	var address := _online_input(body, "HOST IP ADDRESS", String(config.get_value("online", "host_ip", "")), "e.g. 192.168.1.20")
+	var port_field := _online_input(body, "PORT", String(config.get_value("online", "port", str(LocalRelay.DEFAULT_PORT))), str(LocalRelay.DEFAULT_PORT))
+	port_field.max_length = 5
 	var code_field := _online_input(body, "ROOM CODE", "", "Enter code to join")
 	code_field.max_length = 6
-	body.add_child(_note("Live turns on separate phones. Solo and pass-and-play remain available from the main menu."))
-	var status_label := UiKit.text("A deployed relay address is required for internet play.", 21, UiKit.C_MUTED)
+	var status_label := UiKit.text("Host on this phone, or enter the host's address to join.", 21, UiKit.C_MUTED)
 	body.add_child(status_label)
-	var connect_room := func(joining: bool) -> void:
-		if address.text.strip_edges().is_empty():
-			status_label.text = "Set the relay address first."
+	var save_name := func() -> void:
+		config.set_value("online", "name", nickname.text.strip_edges())
+		config.set_value("online", "host_ip", address.text.strip_edges())
+		config.set_value("online", "port", port_field.text.strip_edges())
+		config.save("user://online.cfg")
+	var host_game := func() -> void:
+		save_name.call()
+		var listen_port := LocalRelay.DEFAULT_PORT
+		if not (App.local_relay.is_running() and App.local_relay.port == listen_port):
+			var err := App.local_relay.start(listen_port)
+			if err != OK:
+				status_label.text = "Could not start the game server on port %d (error %d)." % [listen_port, err]
+				return
+		var ips := LocalRelay.private_addresses()
+		(pg.root as Control).set_meta("host_hint", "Friends join with address %s port %d (Wi-Fi hotspot works too)." % [
+			" or ".join(ips) if not ips.is_empty() else "(no Wi-Fi/hotspot address found; turn on Wi-Fi or hotspot)", listen_port])
+		App.online.connect_room("ws://127.0.0.1:%d" % listen_port, nickname.text, "")
+	var join_game := func() -> void:
+		var host_ip := address.text.strip_edges()
+		var join_port := port_field.text.strip_edges()
+		if not NetTransport.is_private_host(host_ip) or not join_port.is_valid_int():
+			status_label.text = "Enter the host's private IP address (like 192.168.1.20) and port."
 			return
-		if joining and code_field.text.strip_edges().length() != 6:
+		if code_field.text.strip_edges().length() != 6:
 			status_label.text = "Enter the six-character room code."
 			return
-		config.set_value("online", "url", address.text.strip_edges())
-		config.set_value("online", "name", nickname.text.strip_edges())
-		config.save("user://online.cfg")
-		App.online.connect_room(address.text, nickname.text, code_field.text.strip_edges() if joining else "")
-	var host := _primary_button("Host game", func() -> void: connect_room.call(false), "online_host")
-	var join := _primary_button("Join game", func() -> void: connect_room.call(true), "online_join")
+		save_name.call()
+		App.online.connect_room("ws://%s:%d" % [host_ip, int(join_port)], nickname.text, code_field.text.strip_edges())
+	var host := _primary_button("Host on this phone", host_game, "online_host")
+	var join := _primary_button("Join", join_game, "online_join")
 	(pg.footer as VBoxContainer).add_child(host)
 	(pg.footer as VBoxContainer).add_child(join)
 	var update := func() -> void:
 		if not is_instance_valid(status_label): return
 		status_label.text = App.online.status
+		if App.online.seat == 0 and (pg.root as Control).has_meta("host_hint"):
+			status_label.text += "\n" + String((pg.root as Control).get_meta("host_hint"))
 		host.disabled = App.online.active
 		join.disabled = App.online.active
 		if App.online.seat >= 0 and not bool((pg.root as Control).get_meta("lobby_open", false)):
@@ -429,6 +455,10 @@ func _open_online_lobby() -> void:
 	(pg.root as Control).set_meta("online_page", true)
 	var body: VBoxContainer = pg.body
 	body.add_child(UiKit.label("ROOM  " + App.online.code, 38, Color.WHITE))
+	if App.online.seat == 0 and App.local_relay.is_running():
+		var ips := LocalRelay.private_addresses()
+		body.add_child(_note("Friends join with address %s, port %d and this room code. Wi-Fi hotspot works. Keep this app open." % [
+			", ".join(ips) if not ips.is_empty() else "(none found: turn on Wi-Fi or hotspot)", App.local_relay.port]))
 	var roster := UiKit.vbox(10)
 	body.add_child(roster)
 	var courses := OptionButton.new()

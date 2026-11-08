@@ -22,7 +22,8 @@ To do:
 - Idea: four clubs (Driver, Iron, Wedge, Putter). Conflicts with the locked "no clubs" rule in CLAUDE.md/spec; needs an explicit owner decision.
 
 ## In progress
-- Online relay code is integrated and committed (`a11fc68`), not deployed. Relay hosting, verification of the merged game_ui and phone QA remain. See `docs/MULTIPLAYER.md`.
+- Online play is now DIRECT LAN/hotspot: the host phone runs `LocalRelay` (GDScript port of the relay). Owner dropped the hosted wss:// relay. Headless-tested only; real-phone QA (Wi-Fi and hotspot, 2-4 phones), verification of the merged game_ui and an on-screen check of the new Online screen remain. See `docs/MULTIPLAYER.md`.
+- Optional later: hosted wss:// relay (`relay/server.py` still works, no UI for it), mDNS/QR code to avoid typing the host IP.
 
 ## Next (owner ticked these, in this order)
 1. Round-complete screen check in the new style (the scorecard menu is done, waiting for approval).
