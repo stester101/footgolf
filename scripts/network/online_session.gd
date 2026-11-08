@@ -94,8 +94,55 @@ func preselected_id() -> String:
 ## When the turn comes back to this phone, restore its pre-pick if that footballer is still free.
 func _switch_to(i: int) -> void:
 	super._switch_to(i)
+	_restore_pre_shot()
 	if room != null and room.seat == turn and _preselect != "" and repo.has(_preselect) and pool.is_available(_preselect, mode):
 		selected_id = _preselect
+
+
+## Shot setup (Caps/Goals, Approach/Putt, trajectory, spin) chosen on THIS phone, kept until this player shoots.
+var _pre_shot := {}
+
+
+func _remember(key: String, value) -> void:
+	if not _applying:
+		_pre_shot[key] = value
+
+
+func _restore_pre_shot() -> void:
+	if _pre_shot.is_empty() or room == null or room.seat != turn:
+		return
+	mode = int(_pre_shot.get("mode", mode))
+	style = int(_pre_shot.get("style", style))
+	trajectory = int(_pre_shot.get("trajectory", trajectory))
+	spin = float(_pre_shot.get("spin", spin))
+
+
+func apply_lie_defaults() -> void:
+	super.apply_lie_defaults()
+	_restore_pre_shot()
+	if room != null and room.seat == turn and selected_id == "" and _preselect != "" and repo.has(_preselect) \
+			and pool.is_available(_preselect, mode):
+		selected_id = _preselect
+
+
+func set_mode(m: int) -> void:
+	super.set_mode(m)
+	_remember("mode", mode)
+
+
+func set_style(st: int) -> void:
+	super.set_style(st)
+	_remember("style", style)
+
+
+func set_trajectory(t: int) -> void:
+	super.set_trajectory(t)
+	_remember("trajectory", trajectory)
+
+
+func set_spin(value: float) -> void:
+	super.set_spin(value)
+	_remember("spin", spin)
 
 
 func controls_turn() -> bool:
@@ -122,8 +169,11 @@ func take_shot() -> bool:
 	if can_take_shot() != "":
 		message.emit(can_take_shot())
 		return false
-	return _request("shot", {"id": selected_id, "aim": aim_bearing_deg,
+	var sent := _request("shot", {"id": selected_id, "aim": aim_bearing_deg,
 		"mode": mode, "style": style, "spin": spin, "trajectory": trajectory})
+	if sent:
+		_pre_shot.clear()  # used up: the next shot starts from the normal defaults again
+	return sent
 
 func begin_play() -> void:
 	if _applying:
@@ -285,6 +335,7 @@ func apply_snapshot(data: Dictionary, animate: bool) -> void:
 	style = int(data.style)
 	spin = float(data.spin)
 	trajectory = int(data.trajectory)
+	_restore_pre_shot()  # host updates must not overwrite the shot setup this player chose themselves
 	# The host's selection belongs to the active player. A guest keeps its own pre-pick across updates: it stays
 	# selected while the footballer is still free, and is dropped (the player re-picks) once someone else uses them.
 	selected_id = String(data.selected) if _host else ""
