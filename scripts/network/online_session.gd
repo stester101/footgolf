@@ -98,8 +98,17 @@ func take_shot() -> bool:
 		"mode": mode, "style": style, "spin": spin, "trajectory": trajectory})
 
 func begin_play() -> void:
-	if _applying: super.begin_play()
-	else: _request("begin")
+	if _applying:
+		super.begin_play()
+	elif _host:
+		# The host is the authority: apply Tee off locally and broadcast, with no relay round trip that can be
+		# dropped (that left the host on the overhead intro with no button left to press).
+		if state == ShotTypes.State.HOLE_INTRO and room != null and room.active and not room.paused:
+			super.begin_play()
+			revision += 1
+			room.send_event({"kind": "state", "snapshot": snapshot()})
+	else:
+		_request("begin")
 
 func acknowledge_result() -> void:
 	if _applying: super.acknowledge_result()

@@ -552,10 +552,40 @@ func set_wind(wind: Vector2) -> void:
 
 func set_cup_radius(r: float) -> void:
 	cup_radius = r
+	# The cup disc and rim follow the ground under them: a flat disc on a sloped green sank into the
+	# turf on one side and floated on the other, which showed as a dark ellipse at the hole.
 	if _cup_disc != null:
-		_cup_disc.scale = Vector3(r, 1.0, r)
+		_cup_disc.mesh = _ground_disc(0.0, r, 0.012)
+		_cup_disc.scale = Vector3.ONE
+		_cup_disc.position = Vector3.ZERO
 	if _cup_ring != null:
-		_cup_ring.scale = Vector3(r, 0.1, r)
+		_cup_ring.mesh = _ground_disc(0.92 * r, 1.12 * r, 0.02)
+		_cup_ring.scale = Vector3.ONE
+		_cup_ring.position = Vector3.ZERO
+
+
+## Flat annulus (inner..outer radius, metres) whose vertices sit on the terrain plus a small lift.
+func _ground_disc(inner: float, outer: float, lift: float) -> ArrayMesh:
+	var c := hole.cup_position()
+	var n := 32
+	var verts := PackedVector3Array()
+	var idx := PackedInt32Array()
+	for i in n + 1:
+		var a := TAU * float(i % n) / n
+		for rr in [inner, outer]:
+			var x: float = c.x + cos(a) * rr
+			var z: float = c.z + sin(a) * rr
+			verts.append(Vector3(x, hole.terrain_height(x, z) + lift, z))
+	for i in n:
+		var b := i * 2
+		idx.append_array(PackedInt32Array([b, b + 2, b + 1, b + 1, b + 2, b + 3]))
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
 
 
 func _build_tee_markers() -> void:
