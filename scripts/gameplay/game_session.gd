@@ -52,6 +52,8 @@ var undo_stack: Array = []
 var shot_counter := 0
 var state_version := 0
 var _plan: Dictionary = {}
+## True for the shot that replaces a mulliganed shot (it cannot be mulliganed itself).
+var _next_is_replacement := false
 var _accum := 0.0
 var _hole_start_pool: Dictionary = {}
 
@@ -282,6 +284,8 @@ func take_shot() -> bool:
 	shot_counter += 1
 	state_version += 1
 	plan["footballer"] = fb.copy()
+	plan["replacement"] = _next_is_replacement
+	_next_is_replacement = false
 	_set_state(ShotTypes.State.SHOT_COMMITTED)
 	_launch(req, plan)
 	return true
@@ -447,6 +451,7 @@ func _resolve() -> void:
 	r.final_lie = Surface.Type.GREEN if in_cup else hole.surface_at(final.x, final.z)
 	r.remaining_m = 0.0 if holed else dist
 	r.hole_score_after = hs.score()
+	r.is_replacement = bool(_plan.get("replacement", false))
 	ball_pos = final
 	if not holed and hole.is_safe_spot(final.x, final.z, 0.0):
 		last_safe_pos = final
@@ -523,22 +528,51 @@ func can_undo() -> bool:
 	return not undo_stack.is_empty() and not is_ball_moving()
 
 
-## A mulligan can only replace the last completed shot before its result is dismissed.
+## Mulligan (docs/SPECIFICATION.md §15.4, owner-agreed rules):
+## - only the IMMEDIATELY preceding shot may be replaced, before the next shot;
+## - the original footballer stays consumed (pool is NOT restored) and is recorded in the hole;
+## - the replacement cannot itself be mulliganed; no mulligan after the original shot holed out;
+## - the original attempt is kept in round_state.mulligan_audit and does not score.
 ## The round setup determines the allowance; there is no mid-round setting change.
 func can_mulligan() -> bool:
-	return state == ShotTypes.State.SHOT_RESULT and can_undo() \
-			and int(undo_stack.back().get("hole_index", -1)) == round_state.current_index \
-			and (round_state.mulligans_allowed < 0 or round_state.mulligans_remaining() > 0)
+	if state != ShotTypes.State.SHOT_RESULT or last_result == null or undo_stack.is_empty():
+		return false
+	if last_result.holed or last_result.is_replacement:
+		return false
+	if int(undo_stack.back().get("hole_index", -1)) != round_state.current_index:
+		return false
+	return round_state.mulligans_allowed < 0 or round_state.mulligans_remaining() > 0
 
 
 func use_mulligan() -> bool:
 	if not can_mulligan():
 		return false
-	var undone := last_result
-	if not _restore_last_shot():
-		return false
+	var s: Dictionary = undo_stack.pop_back()
+	var original := last_result
+	round_state.holes[round_state.current_index] = (s["hole_state"] as HoleState).copy()
+	var hs := current_hole_state()
+	if not hs.used_footballer_ids.has(original.footballer_id):
+		hs.used_footballer_ids.append(original.footballer_id)  # stays consumed on this hole
+	round_state.mulligan_audit.append(original.to_dict())
+	history.resize(int(s["history_size"]))
+	ball_pos = s["ball_pos"]
+	last_safe_pos = s["last_safe_pos"]
+	aim_bearing_deg = s["aim"]
+	mode = s["mode"]
+	style = int(s.get("style", ShotTypes.Style.FLIGHT))
+	spin = s.get("spin", 0.0)
+	trajectory = int(s.get("trajectory", ShotTypes.Trajectory.STANDARD))
+	selected_id = ""  # the original footballer is spent; choose a new one
+	last_result = null
+	last_request = null
+	sim = null
+	_next_is_replacement = true
 	round_state.mulligans_used += 1
-	shot_mulliganed.emit(undone)
+	state_version += 1
+	_set_state(ShotTypes.State.AIMING)
+	ball_placed.emit()
+	selection_changed.emit()
+	shot_mulliganed.emit(original)
 	message.emit("Mulligan taken · %s left" % ("unlimited" if round_state.mulligans_allowed < 0 else str(round_state.mulligans_remaining())))
 	return true
 

@@ -42,6 +42,8 @@ var final_lie: int = Surface.Type.FAIRWAY
 var time_in_motion_s := 0.0
 var stroke_delta := 1
 var holed := false
+## True when this shot replaced a mulliganed shot.
+var is_replacement := false
 var remaining_m := 0.0
 var seed := 0
 var neutral_calibration_error_pct := 0.0

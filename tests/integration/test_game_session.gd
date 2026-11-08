@@ -297,14 +297,18 @@ func test_mulligan_is_round_locked_and_restores_the_entire_shot() -> void:
 	assert_true(s.use_mulligan())
 	assert_eq(s.state, ShotTypes.State.AIMING)
 	assert_eq(s.ball_pos, start)
-	assert_eq(s.current_hole_state().strokes, 0)
+	assert_eq(s.current_hole_state().strokes, 0, "original attempt does not score")
 	assert_eq(s.history.size(), 0)
-	assert_true(s.pool.is_available(id), "footballer returned")
+	assert_eq(s.round_state.mulligan_audit.size(), 1, "original attempt kept for audit")
+	assert_false(s.pool.is_available(id), "original footballer stays consumed")
 	assert_eq(s.round_state.mulligans_remaining(), 0)
 	assert_false(s.use_mulligan(), "cannot spend the allowance twice")
+	var id2 := TestHelpers.add_player(s.repo, 0, 0)
+	assert_true(s.select_footballer(id2))
 	assert_true(s.take_shot())
 	s.skip_motion()
-	assert_false(s.can_mulligan(), "exhausted allowance")
+	assert_true(s.last_result.is_replacement)
+	assert_false(s.can_mulligan(), "replacement cannot be mulliganed")
 	s.acknowledge_result()
 	assert_false(s.can_mulligan(), "result dismissed")
 	s.start_round(TestHelpers.load_holes(), 12345)
@@ -312,21 +316,30 @@ func test_mulligan_is_round_locked_and_restores_the_entire_shot() -> void:
 	TestHelpers.cleanup_repo(s.repo)
 
 
-func test_unlimited_mulligans_can_retake_multiple_shots() -> void:
+func test_unlimited_mulligans_one_per_shot_and_footballers_stay_spent() -> void:
 	var s := TestHelpers.make_session()
 	s.start_round(TestHelpers.load_holes(), 12345, FootballerPool.ReuseRule.ONCE_PER_ROUND, -1)
 	s.begin_play()
-	var id := TestHelpers.add_player(s.repo, 0, 0)
-	assert_true(s.select_footballer(id))
-	for i in 3:
+	for i in 2:
+		# original shot, mulliganed
+		var id := TestHelpers.add_player(s.repo, 0, 0)
+		assert_true(s.select_footballer(id))
 		assert_true(s.take_shot())
 		s.skip_motion()
 		assert_true(s.use_mulligan())
-		assert_eq(s.round_state.mulligans_remaining(), -1)
-		assert_eq(s.current_hole_state().strokes, 0)
-	assert_eq(s.round_state.mulligans_used, 3)
-	TestHelpers.cleanup_repo(s.repo)
-
+		assert_eq(s.current_hole_state().strokes, i, "original attempt does not score")
+		assert_false(s.pool.is_available(id), "original stays spent")
+		# replacement: cannot be mulliganed itself
+		var id2 := TestHelpers.add_player(s.repo, 0, 0)
+		assert_true(s.select_footballer(id2))
+		assert_true(s.take_shot())
+		s.skip_motion()
+		assert_true(s.last_result.is_replacement)
+		assert_false(s.can_mulligan())
+		s.acknowledge_result()
+	assert_eq(s.round_state.mulligans_used, 2)
+	assert_eq(s.round_state.mulligan_audit.size(), 2)
+	assert_eq(s.current_hole_state().strokes, 2, "only the two replacement shots score")
 
 func test_dev_replay_no_duplicate_scoring_and_identical_result() -> void:
 	var s := TestHelpers.make_session()

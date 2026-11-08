@@ -98,3 +98,9 @@ Changes to locked rules in `docs/SPECIFICATION.md`, made explicitly by the produ
   radii along the line of play shrink with the middle (to >= 50 %). Sizes of greens, bunkers, fairway
   widths and trees are unchanged. Generated holes: `design_yards` (original layout) + `yards` in
   `tools/data/gen_forest_holes.py`; Starter Links: one-off `tools/data/rescale_starter_holes.py`.
+
+## 2026-11-08 — Mulligan rules restored to the agreed rules
+- A mulligan replaces only the immediately preceding shot, before the next shot. The original footballer stays consumed (not returned to the pool). The replacement cannot be mulliganed. No mulligan after the original shot holed out. The original attempt is kept in `round_state.mulligan_audit` and does not score. Developer Undo remains separate and may restore availability (docs/SPECIFICATION.md §15.4).
+
+## 2026-11-08 — Settings v3 physics migration
+- Untouched settings_version 2 physics defaults (bounce thresholds and surface factors from before the golf-ball tuning) are replaced by the v3 defaults on upgrade. Any other saved value is treated as a deliberate edit and kept.

@@ -9,6 +9,8 @@ var round_seed := 0
 ## -1 means unlimited; otherwise the count selected before this round.
 var mulligans_allowed := 0
 var mulligans_used := 0
+## Original mulliganed attempts (audit only; they never score).
+var mulligan_audit: Array = []
 
 
 func mulligans_remaining() -> int:
