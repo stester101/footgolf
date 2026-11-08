@@ -29,6 +29,7 @@ const STATE_NAMES := {
 
 const COMPLETION_HOLED := "HOLED"
 const COMPLETION_MAX_SCORE := "MAX_SCORE"
+const COMPLETION_GIMME := "GIMME"  # next shot conceded: 1 stroke, no footballer used
 
 
 static func mode_name(m: int) -> String:

@@ -57,6 +57,7 @@ var _lie_effect_label: Label
 var _traj_btn: Button
 var _skip_btn: Button
 var _fast_btn: Button
+var _gimme_btn: Button
 ## True while the player holds the fast-forward button (shot animation runs faster).
 var fast_forward := false
 var _shot_btn: Button
@@ -595,6 +596,16 @@ func _build_shot_controls() -> VBoxContainer:
 	_fast_btn.button_down.connect(func() -> void: fast_forward = true)
 	_fast_btn.button_up.connect(func() -> void: fast_forward = false)
 	cv.add_child(_fast_btn)
+	_gimme_btn = UiKit.button("TAKE GIMME  ·  putt conceded, +1 stroke", func() -> void:
+		if _overlays.is_empty():
+			session.take_gimme(), 60, 22)
+	_gimme_btn.set_meta("ui_id", "take_gimme")
+	for st in ["normal", "hover", "pressed", "hover_pressed"]:
+		_gimme_btn.add_theme_stylebox_override(st, UiKit.skin("lime", 6, 16, 8))
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+		_gimme_btn.add_theme_color_override(c, Color("#0E2A07"))
+	_gimme_btn.visible = false
+	cv.add_child(_gimme_btn)
 	cv.add_child(_card_rule())
 	var r1: Array = _seg_row("STAT", "CAPS", "mode_caps", func() -> void: session.set_mode(ShotTypes.Mode.CAPS),
 		"GOALS", "mode_goals", func() -> void: session.set_mode(ShotTypes.Mode.GOALS))
@@ -856,6 +867,7 @@ func refresh() -> void:
 	if session is OnlineSession:
 		can_act = can_act and (session as OnlineSession).controls_turn()
 	_fast_btn.visible = moving
+	_gimme_btn.visible = can_act and session.gimme_available()
 	if not moving:
 		fast_forward = false
 	if moving:

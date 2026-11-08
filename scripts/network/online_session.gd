@@ -19,6 +19,7 @@ var _sent_at := 0
 
 func configure(value: OnlineRoom) -> void:
 	room = value
+	gimme_enabled = false  # online keeps the at-rest auto hole-out (no gimme intent in the protocol yet)
 	_host = room.seat == 0
 	room.intent.connect(_on_intent)
 	room.event.connect(_on_event)
