@@ -190,6 +190,44 @@ static func skin(kind: String, radius: float = 6.0, padx: float = 14.0, pady: fl
 	return k
 
 
+static var _switch_cache: Dictionary = {}
+
+
+## Pill switch drawn in code (lime + white knob when on, recessed navy + grey knob when off).
+static func _switch_tex(on: bool) -> Texture2D:
+	if _switch_cache.has(on):
+		return _switch_cache[on]
+	var w := 76
+	var h := 44
+	var ss := 3  # supersample for smooth edges
+	var img := Image.create(w * ss, h * ss, false, Image.FORMAT_RGBA8)
+	var r := float(h * ss) * 0.5
+	var knob_x := float(w * ss) - r if on else r
+	var top := Color("#C6FF70") if on else Color(0.06, 0.13, 0.26, 1.0)
+	var bot := Color("#8DDB2A") if on else Color(0.12, 0.22, 0.38, 1.0)
+	var rim := Color(0.90, 1.0, 0.70, 1.0) if on else Color(0.62, 0.80, 0.96, 0.75)
+	var knob := Color.WHITE if on else Color(0.70, 0.78, 0.88, 1.0)
+	for y in img.get_height():
+		for x in img.get_width():
+			var fx := float(x) + 0.5
+			var fy := float(y) + 0.5
+			var cx := clampf(fx, r, float(w * ss) - r)
+			var d := Vector2(fx - cx, fy - r).length()
+			if d > r:
+				continue
+			var c := top.lerp(bot, fy / float(h * ss))
+			if d > r - 2.5 * ss:
+				c = rim
+			var kd := Vector2(fx - knob_x, fy - r).length()
+			if kd < r - 5.0 * ss:
+				c = knob
+			img.set_pixel(x, y, c)
+	img.resize(w, h, Image.INTERPOLATE_LANCZOS)
+	var tex := ImageTexture.create_from_image(img)
+	_switch_cache[on] = tex
+	return tex
+
+
 static func make_theme() -> Theme:
 	var t := Theme.new()
 	t.default_font_size = 26
@@ -223,10 +261,31 @@ static func make_theme() -> Theme:
 	t.set_color("font_color", "LineEdit", C_TEXT)
 	t.set_color("font_placeholder_color", "LineEdit", C_MUTED)
 	t.set_color("caret_color", "LineEdit", C_ACCENT)
-	t.set_stylebox("panel", "TabContainer", skin("glass", 8, 10, 10))
+	# recessed text field variation for settings / developer inputs (set theme_type_variation = "SkinEdit")
+	t.set_type_variation("SkinEdit", "LineEdit")
+	t.set_stylebox("normal", "SkinEdit", skin("recess", 5, 12, 8))
+	t.set_stylebox("focus", "SkinEdit", skin("recess", 5, 12, 8))
+	t.set_stylebox("read_only", "SkinEdit", skin("recess", 5, 12, 8))
+	t.set_stylebox("panel", "TabContainer", skin("recess", 8, 10, 10))
+	t.set_stylebox("tab_selected", "TabContainer", skin("lime", 5, 14, 6))
+	t.set_stylebox("tab_hovered", "TabContainer", skin("btn_hover", 5, 14, 6))
+	t.set_stylebox("tab_unselected", "TabContainer", skin("btn", 5, 14, 6))
+	t.set_stylebox("tab_disabled", "TabContainer", skin("disabled", 5, 14, 6))
+	t.set_stylebox("tabbar_background", "TabContainer", StyleBoxEmpty.new())
+	t.set_constant("side_margin", "TabContainer", 0)
 	t.set_font_size("font_size", "TabContainer", 24)
-	t.set_color("font_selected_color", "TabContainer", C_TEXT)
-	t.set_color("font_unselected_color", "TabContainer", C_MUTED)
+	t.set_color("font_selected_color", "TabContainer", Color("#0E2A07"))
+	t.set_color("font_hovered_color", "TabContainer", C_TEXT)
+	t.set_color("font_unselected_color", "TabContainer", C_TEXT)
+	# item lists (developer players tab)
+	t.set_stylebox("panel", "ItemList", skin("recess", 6, 8, 6))
+	t.set_stylebox("focus", "ItemList", StyleBoxEmpty.new())
+	t.set_stylebox("selected", "ItemList", skin("select", 4, 6, 4))
+	t.set_stylebox("selected_focus", "ItemList", skin("select", 4, 6, 4))
+	t.set_color("font_color", "ItemList", C_TEXT)
+	t.set_color("font_selected_color", "ItemList", Color.WHITE)
+	t.set_font_size("font_size", "ItemList", 22)
+	t.set_constant("v_separation", "ItemList", 6)
 	t.set_constant("separation", "VBoxContainer", 10)
 	t.set_constant("separation", "HBoxContainer", 10)
 	t.set_constant("h_separation", "GridContainer", 18)
@@ -241,6 +300,14 @@ static func make_theme() -> Theme:
 	for st in ["normal", "pressed", "hover_pressed", "disabled"]:
 		t.set_stylebox(st, "CheckButton", skin("recess", 6, 14, 10))
 	t.set_stylebox("hover", "CheckButton", skin("btn", 6, 14, 10))
+	for ic in ["checked", "checked_mirrored"]:
+		t.set_icon(ic, "CheckButton", _switch_tex(true))
+	for ic in ["unchecked", "unchecked_mirrored"]:
+		t.set_icon(ic, "CheckButton", _switch_tex(false))
+	for ic in ["checked_disabled", "checked_disabled_mirrored"]:
+		t.set_icon(ic, "CheckButton", _switch_tex(true))
+	for ic in ["unchecked_disabled", "unchecked_disabled_mirrored"]:
+		t.set_icon(ic, "CheckButton", _switch_tex(false))
 	for c in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color", "font_focus_color"]:
 		t.set_color(c, "CheckButton", C_TEXT)
 	return t
@@ -336,6 +403,7 @@ static func spin(minv: float, maxv: float, step: float, value: float, cb: Callab
 	s.value = value
 	s.custom_minimum_size = Vector2(190, 56)
 	s.select_all_on_focus = true
+	s.get_line_edit().theme_type_variation = "SkinEdit"
 	s.get_line_edit().add_theme_font_size_override("font_size", 24)
 	if cb.is_valid():
 		s.value_changed.connect(cb)
