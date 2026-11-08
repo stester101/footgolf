@@ -53,6 +53,7 @@ To do:
 - Batch D: trial drag up/down on the aim view changes trajectory (Settings > Audio / Visual toggle, default on).
 - Batch F: pass-and-play, furthest from the cup plays next.
 - Hold-to-fast-forward button (4x) while the ball is moving.
+- Lie penalties: rough now 10-20% shorter, bunker 20-40% (flight shots; old saved defaults migrate, custom edits kept). The spin ball sits on the lie colour with the lie name and penalty underneath; Settings > Gameplay "Show exact lie penalty" switches range to this shot's exact value (exact is true, from the shot seed). Rendered once on the tee only; rough/bunker look not seen yet.
 - Country filter list: rows now pass drags through so it scrolls by touch (taps ignored if the list moved); list taller. Star has a gap before the arrow. Player 2 red is now a deeper #D63A44. Not tested by touch on a device.
 - Picker star icon centred in its row; shorter name/year fonts to cut truncation.
 

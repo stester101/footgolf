@@ -25,3 +25,11 @@ func test_clean_install_uses_v3_defaults() -> void:
 	assert_near(cfg.bounce_soft, 16.0, 1e-9, "v3 bounce default")
 	var empty := SettingsStore.migrate_physics_v2({})
 	assert_eq(empty.size(), 0)
+
+
+func test_v3_rough_and_bunker_defaults_move_to_v4() -> void:
+	var saved := {"surfaces": {"Rough": {"roll_decel": 2.2, "roll_drag": 0.6, "restitution": 0.18, "retention": 0.2, "caps_min": 0.9, "caps_max": 0.97},
+		"Bunker": {"roll_decel": 5.5, "roll_drag": 1.5, "restitution": 0.05, "retention": 0.06, "caps_min": 0.7, "caps_max": 0.85}}}
+	var out := SettingsStore.migrate_physics_v3(saved)
+	assert_false((out["surfaces"] as Dictionary).has("Rough"), "untouched v3 rough dropped")
+	assert_true((out["surfaces"] as Dictionary).has("Bunker"), "custom bunker kept")

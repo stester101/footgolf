@@ -53,6 +53,7 @@ var _player_sub: Label
 var _spin_box: Control
 var _spin: SpinControl
 var _spin_label: Label
+var _lie_effect_label: Label
 var _traj_btn: Button
 var _skip_btn: Button
 var _fast_btn: Button
@@ -466,6 +467,8 @@ func _build_shot_controls() -> VBoxContainer:
 	_spin_label = _num("NO SPIN", 20, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	pill.add_child(_spin_label)
 	spv.add_child(pill)
+	_lie_effect_label = _num("", 17, Color(1, 1, 1, 0.85), HORIZONTAL_ALIGNMENT_CENTER)
+	spv.add_child(_lie_effect_label)
 	_traj_btn = Button.new()
 	_traj_btn.custom_minimum_size = Vector2(0, 58)
 	_traj_btn.focus_mode = Control.FOCUS_ALL
@@ -826,6 +829,7 @@ func refresh() -> void:
 	_spin.mouse_filter = Control.MOUSE_FILTER_STOP if (flight and not moving) else Control.MOUSE_FILTER_IGNORE
 	_traj_btn.disabled = moving or not flight
 	_spin.set_spin(session.spin if flight else 0.0)
+	_update_lie_effect(lie, flight)
 	_apply_player_style()
 	_traj_btn.text = "%s\n%d°" % [ShotTypes.trajectory_name(session.trajectory), int(round(session.launch_angle_for(session.trajectory)))]
 	_spin_label.text = "NO SPIN" if (not flight or absf(session.spin) < 0.025) else "%s %d%%" % ["TOP" if session.spin > 0.0 else "BACK", int(round(absf(session.spin) * 100.0))]
@@ -867,6 +871,21 @@ func refresh() -> void:
 	for i in _overlays.size():
 		if is_instance_valid(_overlays[i]):
 			_overlays[i].visible = i == _overlays.size() - 1
+
+
+## Ball sits on the lie colour with the distance penalty underneath: a range, or this shot's exact value.
+func _update_lie_effect(lie: int, flight: bool) -> void:
+	_spin.set_lie_colour(Surface.lie_colour(lie))
+	var pv := session.lie_effect_preview()
+	var nm := Surface.name_of(lie).to_upper()
+	if not flight or int(pv["max_pct"]) <= 0:
+		_lie_effect_label.text = nm
+	elif App.settings.lie_effect_exact:
+		_lie_effect_label.text = "%s  -%d%%" % [nm, int(pv["exact_pct"])]
+	elif int(pv["min_pct"]) == int(pv["max_pct"]):
+		_lie_effect_label.text = "%s  -%d%%" % [nm, int(pv["max_pct"])]
+	else:
+		_lie_effect_label.text = "%s  -%d to -%d%%" % [nm, int(pv["min_pct"]), int(pv["max_pct"])]
 
 
 func _sync_shot_units() -> void:

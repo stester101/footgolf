@@ -43,11 +43,23 @@ static func default_params() -> Dictionary:
 		Type.FAIRWAY: _p(0.90, 0.22, 0.38, 0.37, 1.0, 1.0),
 		Type.FRINGE: _p(0.80, 0.18, 0.35, 0.36, 0.97, 1.0),
 		Type.GREEN: _p(0.80, 0.17, 0.30, 0.30, 1.0, 1.0),
-		Type.ROUGH: _p(2.20, 0.60, 0.18, 0.20, 0.90, 0.97),
-		Type.BUNKER: _p(5.50, 1.50, 0.05, 0.06, 0.82, 0.93),
+		Type.ROUGH: _p(2.20, 0.60, 0.18, 0.20, 0.80, 0.90),
+		Type.BUNKER: _p(5.50, 1.50, 0.05, 0.06, 0.60, 0.80),
 		Type.WATER: _p(50.0, 5.0, 0.0, 0.0, 0.3, 0.5),
 		Type.OOB: _p(2.20, 0.60, 0.18, 0.20, 0.8, 0.9),
 	}
+
+
+## Ground colour shown under the ball on the spin control.
+static func lie_colour(t: int) -> Color:
+	match t:
+		Type.BUNKER: return Color("#D9C48A")
+		Type.ROUGH: return Color("#2F6B2E")
+		Type.GREEN: return Color("#62C554")
+		Type.FRINGE: return Color("#4FA743")
+		Type.WATER: return Color("#2C7BD0")
+		Type.OOB: return Color("#6B6B6B")
+		_: return Color("#3E9A3A")
 
 
 static func _p(decel: float, drag: float, rest: float, ret: float, cmin: float, cmax: float) -> Dictionary:

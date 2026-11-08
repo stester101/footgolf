@@ -69,8 +69,8 @@ Tolerance required: Caps max(0.25 yd, 0.5%), Goals max(0.10 ft, 1%). The develop
 | Tee / Fairway (reference) | 0.90 | 0.22 | 0.38 | 0.37 | 1.00 |
 | Fringe | 0.80 | 0.18 | 0.35 | 0.36 | 0.97–1.00 |
 | Green | 0.80 | 0.17 | 0.30 | 0.30 | 1.00 |
-| Rough | 2.20 | 0.60 | 0.18 | 0.20 | 0.90–0.97 |
-| Bunker | 5.50 | 1.50 | 0.05 | 0.06 | 0.82–0.93 |
+| Rough | 2.20 | 0.60 | 0.18 | 0.20 | 0.80–0.90 (10–20% shorter) |
+| Bunker | 5.50 | 1.50 | 0.05 | 0.06 | 0.60–0.80 (20–40% shorter) |
 
 Lie factors with a range use a per-shot seeded RNG (seed recorded in `ShotResult`, reused by Replay).
 The player sees only the approximate range text, never a predicted landing point.

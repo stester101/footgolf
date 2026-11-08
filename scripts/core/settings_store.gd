@@ -3,7 +3,7 @@ extends RefCounted
 ## Local preferences and developer test settings, persisted to user://settings.json.
 
 const PATH := "user://settings.json"
-const VERSION := 3
+const VERSION := 4
 
 ## Physics values shipped in settings_version 2 that were replaced by the v3 golf-ball tuning.
 ## A saved value equal to one of these is an untouched old default and is replaced by the new
@@ -17,6 +17,33 @@ const V2_SURFACE := {
 	Surface.Type.ROUGH: {"roll_decel": 2.20, "roll_drag": 0.60, "restitution": 0.18, "retention": 0.20, "caps_min": 0.80, "caps_max": 0.92},
 	Surface.Type.BUNKER: {"roll_decel": 5.50, "roll_drag": 1.50, "restitution": 0.05, "retention": 0.06, "caps_min": 0.60, "caps_max": 0.80},
 }
+
+
+## v4: rough 10-20% and bunker 20-40% distance penalty. Saved Rough/Bunker equal to the v3 defaults
+## are untouched, so they are dropped and the new defaults apply; custom edits are kept.
+const V3_SURFACE := {
+	Surface.Type.ROUGH: {"roll_decel": 2.20, "roll_drag": 0.60, "restitution": 0.18, "retention": 0.20, "caps_min": 0.90, "caps_max": 0.97},
+	Surface.Type.BUNKER: {"roll_decel": 5.50, "roll_drag": 1.50, "restitution": 0.05, "retention": 0.06, "caps_min": 0.82, "caps_max": 0.93},
+}
+
+
+static func migrate_physics_v3(p: Dictionary) -> Dictionary:
+	var out := p.duplicate(true)
+	if typeof(out.get("surfaces")) == TYPE_DICTIONARY:
+		var surf: Dictionary = out["surfaces"]
+		for t in V3_SURFACE.keys():
+			var name := Surface.name_of(int(t))
+			if not surf.has(name) or typeof(surf[name]) != TYPE_DICTIONARY:
+				continue
+			var old: Dictionary = V3_SURFACE[t]
+			var cur: Dictionary = surf[name]
+			var same := true
+			for pk in old.keys():
+				if not cur.has(pk) or not is_equal_approx(float(cur[pk]), float(old[pk])):
+					same = false
+			if same:
+				surf.erase(name)
+	return out
 
 
 ## Drops only the saved physics values that equal the old v2 defaults (see V2_* above).
@@ -49,6 +76,7 @@ var wind_bearing := 0.0
 var sim_speed := 1.0
 var show_trail := true
 var vibration := true
+var lie_effect_exact := false  # spin-ball lie read-out: false = range (-10 to -20%), true = this shot's exact value
 var drag_trajectory := true  # trial: drag up/down on the aim view to change trajectory
 ## Favourite footballer ids (starred in the picker). Global for now; per-profile later.
 var favourites: Array = []
@@ -82,6 +110,7 @@ func load_settings() -> void:
 	sim_speed = clampf(float(d.get("sim_speed", 1.0)), 0.25, 8.0)
 	show_trail = bool(d.get("show_trail", true))
 	vibration = bool(d.get("vibration", true))
+	lie_effect_exact = bool(d.get("lie_effect_exact", false))
 	drag_trajectory = bool(d.get("drag_trajectory", true))
 	favourites = (d.get("favourites", []) as Array).duplicate() if typeof(d.get("favourites")) == TYPE_ARRAY else []
 	show_stats = bool(d.get("show_stats", true))
@@ -101,6 +130,8 @@ func load_settings() -> void:
 		var phys: Dictionary = d["physics"]
 		if int(d.get("settings_version", 1)) < 3:
 			phys = migrate_physics_v2(phys)  # untouched v2 defaults move to the v3 tuning
+		if int(d.get("settings_version", 1)) < 4:
+			phys = migrate_physics_v3(phys)  # untouched v3 rough/bunker move to the v4 penalties
 		physics.apply_dict(phys)
 		if int(d.get("settings_version", 1)) < 2:
 			physics.cup_radius = PhysicsConfig.new().cup_radius  # v2: larger default hole
@@ -123,6 +154,7 @@ func save() -> void:
 		"sim_speed": sim_speed,
 		"show_trail": show_trail,
 		"vibration": vibration,
+		"lie_effect_exact": lie_effect_exact,
 		"drag_trajectory": drag_trajectory,
 		"favourites": favourites,
 		"show_stats": show_stats,

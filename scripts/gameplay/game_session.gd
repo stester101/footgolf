@@ -245,6 +245,20 @@ func apply_lie_defaults() -> void:
 		selected_id = ""
 
 
+## Distance penalty of the current lie for the NEXT flight shot, in percent. The per-shot factor is
+## drawn from the same seed the shot will use, so "exact" is the true value and not a guess.
+func lie_effect_preview() -> Dictionary:
+	var lie := current_lie()
+	var p := cfg.surface(lie)
+	var cmin: float = p["caps_min"]
+	var cmax: float = p["caps_max"]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("%d:%s:%d" % [round_state.round_seed, hole.id, shot_counter + 1]) & 0x7fffffff
+	var f := cmin if is_equal_approx(cmin, cmax) else lerpf(cmin, cmax, rng.randf())
+	return {"lie": lie, "min_pct": int(round((1.0 - cmax) * 100.0)), "max_pct": int(round((1.0 - cmin) * 100.0)),
+		"exact_pct": int(round((1.0 - f) * 100.0))}
+
+
 func suggested_style() -> int:
 	return ShotTypes.Style.ROLL if current_lie() == Surface.Type.GREEN or distance_to_pin_m() <= 20.0 else ShotTypes.Style.FLIGHT
 

@@ -14,12 +14,31 @@ var _touch_index := -1
 
 
 var _ball: ColorRect
+var _ground: Control
+var lie_colour := Color("#3E9A3A")
+
+
+func set_lie_colour(c: Color) -> void:
+	lie_colour = c
+	if _ground != null:
+		_ground.queue_redraw()
 
 
 func _init() -> void:
 	custom_minimum_size = Vector2(128, 128)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	tooltip_text = "Strike point: up = topspin, down = backspin"
+	# ground under the ball, tinted by the lie (grass, rough, sand, green...)
+	_ground = Control.new()
+	_ground.show_behind_parent = true
+	_ground.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ground.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ground.draw.connect(func() -> void:
+		var c := size * 0.5
+		var r := _radius() - 3.0
+		_ground.draw_circle(c, r, Color(lie_colour, 0.9))
+		_ground.draw_arc(c, r, 0, TAU, 48, Color(0, 0, 0, 0.25), 2.0, true))
+	add_child(_ground)
 	# Rendered golf ball behind the guides (lit sphere, dimples, soft shadow; see golf_ball.gdshader)
 	_ball = ColorRect.new()
 	_ball.show_behind_parent = true

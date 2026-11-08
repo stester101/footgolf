@@ -704,6 +704,14 @@ func _open_settings_gameplay() -> void:
 	body.add_child(_setting_row("Hole size (diameter, in)", UiKit.spin(4.25, 72, 0.25, st.physics.cup_diameter_in(), func(val: float) -> void:
 		st.physics.set_cup_diameter_in(val)
 		st.save())))
+	var lex := CheckButton.new()
+	lex.text = "Show exact lie penalty (off = range)"
+	lex.button_pressed = st.lie_effect_exact
+	lex.toggled.connect(func(on: bool) -> void:
+		st.lie_effect_exact = on
+		st.save())
+	body.add_child(lex)
+	body.add_child(_note("The ball on the shot card shows the lie and its distance penalty: a range like -10 to -20%, or the exact value for this shot."))
 	body.add_child(_note("Regulation is 4.25 in. The game default is a friendlier 12 in. Gimme: a ball at rest within this distance of the cup edge is holed automatically (1 stroke). 0 ft = no gimme, the ball must drop. A 5 ft hole with a 3 ft gimme is allowed."))
 	body.add_child(_nav_row("flag", "Edit hole pars", "Applies to rounds started afterwards", _show_par_editor))
 	_push(pg["root"])

@@ -122,8 +122,8 @@ func test_rough_lie_reduces_goals_flight_carry_slightly() -> void:
 	var r := s.last_result
 	assert_eq(r.mode, ShotTypes.Mode.GOALS)
 	assert_eq(r.style, ShotTypes.Style.FLIGHT)
-	assert_gt(r.lie_factor, 0.89)
-	assert_lt(r.lie_factor, 0.98)
+	assert_gt(r.lie_factor, 0.79)  # rough: 10-20% shorter (owner, 2026-11-08)
+	assert_lt(r.lie_factor, 0.91)
 	assert_near(r.carry_m, r.target_distance_m, 0.3, "calibrated flight includes lie factor")
 	assert_lt(r.carry_m, Units.goals_to_roll_m(100), "rough costs distance even with GOALS")
 	TestHelpers.cleanup_repo(s.repo)
@@ -454,6 +454,28 @@ func test_bigger_cup_default_and_setting() -> void:
 	assert_near(cfg.cup_capture_speed_eff(), cfg.cup_capture_speed, 0.01, "regulation cup: base capture speed")
 	cfg.set_cup_diameter_in(100.0)
 	assert_near(cfg.cup_diameter_in(), 72.0, 1e-6, "clamped to 72 in")
+
+
+func test_lie_effect_preview_matches_the_real_shot() -> void:
+	var s := TestHelpers.make_session()
+	var flat := HoleDefinition.make_flat(Surface.Type.FAIRWAY)
+	flat.id = "neutral_lie"
+	s.start_round([flat], 12345)
+	s.begin_play()
+	s.wind_custom = true
+	s.wind_custom_speed = 0.0
+	s.dev_set_lie_override(Surface.Type.BUNKER)
+	s.set_mode(ShotTypes.Mode.CAPS)
+	s.set_style(ShotTypes.Style.FLIGHT)
+	var pv := s.lie_effect_preview()
+	assert_eq(int(pv["min_pct"]), 20)
+	assert_eq(int(pv["max_pct"]), 40)
+	var id := TestHelpers.add_player(s.repo, 100, 0)
+	assert_true(s.select_footballer(id))
+	assert_true(s.take_shot())
+	s.skip_motion()
+	assert_eq(int(round((1.0 - s.last_result.lie_factor) * 100.0)), int(pv["exact_pct"]), "exact preview equals the real penalty")
+	TestHelpers.cleanup_repo(s.repo)
 
 
 func test_pass_and_play_alternates_turns_with_separate_scores() -> void:
