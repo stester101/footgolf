@@ -352,6 +352,7 @@ func _process(delta: float) -> void:
 			_drop_result = session.last_result
 			_drop_t = 0.0
 			_drop_dir = Units.bearing_to_dir(session.last_result.aim_bearing_deg)
+			_cup_celebrate(session.hole.cup_position(), session.current_hole_state())
 	if _drop_t >= 0.0 and _drop_t < DROP_TIME:
 		draw_pos = _drop_pos(session.hole.cup_position(), _drop_dir, session.cfg.cup_radius, _drop_t)
 		_drop_t += get_process_delta_time()
@@ -577,3 +578,64 @@ func _add_online_status() -> void:
 func _exit_tree() -> void:
 	if session is OnlineSession:
 		(session as OnlineSession).dispose()
+
+
+## Gentle hole-out effect at the cup: a soft expanding ring plus a small burst of sparks (a few more
+## for an eagle or better). Cheap CPU particles, a couple of seconds, then everything frees itself.
+func _cup_celebrate(cup: Vector3, hs: HoleState) -> void:
+	var big := hs.complete and (hs.score() == 1 or hs.relative_to_par() <= -2)
+	var k := clampf(rig.cam.global_position.distance_to(cup) / 15.0, 1.0, 6.0) if rig.mode == CameraRig.Mode.BEHIND else clampf(rig.cam.size * 0.02, 1.0, 8.0)
+	var root := Node3D.new()
+	root.position = cup + Vector3.UP * 0.03
+	add_child(root)
+	# ring
+	var ring := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = 0.92
+	tm.outer_radius = 1.0
+	tm.rings = 24
+	tm.ring_segments = 6
+	ring.mesh = tm
+	var rm := StandardMaterial3D.new()
+	rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	rm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	rm.albedo_color = Color(1.0, 0.93, 0.6, 0.75)
+	ring.material_override = rm
+	ring.scale = Vector3(session.cfg.cup_radius, session.cfg.cup_radius, session.cfg.cup_radius)
+	root.add_child(ring)
+	var end_r := maxf(session.cfg.cup_radius * 1.5, 0.5) * k
+	var tw := create_tween()
+	tw.tween_property(ring, "scale", Vector3(end_r, end_r, end_r), 0.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(rm, "albedo_color:a", 0.0, 0.9)
+	# sparks
+	var ps := CPUParticles3D.new()
+	ps.one_shot = true
+	ps.emitting = true
+	ps.amount = 36 if big else 18
+	ps.lifetime = 1.0
+	ps.explosiveness = 0.9
+	ps.direction = Vector3.UP
+	ps.spread = 35.0
+	ps.initial_velocity_min = 1.2 * sqrt(k)
+	ps.initial_velocity_max = 2.8 * sqrt(k)
+	ps.gravity = Vector3(0, -4.0, 0)
+	ps.scale_amount_min = 0.5
+	ps.scale_amount_max = 1.0
+	var qm := QuadMesh.new()
+	qm.size = Vector2(0.05, 0.05) * k
+	var pm := StandardMaterial3D.new()
+	pm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	pm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	pm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	pm.albedo_color = Color(1.0, 0.9, 0.5)
+	pm.vertex_color_use_as_albedo = true
+	qm.material = pm
+	ps.mesh = qm
+	var grad := Gradient.new()
+	grad.set_color(0, Color(1.0, 0.95, 0.65, 1.0))
+	grad.set_color(1, Color(1.0, 0.8, 0.3, 0.0))
+	ps.color_ramp = grad
+	root.add_child(ps)
+	get_tree().create_timer(2.0).timeout.connect(func() -> void:
+		if is_instance_valid(root):
+			root.queue_free())
