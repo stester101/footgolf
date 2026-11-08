@@ -1029,21 +1029,39 @@ func _centered_card(min_w: float = 600.0) -> Array:
 	return [root, v]
 
 
+## Hole intro: a slim bar at the bottom so the whole hole stays visible in the bird's-eye view;
+## "Tee off" glides the camera down to the tee (the camera rig eases between modes).
 func show_hole_intro() -> void:
 	var h := session.hole
-	var parts := _centered_card()
-	var root: Control = parts[0]
+	var root := Control.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.set_meta("keep_hud", true)
-	var v: VBoxContainer = parts[1]
-	v.add_child(UiKit.text("HOLE %d OF %d" % [session.round_state.current_index + 1, session.round_state.holes.size()], 30, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UiKit.text(h.display_name, 44, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UiKit.text("Par %d · %d yd" % [h.par, int(h.yards)], 32, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UiKit.text("Round %s" % RoundState.fmt_relative(session.round_state.relative_to_par()), 22, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UiKit.primary(UiKit.button("Waiting for host" if session is OnlineSession and App.online.seat != 0 else "Tee off", func() -> void:
+	var m := MarginContainer.new()
+	m.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	m.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	for side in ["left", "right", "bottom"]:
+		m.add_theme_constant_override("margin_" + side, 24)
+	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(m)
+	var p := UiKit.panel(UiKit.C_PANEL_SOLID)
+	m.add_child(p)
+	var row := UiKit.hbox(16)
+	p.add_child(row)
+	var info := UiKit.vbox(2)
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.add_child(UiKit.label("HOLE %d OF %d" % [session.round_state.current_index + 1, session.round_state.holes.size()], 20, UiKit.C_MUTED))
+	var nm := UiKit.label(h.display_name, 34, UiKit.C_TEXT)
+	nm.add_theme_font_override("font", UiKit.font_semi())
+	info.add_child(nm)
+	info.add_child(UiKit.label("Par %d · %d yd" % [h.par, int(h.yards)], 24, UiKit.C_TEXT))
+	row.add_child(info)
+	var go := UiKit.primary(UiKit.button("Waiting for host" if session is OnlineSession and App.online.seat != 0 else "Tee off", func() -> void:
 		if session is OnlineSession and App.online.seat != 0: return
 		_remove_overlay(root)
-		session.begin_play(), 90, 32)))
-	root.color = Color(0, 0, 0, 0.15)
+		session.begin_play(), 90, 32))
+	go.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(go)
 	push_overlay(root)
 
 

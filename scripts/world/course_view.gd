@@ -507,11 +507,11 @@ func _build_tee_markers() -> void:
 		var p: Vector2 = hole.tee + side * 2.6 * float(sgn) + d * 0.8
 		var mi := MeshInstance3D.new()
 		var sm := SphereMesh.new()
-		sm.radius = 0.09
-		sm.height = 0.18
+		sm.radius = 0.16
+		sm.height = 0.32
 		mi.mesh = sm
 		mi.material_override = mat
-		mi.position = Vector3(p.x, hole.terrain_height(p.x, p.y) + 0.07, p.y)
+		mi.position = Vector3(p.x, hole.terrain_height(p.x, p.y) + 0.12, p.y)
 		add_child(mi)
 
 

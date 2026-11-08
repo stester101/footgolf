@@ -13,6 +13,7 @@ var world_env: WorldEnvironment
 var sun: DirectionalLight3D
 var course: CourseView
 var ball_mesh: MeshInstance3D
+var tee_peg: MeshInstance3D
 var aim_line: LineDrawer
 var trail_line: LineDrawer
 var measure_line: LineDrawer
@@ -73,6 +74,19 @@ func _ready() -> void:
 	bm.emission = Color(0.25, 0.25, 0.25)
 	ball_mesh.material_override = bm
 	add_child(ball_mesh)
+	tee_peg = MeshInstance3D.new()
+	var pm := CylinderMesh.new()
+	pm.top_radius = 0.5
+	pm.bottom_radius = 0.18
+	pm.height = 1.0
+	pm.radial_segments = 8
+	tee_peg.mesh = pm
+	var pmat := StandardMaterial3D.new()
+	pmat.albedo_color = Color(0.95, 0.86, 0.62)
+	pmat.roughness = 0.6
+	tee_peg.material_override = pmat
+	tee_peg.visible = false
+	add_child(tee_peg)
 	aim_line = LineDrawer.new(Color.WHITE)
 	add_child(aim_line)
 	trail_line = LineDrawer.new(Color.WHITE)
@@ -339,7 +353,15 @@ func _process(delta: float) -> void:
 	if _drop_t >= 0.0 and _drop_t < DROP_TIME:
 		draw_pos = _drop_pos(session.hole.cup_position(), _drop_dir, session.cfg.cup_radius, _drop_t)
 		_drop_t += get_process_delta_time()
-	ball_mesh.position = draw_pos + Vector3.UP * (vis_r - session.cfg.ball_radius)
+	# first shot of a hole (and any shot from the tee box): the ball sits on a tee peg
+	var on_tee := not moving and not (_drop_t >= 0.0 and _drop_t < DROP_TIME) and session.current_lie() == Surface.Type.TEE \
+			and session.state != ShotTypes.State.HOLE_COMPLETE and rig.mode == CameraRig.Mode.BEHIND
+	var peg_h := vis_r * 0.9 if on_tee else 0.0
+	tee_peg.visible = on_tee
+	if on_tee:
+		tee_peg.scale = Vector3(vis_r * 0.7, peg_h, vis_r * 0.7)
+		tee_peg.position = draw_pos + Vector3.DOWN * session.cfg.ball_radius + Vector3.UP * (peg_h * 0.5)
+	ball_mesh.position = draw_pos + Vector3.UP * (vis_r - session.cfg.ball_radius + peg_h)
 	ball_mesh.visible = session.state != ShotTypes.State.HOLE_COMPLETE or moving
 	var fwd := -rig.cam.global_transform.basis.z
 	ui.camera_yaw = deg_to_rad(Units.dir_to_bearing(fwd))
