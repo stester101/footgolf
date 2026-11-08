@@ -58,7 +58,7 @@ var _traj_btn: Button
 var _skip_btn: Button
 var _fast_btn: Button
 var _auto_tween: Tween
-const AUTO_CONTINUE_SECS := 4.0
+const AUTO_CONTINUE_SECS := 2.0
 ## True while the player holds the fast-forward button (shot animation runs faster).
 var fast_forward := false
 var _shot_btn: Button
