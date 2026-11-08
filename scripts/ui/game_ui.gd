@@ -1989,50 +1989,85 @@ func _status_tag(text: String, color: Color) -> Control:
 	return pc
 
 
+## Modal card in the Scorecard style: glass plate, icon + title header, thin rule. Hides the HUD like any
+## other modal (no keep_hud meta). Returns [root, body VBox, header VBox for the subtitle].
+func _modal_card(icon: String, title_text: String, subtitle: String, close_id: String, width: float = 560.0) -> Array:
+	var root := UiKit.overlay(0.58)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(center)
+	var panel := _plate(18, 16)
+	panel.custom_minimum_size = Vector2(width, 0)
+	center.add_child(panel)
+	var v := UiKit.vbox(12)
+	panel.add_child(v)
+	var head := UiKit.hbox(14)
+	var ic := LineIcon.make(icon, 52, Color("#E9F4FF"))
+	ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(ic)
+	var hv := UiKit.vbox(0)
+	UiKit.expand(hv)
+	hv.alignment = BoxContainer.ALIGNMENT_CENTER
+	var title := UiKit.label(title_text, 38, Color.WHITE)
+	title.add_theme_font_override("font", UiKit.font_semi())
+	hv.add_child(title)
+	if subtitle != "":
+		hv.add_child(UiKit.label(subtitle, 21, UiKit.C_CYAN))
+	head.add_child(hv)
+	if close_id != "":
+		head.add_child(_icon_btn("close", "", func() -> void: _remove_overlay(root), close_id, 72, 72))
+	v.add_child(head)
+	v.add_child(_rule())
+	return [root, v]
+
+
+func _menu_button(text: String, cb: Callable, color: Color = Color.WHITE) -> Button:
+	var b := UiKit.button(text, cb, 80, 28)
+	b.add_theme_font_override("font", UiKit.font_semi())
+	b.add_theme_color_override("font_color", color)
+	return b
+
+
 func show_pause() -> void:
-	var parts := _centered_card(560.0)
+	var parts := _modal_card("pause", "Paused", session.hole.display_name if session.hole != null else "", "close_pause")
 	var root: Control = parts[0]
 	var v: VBoxContainer = parts[1]
-	var t := UiKit.text("Paused", 38, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
-	t.add_theme_font_override("font", UiKit.font_semi())
-	v.add_child(t)
-	v.add_child(_rule())
-	var resume := UiKit.primary(UiKit.button("Resume", func() -> void: _remove_overlay(root), 90, 30))
+	var resume := UiKit.primary(UiKit.button("Resume", func() -> void: _remove_overlay(root), 90, 32))
+	resume.add_theme_font_override("font", UiKit.font_semi())
 	v.add_child(resume)
-	v.add_child(UiKit.button("Scorecard", func() -> void:
+	v.add_child(_menu_button("Scorecard", func() -> void:
 		_remove_overlay(root)
-		show_scorecard(), 80, 26))
-	v.add_child(UiKit.button("Restart round", func() -> void:
+		show_scorecard()))
+	v.add_child(_menu_button("Restart round", func() -> void:
 		_remove_overlay(root)
 		confirm("Restart the round?", "Your score and used footballers for this round will be lost.", "Restart", func() -> void:
 			close_all_overlays()
-			session.start_round(session.hole_defs, -1, session.pool.reuse_rule, session.round_state.mulligans_allowed, session.player_count())), 80, 26))
+			session.start_round(session.hole_defs, -1, session.pool.reuse_rule, session.round_state.mulligans_allowed, session.player_count()))))
 	# developer tools stay reachable from the secondary menu
-	var dev := UiKit.button("Developer panel", func() -> void:
+	v.add_child(_menu_button("Developer panel", func() -> void:
 		_remove_overlay(root)
-		developer_requested.emit(), 80, 26)
-	dev.add_theme_color_override("font_color", UiKit.C_DEV)
-	v.add_child(dev)
-	v.add_child(UiKit.button("Main menu", func() -> void:
+		developer_requested.emit(), UiKit.C_DEV))
+	v.add_child(_menu_button("Main menu", func() -> void:
 		_remove_overlay(root)
-		confirm("Leave the round?", "Progress in this round will be lost.", "Main menu", func() -> void: main_menu_requested.emit()), 80, 26))
+		confirm("Leave the round?", "Progress in this round will be lost.", "Main menu", func() -> void: main_menu_requested.emit())))
 	push_overlay(root)
 
 
-## Simple confirm card for destructive actions.
+## Confirm card for destructive actions (same modal look as the pause menu).
 func confirm(title: String, body: String, ok_text: String, on_ok: Callable) -> void:
-	var parts := _centered_card(560.0)
+	var parts := _modal_card("flag", title, "", "")
 	var root: Control = parts[0]
 	var v: VBoxContainer = parts[1]
-	v.add_child(UiKit.text(title, 34, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UiKit.text(body, 22, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UiKit.text(body, 24, UiKit.C_MUTED))
 	var row := UiKit.hbox(10)
-	var cancel := UiKit.button("Cancel", func() -> void: _remove_overlay(root), 80, 26)
+	var cancel := _menu_button("Cancel", func() -> void: _remove_overlay(root))
 	UiKit.expand(cancel)
 	row.add_child(cancel)
 	var ok := UiKit.primary(UiKit.button(ok_text, func() -> void:
 		_remove_overlay(root)
-		on_ok.call(), 80, 26))
+		on_ok.call(), 80, 28))
+	ok.add_theme_font_override("font", UiKit.font_semi())
 	UiKit.expand(ok)
 	row.add_child(ok)
 	v.add_child(row)

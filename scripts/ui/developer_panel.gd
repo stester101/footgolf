@@ -33,7 +33,21 @@ func setup(s: GameSession, st: SettingsStore) -> void:
 	theme = UiKit.make_theme()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var p := UiKit.panel(Color(0.07, 0.05, 0.10, 0.97))
+	# solid navy backing under the glass so the live HUD does not show through the panel
+	var back := Panel.new()
+	var bsb := StyleBoxFlat.new()
+	bsb.bg_color = Color(0.03, 0.08, 0.17, 0.94)
+	bsb.set_corner_radius_all(14)
+	back.add_theme_stylebox_override("panel", bsb)
+	back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	back.anchor_right = 1.0
+	back.anchor_top = 0.40
+	back.anchor_bottom = 1.0
+	back.offset_left = 8
+	back.offset_right = -8
+	back.offset_bottom = -8
+	add_child(back)
+	var p := UiKit.panel()
 	p.anchor_left = 0.0
 	p.anchor_right = 1.0
 	p.anchor_top = 0.40
@@ -45,9 +59,20 @@ func setup(s: GameSession, st: SettingsStore) -> void:
 	var v := UiKit.vbox(8)
 	p.add_child(v)
 	var head := UiKit.hbox()
-	head.add_child(UiKit.expand(UiKit.label("DEVELOPER TEST PANEL", 26, UiKit.C_DEV)))
-	head.add_child(UiKit.button("Close", func() -> void: closed.emit(), 58, 22))
+	var ttl := UiKit.label("DEVELOPER TEST PANEL", 22, UiKit.C_CYAN)
+	ttl.add_theme_font_override("font", UiKit.font_caps())
+	ttl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	head.add_child(UiKit.expand(ttl))
+	var close_b := UiKit.button("Close", func() -> void: closed.emit(), 58, 22)
+	close_b.custom_minimum_size.x = 120
+	close_b.set_meta("ui_id", "dev_close")
+	head.add_child(close_b)
 	v.add_child(head)
+	var rule := ColorRect.new()
+	rule.color = Color(0.72, 0.88, 1.0, 0.22)
+	rule.custom_minimum_size = Vector2(0, 2)
+	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(rule)
 	_status = UiKit.text("Developer actions are labelled and bypass normal play rules.", 19, UiKit.C_MUTED)
 	v.add_child(_status)
 	_tabs = TabContainer.new()
@@ -320,13 +345,14 @@ func _build_players_tab() -> VBoxContainer:
 	v.add_child(_p_search)
 	_player_list = ItemList.new()
 	_player_list.custom_minimum_size = Vector2(0, 300)
-	_player_list.add_theme_font_size_override("font_size", 20)
 	_player_list.item_selected.connect(_on_player_selected)
 	v.add_child(_player_list)
 	_p_name = LineEdit.new()
 	_p_nat = LineEdit.new()
 	_p_caps = LineEdit.new()
 	_p_goals = LineEdit.new()
+	for le in [_p_name, _p_nat, _p_caps, _p_goals, _p_search]:
+		(le as LineEdit).theme_type_variation = "SkinEdit"
 	for le in [_p_name, _p_nat, _p_caps, _p_goals]:
 		(le as LineEdit).custom_minimum_size = Vector2(300, 54)
 	_p_caps.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER

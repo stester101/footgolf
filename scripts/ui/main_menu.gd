@@ -714,14 +714,33 @@ func _open_settings() -> void:
 	_push(pg["root"])
 
 
+## Settings row: label left, control right, on a recessed plate (same height as the toggle rows).
 func _setting_row(label: String, control: Control) -> Control:
+	var pc := PanelContainer.new()
+	pc.add_theme_stylebox_override("panel", UiKit.skin("recess", 6, 18, 10))
+	pc.custom_minimum_size = Vector2(0, 84)
 	var row := UiKit.hbox(12)
-	var l := UiKit.label(label, 24, Color.WHITE)
+	var l := UiKit.label(label, 23, Color.WHITE)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(l)
+	control.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(control)
-	return row
+	pc.add_child(row)
+	return pc
+
+
+## Settings switch row (CheckButton on the shared recessed theme).
+func _toggle(text: String, on: bool, cb: Callable) -> CheckButton:
+	var c := CheckButton.new()
+	c.text = text
+	c.button_pressed = on
+	c.custom_minimum_size = Vector2(0, 84)
+	c.add_theme_font_size_override("font_size", 23)
+	c.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	c.toggled.connect(cb)
+	return c
 
 
 func _open_settings_gameplay() -> void:
@@ -734,13 +753,9 @@ func _open_settings_gameplay() -> void:
 	body.add_child(_setting_row("Hole size (diameter, ft)", UiKit.spin(0.35, 6.0, 0.05, st.physics.cup_diameter_in() / 12.0, func(val: float) -> void:
 		st.physics.set_cup_diameter_in(val * 12.0)
 		st.save())))
-	var lex := CheckButton.new()
-	lex.text = "Show exact lie penalty (off = range)"
-	lex.button_pressed = st.lie_effect_exact
-	lex.toggled.connect(func(on: bool) -> void:
+	body.add_child(_toggle("Show exact lie penalty (off = range)", st.lie_effect_exact, func(on: bool) -> void:
 		st.lie_effect_exact = on
-		st.save())
-	body.add_child(lex)
+		st.save()))
 	body.add_child(_note("The ball on the shot card shows the lie and its distance penalty: a range like -10 to -20%, or the exact value for this shot."))
 	body.add_child(_note("Regulation is about 0.35 ft (4.25 in). The game default is a friendlier 1 ft. Gimme: a ball at rest within this distance of the cup edge is holed automatically (1 stroke). 0 ft = no gimme, the ball must drop. A 5 ft hole with a 3 ft gimme is allowed."))
 	body.add_child(_nav_row("flag", "Edit hole pars", "Applies to rounds started afterwards", _show_par_editor))
@@ -767,27 +782,15 @@ func _open_settings_visual() -> void:
 	var pg := _page("Audio / Visual")
 	var body: VBoxContainer = pg["body"]
 	var st: SettingsStore = App.settings
-	var trail := CheckButton.new()
-	trail.text = "Show ball trail"
-	trail.button_pressed = st.show_trail
-	trail.toggled.connect(func(on: bool) -> void:
+	body.add_child(_toggle("Show ball trail", st.show_trail, func(on: bool) -> void:
 		st.show_trail = on
-		st.save())
-	body.add_child(trail)
-	var vib := CheckButton.new()
-	vib.text = "Vibration on shots and hole-outs"
-	vib.button_pressed = st.vibration
-	vib.toggled.connect(func(on: bool) -> void:
+		st.save()))
+	body.add_child(_toggle("Vibration on shots and hole-outs", st.vibration, func(on: bool) -> void:
 		st.vibration = on
-		st.save())
-	body.add_child(vib)
-	var dt := CheckButton.new()
-	dt.text = "Drag up/down to change trajectory (trial)"
-	dt.button_pressed = st.drag_trajectory
-	dt.toggled.connect(func(on: bool) -> void:
+		st.save()))
+	body.add_child(_toggle("Drag up/down to change trajectory (trial)", st.drag_trajectory, func(on: bool) -> void:
 		st.drag_trajectory = on
-		st.save())
-	body.add_child(dt)
+		st.save()))
 	body.add_child(_note("Audio: none yet (silent). Sound is planned."))
 	_push(pg["root"])
 
@@ -797,23 +800,15 @@ func _open_settings_developer() -> void:
 	var body: VBoxContainer = pg["body"]
 	var st: SettingsStore = App.settings
 	body.add_child(_nav_row("gear", "Developer Test", "All 17 holes with the developer panel", func() -> void: play_requested.emit("all", true, 0, 1), "developer_test"))
-	var stats := CheckButton.new()
-	stats.text = "TEST MODE: show caps/goals before shot"
-	stats.button_pressed = st.show_stats
-	stats.toggled.connect(func(on: bool) -> void:
+	body.add_child(_toggle("TEST MODE: show caps/goals before shot", st.show_stats, func(on: bool) -> void:
 		st.show_stats = on
-		st.save())
-	body.add_child(stats)
-	var ds := CheckButton.new()
-	ds.text = "Use real footballers (off = synthetic test set)"
-	ds.button_pressed = st.dataset == "real"
+		st.save()))
 	var ds_label := _note(App.dataset_label())
-	ds.toggled.connect(func(on: bool) -> void:
+	body.add_child(_toggle("Use real footballers (off = synthetic test set)", st.dataset == "real", func(on: bool) -> void:
 		st.dataset = "real" if on else "test"
 		st.save()
 		App.load_dataset()
-		ds_label.text = App.dataset_label())
-	body.add_child(ds)
+		ds_label.text = App.dataset_label()))
 	body.add_child(ds_label)
 	body.add_child(_nav_row("flag", "Reset footballer database", "Back to the bundled seed", func() -> void: App.repo.reset_to_seed()))
 	body.add_child(_nav_row("list", "Export data", "Copy a summary or save CSV / JSON files", _show_export))
@@ -883,6 +878,15 @@ func _open_placeholder(title: String, text: String) -> void:
 
 # ------------------------------------------------------------------ tutorial, par editor, export (existing screens)
 
+## Title + thin rule for the glass modals (par editor, export), matching the page headers.
+func _modal_title(text: String) -> Control:
+	var v := UiKit.vbox(10)
+	var t := UiKit.label(text, 38, Color.WHITE)
+	t.add_theme_font_override("font", UiKit.font_semi())
+	v.add_child(t)
+	v.add_child(_rule())
+	return v
+
 func show_tutorial() -> void:
 	if _tutorial != null and is_instance_valid(_tutorial):
 		return
@@ -908,7 +912,7 @@ func _show_par_editor() -> void:
 	m.add_child(p)
 	var v := UiKit.vbox(12)
 	p.add_child(v)
-	v.add_child(UiKit.label("Hole pars", 34))
+	v.add_child(_modal_title("Hole pars"))
 	v.add_child(UiKit.text("Set each hole's par. Scores have no maximum; par only changes the +/- shown. Applies to the next round.", 19, UiKit.C_MUTED))
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -922,6 +926,7 @@ func _show_par_editor() -> void:
 		var hid: String = info["id"]
 		var row := UiKit.hbox(10)
 		var nm := UiKit.label("%s\n%d yd" % [info["name"], info["yards"]], 22)
+		nm.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		UiKit.expand(nm)
 		row.add_child(nm)
 		var sp := UiKit.spin(2, 8, 1, App.par_for(hid, info["base_par"]), func(val: float) -> void:
@@ -932,7 +937,10 @@ func _show_par_editor() -> void:
 				App.settings.par_overrides[hid] = pv
 			App.settings.save())
 		row.add_child(sp)
-		list.add_child(row)
+		var rp := PanelContainer.new()
+		rp.add_theme_stylebox_override("panel", UiKit.skin("recess", 6, 16, 8))
+		rp.add_child(row)
+		list.add_child(rp)
 	v.add_child(UiKit.button("Reset all to defaults", func() -> void:
 		App.settings.par_overrides.clear()
 		App.settings.save()
@@ -954,7 +962,7 @@ func _show_export() -> void:
 	center.add_child(p)
 	var v := UiKit.vbox(12)
 	p.add_child(v)
-	v.add_child(UiKit.label("Export data", 34))
+	v.add_child(_modal_title("Export data"))
 	var counts := UiKit.text("", 20, UiKit.C_MUTED)
 	counts.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(counts)

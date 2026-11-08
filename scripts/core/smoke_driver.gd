@@ -12,6 +12,7 @@ var _log: Array[String] = []
 var _shot_no := 0
 var _picker_shot_done := false
 var _card_done := false
+var _menus_done := false
 var _last_pos := Vector3.INF
 var _stuck := 0
 
@@ -92,7 +93,9 @@ func _run() -> void:
 		if a.begins_with("--smoke-course="):
 			course_name = a.substr(15)
 	if OS.get_cmdline_user_args().has("--smoke-tour"):
-		for step in [["Settings", "settings"], ["Gameplay", "settings_gameplay"], ["BACK", ""], ["Developer", "settings_developer"], ["BACK", ""], ["BACK", ""],
+		for step in [["How to Play", "tutorial"], ["Next", "tutorial2"], ["Skip tutorial", ""],
+				["Settings", "settings"], ["Gameplay", "settings_gameplay"], ["Edit hole pars", "par_editor"], ["Done", ""], ["BACK", ""], ["Controls", "settings_controls"], ["BACK", ""],
+				["Audio", "settings_visual"], ["BACK", ""], ["Developer", "settings_developer"], ["Export data", "export"], ["Done", ""], ["BACK", ""], ["BACK", ""],
 				["Statistics", "statistics"], ["Overview", "stats_overview"], ["BACK", ""], ["BACK", ""]]:
 			if step[0] == "BACK":
 				_press_id("back")
@@ -141,6 +144,9 @@ func _run() -> void:
 						_press_id("back_to_round")
 						await _frames(3)
 						await _shot("after_card")
+				if OS.get_cmdline_user_args().has("--smoke-menus") and not _menus_done:
+					_menus_done = true
+					await _menus_tour()
 				var d := session.distance_to_pin_m()
 				session.aim_at_pin()
 				var want_goals := d < 22.0 or session.current_lie() == Surface.Type.GREEN
@@ -272,4 +278,30 @@ func _run() -> void:
 		return _fail("no main menu button")
 	await _frames(5)
 	_say("PASS")
+	get_tree().quit(0)
+
+
+## Dev screenshots of the pause menu, confirm dialog, developer panel (--smoke-menus; quits afterwards).
+func _menus_tour() -> void:
+	if not _press_id("pause"):
+		return _fail("menus: no pause button")
+	await _frames(3)
+	await _shot("pause")
+	_press("Restart round")
+	await _frames(3)
+	await _shot("confirm")
+	_press("Cancel")
+	await _frames(2)
+	_press_id("pause")
+	await _frames(3)
+	if not _press("Developer panel"):
+		return _fail("menus: no developer panel button")
+	await _frames(4)
+	await _shot("dev_ball")
+	var tabs: Array = get_tree().root.find_children("*", "TabContainer", true, false)
+	for i in 4:
+		if tabs.size() > 0:
+			(tabs[0] as TabContainer).current_tab = i
+			await _frames(3)
+			await _shot("dev_tab%d" % i)
 	get_tree().quit(0)
