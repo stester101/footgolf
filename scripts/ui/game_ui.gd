@@ -1470,7 +1470,12 @@ func _strip_cell(caption: String, value: String) -> VBoxContainer:
 ## Hole complete: summary strip, scorecard board (only the holes in this round), and the
 ## "up next" tile with loading progress and the Next hole button pinned at the bottom.
 func _on_hole_completed(hs: HoleState) -> void:
-	var rs := session.round_state
+	_board_slot = -1
+	var rs := _board_rs()
+	# show the LOCAL player's own hole (online: this phone's seat), not whoever finished last
+	var own_idx := mini(session.round_state.current_index, rs.holes.size() - 1)
+	if own_idx >= 0 and rs.holes[own_idx] is HoleState and (rs.holes[own_idx] as HoleState).complete:
+		hs = rs.holes[own_idx]
 	var root := Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -1521,7 +1526,7 @@ func _on_hole_completed(hs: HoleState) -> void:
 	col.add_child(strip)
 	# 2. scorecard board
 	var board_panel := _plate(14, 14)
-	board_panel.add_child(_scorecard_board())
+	board_panel.add_child(_board_with_tabs())
 	col.add_child(board_panel)
 	if session.player_count() > 1:
 		col.add_child(_standings_panel())
@@ -1604,8 +1609,9 @@ func set_next_hole_progress(p: float) -> void:
 
 
 func _on_round_completed() -> void:
+	_board_slot = -1
 	close_all_overlays()
-	var rs := session.round_state
+	var rs := _board_rs()
 	var root := Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -1646,7 +1652,7 @@ func _on_round_completed() -> void:
 	strip.add_child(sr)
 	col.add_child(strip)
 	var board_panel := _plate(14, 14)
-	board_panel.add_child(_scorecard_board())
+	board_panel.add_child(_board_with_tabs())
 	col.add_child(board_panel)
 	if session.player_count() > 1:
 		col.add_child(_standings_panel())
@@ -1674,8 +1680,48 @@ const BOARD_ROW_HOLES := 9
 
 ## Broadcast-style scorecard: one block per nine holes, only the holes in this round. Under par
 ## is ringed (cyan circle), over par boxed (sand square), the hole being played is highlighted.
+var _board_slot := -1  # -1 = this viewer's own card; otherwise the player chosen on the tabs
+
+
+## The player whose card this phone shows by default: online = its own seat, otherwise whoever is active.
+func _viewer_slot() -> int:
+	if session is OnlineSession and (session as OnlineSession).room != null and (session as OnlineSession).room.seat >= 0:
+		return (session as OnlineSession).room.seat
+	return session.turn
+
+
+func _board_rs() -> RoundState:
+	return session.slot_round_state(_board_slot if _board_slot >= 0 else _viewer_slot())
+
+
+## Scorecard with a tab per player (when there is more than one) so both cards can be seen.
+func _board_with_tabs() -> Control:
+	var wrap := UiKit.vbox(10)
+	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var holder := UiKit.vbox(0)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fill := func() -> void:
+		UiKit.clear(holder)
+		holder.add_child(_scorecard_board())
+	if session.player_count() > 1:
+		var tabs := UiKit.hbox(8)
+		tabs.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for i in session.player_count():
+			var idx := i
+			var label := String(session.player_names[i]) + ("  (you)" if session is OnlineSession and i == _viewer_slot() else "")
+			var b := UiKit.button(label, func() -> void:
+				_board_slot = idx
+				fill.call(), 52, 20)
+			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			tabs.add_child(b)
+		wrap.add_child(tabs)
+	wrap.add_child(holder)
+	fill.call()
+	return wrap
+
+
 func _scorecard_board() -> VBoxContainer:
-	var rs := session.round_state
+	var rs := _board_rs()
 	var board := UiKit.vbox(12)
 	board.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var start := 0
@@ -1763,7 +1809,7 @@ func _shape_swatch(circle: bool, color: Color) -> Control:
 
 
 func _board_chunk(start: int, end: int) -> Control:
-	var rs := session.round_state
+	var rs := _board_rs()
 	var g := GridContainer.new()
 	g.columns = (end - start) + 2
 	g.add_theme_constant_override("h_separation", 2)
@@ -1836,7 +1882,7 @@ func _sc_cell(text: String, size: int, color: Color, fill: Color, header: bool =
 ## Hole / Par / Score / To par. The hole in play shows its live strokes in muted text (no
 ## brackets); completed holes show the final score in white; future holes show dashes.
 func _scorecard_table() -> Control:
-	var rs := session.round_state
+	var rs := _board_rs()
 	var g := GridContainer.new()
 	g.columns = 4
 	g.add_theme_constant_override("h_separation", 0)
@@ -1880,7 +1926,8 @@ func _scorecard_table() -> Control:
 ## Near-full-screen modal: fixed header and Back button, a table that scrolls on its own (many
 ## holes) and a shot history that scrolls on its own. The HUD behind it is hidden by refresh().
 func show_scorecard() -> void:
-	var rs := session.round_state
+	_board_slot = -1
+	var rs := _board_rs()
 	var root := UiKit.overlay(0.58)  # dims the course; blocks gestures behind it
 	var sm := UiKit.safe_margins(get_viewport()) if is_inside_tree() else [32.0, 32.0, 32.0, 32.0]
 	var m := MarginContainer.new()

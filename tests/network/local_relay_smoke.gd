@@ -101,6 +101,7 @@ func _start(c: Client) -> void:
 	h.has_cup = true
 	c.session = OnlineSession.new(PhysicsConfig.new(), repo)
 	c.session.configure(c.room)
+	c.session.holeout_radius_ft = 5.0  # fixture relies on the auto hole-out radius (game default is 0 ft)
 	c.session.start_round([h], int(c.room.setup.seed), 0, 1, 2)
 	if c.is_host: c.session.begin_play()
 
