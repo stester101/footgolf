@@ -410,6 +410,8 @@ static func pin_index_for_seed(round_seed: int, hole_id: String, count: int) -> 
 ## `yards` becomes the chosen tee's length adjusted by the straight tee-to-pin distance of the chosen pin
 ## relative to the default pin, so the displayed length is the real tee-to-pin distance.
 func apply_round_options(color: String, varied_pins: bool, round_seed: int) -> void:
+	if tee_options.is_empty() and pin_options.is_empty():
+		return  # hand-built holes (tests, fixtures) keep their tee and pin exactly as set
 	tee_color = color if tee_options.has(color) else "yellow"
 	var base_tee_yards := _base_yards
 	tee = _base_tee
