@@ -61,3 +61,10 @@ Android export needs editor settings (`~/.config/godot/editor_settings-4.7.tres`
 - `data/footballers_real.json` is generated (Wikidata, CC0) by `tools/data/import_wikidata.py` via the
   "Import footballers" workflow — do not hand-edit it; use `tools/data/corrections.json`.
 - Never commit keystores, passwords or secrets.
+
+## Token-efficient Claude Code workflow
+- For development, debugging, UI, repo exploration and verification, use the project skill at `.claude/skills/token-orchestrator/SKILL.md`. Read it once at task start and apply its delegation, context, model/effort, Git and reporting rules.
+- Delegate only bounded independent work where isolation or parallelism justifies overhead. Default to no more than 2 concurrent subagents. Use Haiku/low for read-only scouting, Sonnet/medium for bounded implementation, and Opus/high only for genuinely complex work.
+- **Testing override:** The earlier blanket instruction to run `tools/scripts/run_tests.sh` after *every* change is superseded. Run only the smallest necessary targeted checks; use the full suite for physics/gameplay invariants, broad integration changes, or evidence of regression. Never claim unrun tests passed.
+- Preserve other agents' uncommitted changes; check status and branch before editing. Do not build, export, push, or release an APK without explicit user approval. Ordinary Git commits/pushes of source changes also require task-specific authorization; report their status clearly.
+- Keep handovers concise, including files touched, verification actually run, remaining issues and Git status.
