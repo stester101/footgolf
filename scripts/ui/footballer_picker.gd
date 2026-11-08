@@ -18,6 +18,7 @@ const SELECT_BLUE := Color("#52AAFF")
 static var _saved := {"q": "", "sort": "name_az", "nations": {}, "eras": {}, "avail": false,
 	"caps_band": 0, "goals_band": 0, "limit": PAGE, "scroll": 0}
 static var _saved_round_id := -1
+static var _by_player := {}
 
 var session: GameSession
 var show_stats := false
@@ -81,11 +82,16 @@ func _exit_tree() -> void:
 
 func setup(s: GameSession) -> void:
 	session = s
-	var rid := session.round_state.get_instance_id()
+	# every player has their own RoundState, so key the round by player 1's (stable for the whole round)
+	var rid := session.slot_round_state(0).get_instance_id()
 	if rid != _saved_round_id:
 		_saved_round_id = rid
-		_saved = {"q": "", "sort": "name_az", "nations": {}, "eras": {}, "avail": false,
-			"caps_band": 0, "goals_band": 0, "limit": PAGE, "scroll": 0}  # new round: everything resets
+		_by_player.clear()  # new round: everything resets for every player
+	# pass-and-play: each player keeps their own filters, sort and search settings for the round
+	if not _by_player.has(session.turn):
+		_by_player[session.turn] = {"q": "", "sort": "name_az", "nations": {}, "eras": {}, "avail": false,
+			"caps_band": 0, "goals_band": 0, "limit": PAGE, "scroll": 0}
+	_saved = _by_player[session.turn]
 	_sel_nations = (_saved["nations"] as Dictionary).duplicate()
 	_sel_eras = (_saved["eras"] as Dictionary).duplicate()
 	_avail = bool(_saved["avail"])
