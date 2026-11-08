@@ -56,8 +56,10 @@ func test_slow_ball_not_blocked_by_pin() -> void:
 
 func test_rim_lip_out_vs_drop_speed() -> void:
 	var sim0 := _sim()
-	var cap := sim0.cfg.cup_capture_speed_eff()
 	var off := sim0.cfg.cup_radius * 0.9
+	# physical capture speed on this line: chord / sqrt(2 k r / g)
+	var chord := 2.0 * sqrt(sim0.cfg.cup_radius * sim0.cfg.cup_radius - off * off)
+	var cap := chord / sqrt(2.0 * sim0.cfg.cup_sink_fraction * sim0.cfg.ball_radius / 9.81)
 	var slow := _roll(_sim(), cap * 0.5, off)
 	assert_eq(slow.phase, BallSim.Phase.HOLED, "slow edge putt drops")
 	var fast := _roll(_sim(), cap * 1.5, off, 2.5)
@@ -115,3 +117,17 @@ func test_config_roundtrip_pin_params() -> void:
 	var d := c.copy()
 	assert_near(d.pin_soft_speed, 1.7, 1e-9)
 	assert_near(d.cup_rim_lip, 0.3, 1e-9)
+
+
+func test_flat_fast_landing_skips_steep_landing_drops() -> void:
+	# Battered in flat and fast: lands just inside the near rim and clears the hole (real physics).
+	var fast := _sim()
+	var r := fast.cfg.cup_radius
+	fast.launch(Vector3(0.0, fast.cfg.ball_radius + 0.05, CUP_Z - r + 0.02), Vector3(0, -0.5, 12.0), true)
+	fast.run_until_done(3.0)
+	assert_false(fast.phase == BallSim.Phase.HOLED, "flat 12 m/s landing does not drop")
+	# Dropping in steeply over the cup: always stays in.
+	var steep := _sim()
+	steep.launch(Vector3(0.0, steep.cfg.ball_radius + 1.0, CUP_Z), Vector3(0, -3.0, 0.5), true)
+	steep.run_until_done(3.0)
+	assert_eq(steep.phase, BallSim.Phase.HOLED, "steep landing in the cup drops")

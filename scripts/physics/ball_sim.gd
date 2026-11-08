@@ -225,8 +225,21 @@ func _on_contact() -> void:
 	if hole.has_cup:
 		var dl := Units.horizontal_distance(pos, _cup)
 		if dl <= cfg.cup_radius:
-			var fl := 1.0 - cfg.cup_rim_lip * (dl / cfg.cup_radius) * (dl / cfg.cup_radius)
-			if vel.length() <= cfg.cup_landing_capture_speed * fl:
+			# Real physics, same rule as rolling over the cup: from where it lands, the ball must sink k*r before it
+			# reaches the far rim. Time to the far rim t = s / v_h; sink = v_down * t + g t^2 / 2. A ball dropping in
+			# steeply always stays in; one battered in flat and fast clears the hole and carries on.
+			var rel := Vector2(pos.x - _cup.x, pos.z - _cup.z)
+			var vh2 := Vector2(vel.x, vel.z)
+			var vhl := vh2.length()
+			var captured := true
+			if vhl > 1e-4:
+				var dir2 := vh2 / vhl
+				var bq := dir2.dot(rel)
+				var s_ahead := -bq + sqrt(maxf(bq * bq - (rel.length_squared() - cfg.cup_radius * cfg.cup_radius), 0.0))
+				var t := s_ahead / vhl
+				var sink := maxf(-vel.y, 0.0) * t + 0.5 * 9.81 * t * t
+				captured = sink >= cfg.cup_sink_fraction * cfg.ball_radius
+			if captured:
 				_hole_out()
 				return
 			_record("rim")

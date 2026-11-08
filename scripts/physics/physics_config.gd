@@ -23,7 +23,7 @@ const DEFAULT_CUP_DIAMETER_IN := 12.0
 var cup_radius := DEFAULT_CUP_DIAMETER_IN * 0.0254 * 0.5
 var cup_capture_speed := 1.6
 ## How far (fraction of the ball radius) a ball must sink while crossing the cup to drop in (see BallSim._roll_cup).
-var cup_sink_fraction := 1.0
+var cup_sink_fraction := 1.5
 var cup_landing_capture_speed := 7.0
 ## Flagstick (thin vertical pole at the cup centre). Balls faster than pin_soft_speed that touch it
 ## bounce off (horizontal normal component reflected with pin_restitution; in the air the whole

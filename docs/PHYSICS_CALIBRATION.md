@@ -101,3 +101,6 @@ The player sees only the approximate range text, never a predicted landing point
 ## Wind
 Hole defaults: H1 1.5 m/s, H2 2.5 m/s, H3 3.0 m/s. Bearing = direction the wind blows **toward**
 (0° = +Z). Developer panel can override speed/bearing or zero the wind.
+
+## Cup capture (8 Nov 2026, owner: "battered balls must not drop")
+Rolling and landing use the same physics: a ball drops only if it sinks k x ball radius before reaching the far rim (k = cup_sink_fraction = 1.5). Rolling: v_crit = chord / sqrt(2 k r / g) (about 1.3 m/s centre-line on a regulation cup, 3.7 m/s on the 1 ft default). Landing: sink = v_down * t + g t^2 / 2 with t = distance to the far rim / horizontal speed. The old flat 7 m/s landing capture is no longer used.
