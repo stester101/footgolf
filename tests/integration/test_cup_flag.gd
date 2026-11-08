@@ -30,14 +30,15 @@ func _has(sim: BallSim, kind: String) -> bool:
 
 func test_fast_ball_deflected_by_pin() -> void:
 	var sim := _sim()
-	_roll(sim, 4.0, 0.0, 3.0)
+	_roll(sim, 12.0, 0.0, 3.0)  # far above the physical capture speed of a 1 ft cup (~4.6 m/s)
 	assert_true(_has(sim, "pin"), "pin strike recorded")
 	assert_false(sim.phase == BallSim.Phase.HOLED, "fast ball does not drop")
 	assert_lt(sim.vel.z, 0.0 + 1e-9, "head-on strike bounces the ball back")
 
 
 func test_moderate_pin_strike_drops_hard_one_bounces() -> void:
-	var cap := _sim().cfg.cup_capture_speed_eff()
+	var cfg0 := _sim().cfg
+	var cap := 2.0 * cfg0.cup_radius / sqrt(2.0 * cfg0.cup_sink_fraction * cfg0.ball_radius / 9.81)  # centre-line capture speed
 	var mid := _roll(_sim(), cap * 0.8, 0.0)
 	assert_true(_has(mid, "pin"), "moderate ball touches the pole")
 	assert_eq(mid.phase, BallSim.Phase.HOLED, "moderate pin strike loses pace and drops")

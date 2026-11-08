@@ -407,7 +407,13 @@ func _roll_cup(a: Vector3, b: Vector3, pinned: float = -1.0) -> bool:
 		_cup_decided = false  # the pole is still ahead: it decides first
 		return false
 	var dspeed := vel.length() if pinned < 0.0 else pinned
-	if dspeed <= cap * (1.0 - cfg.cup_rim_lip * rn * rn):
+	# Real physics: a ball rolling over a gap of chord length L is in free fall for t = L / v and sinks
+	# h = g t^2 / 2. It drops in once it sinks more than a fraction of its radius (it then meets the far wall).
+	# So the critical speed is v_crit = L / sqrt(2 k r / g): about 1.6 m/s straight across a regulation cup,
+	# less off-centre (shorter chord), and very high for a big hole (a 6 ft cup swallows almost anything).
+	var chord := 2.0 * sqrt(maxf(cfg.cup_radius * cfg.cup_radius - off * off, 0.0))
+	cap = chord / sqrt(2.0 * cfg.cup_sink_fraction * cfg.ball_radius / 9.81)
+	if dspeed <= cap:
 		_hole_out()
 		return true
 	if dspeed <= cap * cfg.cup_lip_max_factor:
