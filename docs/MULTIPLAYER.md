@@ -1,4 +1,40 @@
-# Relay multiplayer implementation — 8 November 2026
+# Multiplayer implementation — 8 November 2026
+
+## Direct LAN / hotspot play (current plan)
+
+Owner decision: no hosted relay. 2 to 4 friends in the same room play over the same Wi-Fi, or over
+one phone's Wi-Fi hotspot. The host phone runs the relay itself.
+
+- `scripts/network/local_relay.gd` (`LocalRelay`, owned by the `App` autoload) is a GDScript port of
+  `relay/server.py`: same JSON messages, seats, 6-character room codes, host-only events, readiness,
+  4-seat cap, 200-room cap, 40 messages/s rate limit, 60 s reconnect grace. It uses `TCPServer` plus
+  `WebSocketPeer.accept_stream()` polled from `_process` (no threads) on port 8765.
+- Host: Online Multiplayer -> "Host on this phone". The relay starts and the host connects to itself via
+  `ws://127.0.0.1:8765`. The screen and lobby show the phone's private IPv4 address(es)
+  (`IP.get_local_addresses()`) and the room code. Guests: "Join", type host IP, port (8765), room code and name.
+- `NetTransport` accepts plain `ws://` only to 127.x, 10.x, 172.16-31.x, 192.168.x, 169.254.x (and localhost).
+  Anything public must be `wss://`. The hosted relay code path still exists but has no UI.
+- OnlineRoom / OnlineSession / NetCodec are unchanged. The host phone's relay and host game share one app.
+
+Honest limits (nothing here has been run on phones):
+- Verified only headless on a desktop: relay + two clients in one process through a short fixture hole,
+  including a guest disconnect/reconnect (`tests/network/local_relay_smoke.gd`). No Wi-Fi, hotspot,
+  Android or multi-device test has been done.
+- The host phone must keep the app in the foreground and the screen on. If Android suspends it, the relay stops
+  and the round pauses, then ends after 60 s. Backgrounding or killing the host app ends the room.
+- Hotspot: join the host's hotspot and use the host's address shown in the app (often 192.168.43.1 on Android
+  hotspots; use whatever the app displays). Same Wi-Fi: both on one router, using the host's Wi-Fi address.
+- Router "AP/client isolation" (common on guest Wi-Fi and some public networks) or a firewall can block
+  phone-to-phone traffic; use the hotspot instead. Mobile data does not matter, no internet is needed.
+- Traffic is unencrypted plain ws:// on a private network; room code is the only gate. Do not use on untrusted Wi-Fi.
+- Android needs the INTERNET permission (already enabled) to listen and connect; no extra permission was added.
+- Host must type or read out the IP; no discovery/QR yet. Port is fixed at 8765.
+
+Run the LAN test: `godot --headless --path . -s res://tests/network/local_relay_smoke.gd`.
+
+The rest of this document describes the original hosted-relay implementation, still present but unused by the UI.
+
+## Hosted relay (original design, not used)
 
 Local implementation, not deployed or phone-verified. Solo and local pass-and-play still use
 GameSession. Online uses OnlineSession, a host-authoritative subclass. No physics or scoring

@@ -10,12 +10,15 @@ var profiles := PlayerProfileStore.new()
 ## On-device shot/hole/round log (user://telemetry); exported from Settings.
 var telemetry := TelemetryLog.new()
 var online := OnlineRoom.new()
+## Host-phone LAN relay (idle until the host starts it from the Online screen).
+var local_relay := LocalRelay.new()
 var dev_mode := false
 var build_info := {}
 
 
 func _ready() -> void:
 	add_child(online)
+	add_child(local_relay)
 	settings.load_settings()
 	profiles.load_profiles()
 	load_dataset()
