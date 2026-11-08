@@ -236,6 +236,9 @@ func _handle(c: Conn, raw: String) -> String:
 	var cur: Room = c.room
 	var me: Peer = c.peer
 	var seat := cur.peers.find(me)
+	if kind == "resync" and cur.started and seat > 0:
+		_send(cur.peers[0].conn, {"type": "resync", "seat": seat})  # a guest asks the host to send the current state again
+		return ""
 	if kind == "ready" and not cur.started:
 		me.ready = msg.get("ready") == true
 		_broadcast(cur, _lobby(cur))

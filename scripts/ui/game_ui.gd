@@ -1200,6 +1200,15 @@ func show_hole_intro() -> void:
 		_remove_overlay(root)
 		session.begin_play(), 90, 32))
 	go.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var pause_b := UiKit.button("Pause", func() -> void: show_pause(), 90, 26)
+	pause_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pause_b.set_meta("ui_id", "intro_pause")
+	row.add_child(pause_b)
+	if session is OnlineSession:
+		var refresh_b := UiKit.button("Refresh", func() -> void: (session as OnlineSession).refresh_state(), 90, 26)
+		refresh_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		refresh_b.set_meta("ui_id", "intro_refresh")
+		row.add_child(refresh_b)
 	row.add_child(go)
 	push_overlay(root)
 
@@ -2200,6 +2209,10 @@ func show_pause() -> void:
 	var resume := UiKit.primary(UiKit.button("Resume", func() -> void: _remove_overlay(root), 90, 32))
 	resume.add_theme_font_override("font", UiKit.font_semi())
 	v.add_child(resume)
+	if session is OnlineSession:
+		v.add_child(_menu_button("Refresh online state", func() -> void:
+			_remove_overlay(root)
+			(session as OnlineSession).refresh_state()))
 	v.add_child(_menu_button("Scorecard", func() -> void:
 		_remove_overlay(root)
 		show_scorecard()))

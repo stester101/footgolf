@@ -173,6 +173,10 @@ func start_game(course_id: String, mulligans: int) -> void:
 		"wind_speed": app.settings.wind_speed, "wind_bearing": app.settings.wind_bearing,
 		"show_stats": app.settings.show_stats, "pars": pars}})
 
+func request_resync() -> void:
+	if active and started:
+		transport.send({"type": "resync"})
+
 func send_intent(command: Dictionary) -> void:
 	transport.send({"type": "intent", "command": command})
 

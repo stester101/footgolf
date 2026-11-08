@@ -17,6 +17,18 @@ var _preview_at := 0
 var _sent_preview := {}
 var _sent_at := 0
 
+## "Refresh" button: the host re-sends the state to every guest; a guest asks the host to re-send it.
+func refresh_state() -> void:
+	if room == null or not room.active:
+		return
+	if _host:
+		for s in range(1, room.players.size()):
+			_on_resync(s)
+	else:
+		room.request_resync()
+	message.emit("Refreshing...")
+
+
 func configure(value: OnlineRoom) -> void:
 	room = value
 	_host = room.seat == 0
