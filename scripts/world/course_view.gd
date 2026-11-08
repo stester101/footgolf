@@ -11,6 +11,8 @@ const GRASS_MAX_DENSITY := 7.0  # tufts per m² in full rough
 const CLOUD_SHADOW_AMT := 0.18  # High graphics: darkening under a drifting cloud shadow
 
 var hole: HoleDefinition
+## Where the flag/cup are drawn now (see sync_pin).
+var shown_pin := Vector3.INF
 var pin_label: Label3D
 var cup_radius := 0.1524
 var terrain: TerrainBuilder
@@ -560,10 +562,24 @@ func set_cup_radius(r: float) -> void:
 	# the cup's own ground height, drawn two-sided so it shows from any angle.
 	if _cup_disc != null:
 		_cup_disc.scale = Vector3(r, 1.0, r)
-		_cup_disc.position = hole.cup_position() + Vector3(0, 0.006, 0)
 	if _cup_ring != null:
 		_cup_ring.scale = Vector3(r, 0.1, r)
-		_cup_ring.position = hole.cup_position() + Vector3(0, 0.004, 0)
+	sync_pin()
+
+
+## Flag, cup and rim all sit at the hole's CURRENT pin. A varied pin can be chosen after the course was built,
+## which left the flag at the old spot while the cup (and the physics) moved to the new one.
+func sync_pin() -> void:
+	if hole == null:
+		return
+	var cup := hole.cup_position()
+	shown_pin = cup
+	if _pin_root != null:
+		_pin_root.position = cup
+	if _cup_disc != null:
+		_cup_disc.position = cup + Vector3(0, 0.006, 0)
+	if _cup_ring != null:
+		_cup_ring.position = cup + Vector3(0, 0.004, 0)
 
 
 ## Flat annulus (inner..outer radius, metres) whose vertices sit on the terrain plus a small lift.

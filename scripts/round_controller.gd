@@ -433,6 +433,8 @@ func _process(delta: float) -> void:
 	if not is_equal_approx(_shown_cup_r, session.cfg.cup_radius):
 		_shown_cup_r = session.cfg.cup_radius
 		course.set_cup_radius(_shown_cup_r)
+	if course.hole == session.hole and course.shown_pin != session.hole.cup_position():
+		course.sync_pin()  # keep the flag and the cup on the real (possibly varied) pin
 	course.update_view(rig.cam)
 	course.set_grass_visible(rig.mode == CameraRig.Mode.BEHIND)
 	if not moving and session.state != ShotTypes.State.HOLE_COMPLETE:
