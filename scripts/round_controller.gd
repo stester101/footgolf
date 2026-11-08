@@ -12,6 +12,7 @@ const TRAJ_DRAG_PX := 48.0
 var session: GameSession
 var world_env: WorldEnvironment
 var sun: DirectionalLight3D
+var _sky_mat: ShaderMaterial  # High graphics only (null = Low: procedural sky)
 var course: CourseView
 var ball_mesh: MeshInstance3D
 var tee_peg: MeshInstance3D
@@ -61,6 +62,7 @@ var _pending_t0 := 0
 
 
 func _ready() -> void:
+	HoleAtmosphere.high_quality = App.settings.graphics_quality == 1
 	_build_environment()
 	course = CourseView.new()
 	add_child(course)
@@ -183,14 +185,20 @@ func _build_environment() -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
-	var psm := ProceduralSkyMaterial.new()
-	psm.sky_top_color = Color(0.20, 0.42, 0.78)
-	psm.sky_horizon_color = Color(0.66, 0.78, 0.90)
-	psm.sky_curve = 0.12
-	psm.ground_horizon_color = Color(0.45, 0.55, 0.42)
-	psm.ground_bottom_color = Color(0.16, 0.24, 0.12)
-	psm.sun_angle_max = 25.0
-	sky.sky_material = psm
+	if HoleAtmosphere.high_quality:
+		_sky_mat = ShaderMaterial.new()
+		_sky_mat.shader = load("res://assets/shaders/sky.gdshader")
+		_sky_mat.set_shader_parameter("noise_tex", WorldTextures.noise_texture())
+		sky.sky_material = _sky_mat
+	else:
+		var psm := ProceduralSkyMaterial.new()
+		psm.sky_top_color = Color(0.20, 0.42, 0.78)
+		psm.sky_horizon_color = Color(0.66, 0.78, 0.90)
+		psm.sky_curve = 0.12
+		psm.ground_horizon_color = Color(0.45, 0.55, 0.42)
+		psm.ground_bottom_color = Color(0.16, 0.24, 0.12)
+		psm.sun_angle_max = 25.0
+		sky.sky_material = psm
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_energy = 0.55
@@ -206,6 +214,9 @@ func _build_environment() -> void:
 	env.fog_density = 0.00045
 	env.fog_aerial_perspective = 0.6
 	env.fog_sky_affect = 0.0
+	if HoleAtmosphere.high_quality:
+		env.fog_density = 0.0007
+		env.fog_sky_affect = 0.15
 	world_env.environment = env
 	add_child(world_env)
 	sun = DirectionalLight3D.new()
@@ -217,6 +228,26 @@ func _build_environment() -> void:
 	sun.directional_shadow_max_distance = 160.0
 	sun.rotation_degrees = Vector3(-38.0, 145.0, 0.0)
 	add_child(sun)
+
+
+## High graphics: per-hole sun direction/colour, sky colours and a fog tint matching the horizon.
+func _apply_atmosphere(hole: HoleDefinition) -> void:
+	if _sky_mat == null:
+		return
+	var a := HoleAtmosphere.for_hole(hole)
+	var sd: Vector3 = a["sun_dir"]
+	_sky_mat.set_shader_parameter("sun_dir", sd)
+	_sky_mat.set_shader_parameter("top_color", a["top"])
+	_sky_mat.set_shader_parameter("mid_color", a["mid"])
+	_sky_mat.set_shader_parameter("horizon_color", a["horizon"])
+	_sky_mat.set_shader_parameter("sun_color", a["sun"])
+	_sky_mat.set_shader_parameter("cover", a["cover"])
+	_sky_mat.set_shader_parameter("offset", a["offset"])
+	sun.basis = Basis.looking_at(-sd, Vector3.UP)
+	sun.light_color = a["light"]
+	sun.light_energy = a["energy"]
+	var fog: Color = (a["horizon"] as Color).lerp(Color(0.7, 0.82, 0.94), 0.25)
+	world_env.environment.fog_light_color = fog
 
 
 func _hole_key(index: int) -> String:
@@ -279,6 +310,7 @@ func _on_hole_started(_i: int) -> void:
 	if _built_hole_id != key:
 		course.build(session.hole, session.cfg.cup_radius)
 		_built_hole_id = key
+	_apply_atmosphere(session.hole)
 	rig.set_hole(session.hole)
 	_set_overhead(true)
 	trail_line.clear()

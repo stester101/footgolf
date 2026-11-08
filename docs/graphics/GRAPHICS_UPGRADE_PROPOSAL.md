@@ -72,3 +72,13 @@ Before each step: profile on a real mid-range Android device with the actual Mob
 - Real Mobile-renderer output and any performance number (no Vulkan in the sandbox).
 - External claims about other golf games, and Godot mobile feature support such as volumetric fog, sky update modes, and glow cost. None were researched.
 - The two hole 10 "high" images were rendered but not inspected.
+
+## 8. Tier 1 implementation status (done in the game)
+Behind Settings > Audio / Visual > "High graphics" (`SettingsStore.graphics_quality`, 0 = Low, 1 = High, default High). Low is the previous code path: procedural sky, original fog, fixed sun, `macro_amt = 0` (the new ground code is skipped). The setting is read when a round starts (`HoleAtmosphere.high_quality`).
+- Sky: `assets/shaders/sky.gdshader` (gradient, sun halo, soft clouds, no `TIME`, so it should render once). Fog density 0.0007, `fog_sky_affect` 0.15, fog colour taken from each hole's horizon colour.
+- Ground: `macro_amt` in `turf.gdshaderinc` (620 m / 260 m hue and brightness drift, mottling beyond 25 m). It is weighted down on green (x0.15) and mown fairway/tee (x0.45), and skipped on sand, so lie colours and stripes are only slightly affected. The grass tufts use the same function.
+- Per hole: `scripts/world/hole_atmosphere.gd` derives sun direction (110 to 160 deg off the line of play, never ahead; elevation about 30 to 55 deg), colours, light energy and cloud cover from a hash of the hole id, using 4 bright presets. No hole JSON changed. Applied in `RoundController._apply_atmosphere` on hole start.
+- Screenshots: `docs/graphics/mockups/t1_low_*` vs `t1_high_*` (Starter Links holes 1 and 3, Coastal hole 1, plus Coastal hole 4 and the map view).
+- Observed limits: rendered in the sandbox on gl_compatibility (llvmpipe), not the mobile renderer; no performance measured. Macro variation is subtle on the fairway (by design) and mostly visible in far rough and the map view. Clouds are faint. Only about 6 holes of 17 were looked at.
+
+Remaining: Tier 2 (hills, billboard clouds, cloud shadows, birds, contrail, wind-driven sway, glow toggle) and Tier 3 (time-of-day presets, weather, foliage, textures). The optional hole-JSON atmosphere block was not added (derivation from the id was enough).

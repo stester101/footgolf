@@ -138,6 +138,7 @@ func _build_terrain() -> void:
 	_terrain_mat.set_shader_parameter("noise_tex", WorldTextures.noise_texture())
 	_terrain_mat.set_shader_parameter("map_origin", hole.bounds.position)
 	_terrain_mat.set_shader_parameter("map_size", Vector2(terrain.map_w, terrain.map_h) * terrain.map_mpp)
+	_terrain_mat.set_shader_parameter("macro_amt", 1.0 if HoleAtmosphere.high_quality else 0.0)
 	mi.material_override = _terrain_mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
@@ -339,7 +340,7 @@ func _build_backdrop() -> void:
 func _build_grass() -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = _grass_shader
-	for p in ["stripe_dir", "surface_tex", "kind_tex", "noise_tex", "map_origin", "map_size"]:
+	for p in ["stripe_dir", "surface_tex", "kind_tex", "noise_tex", "map_origin", "map_size", "macro_amt"]:
 		mat.set_shader_parameter(p, _terrain_mat.get_shader_parameter(p))
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D

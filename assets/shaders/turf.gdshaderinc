@@ -14,6 +14,8 @@ uniform vec2 map_size = vec2(200.0, 300.0);
 uniform vec2 stripe_dir = vec2(1.0, 0.0);
 uniform float stripe_width = 9.0;
 uniform float green_stripe_width = 2.4;
+// 0 = Low graphics (original look, no extra texture taps); 1 = High (macro variation).
+uniform float macro_amt = 0.0;
 
 vec4 turf_noise(vec2 p, float tile) {
 	return texture(noise_tex, p / tile);
@@ -81,5 +83,20 @@ vec3 turf_albedo(vec2 p, vec3 to_cam, out float rough_w, out float sand_w) {
 	vec3 sandc = base * mix(0.9, 1.06, micro.g) * mix(0.97, 1.02, rake);
 	c = mix(c, sandc, sand);
 	c *= 1.0 - lip * 0.28;
+
+	// High graphics only (macro_amt > 0): very large hue/brightness drift plus distance mottling.
+	// Multiplicative and subtle, weakest on green/tee/fairway so lie colours and mowing stripes stay
+	// readable, strongest in the rough; sand is untouched.
+	if (macro_amt > 0.0) {
+		vec4 m1 = turf_noise(p, 620.0);
+		vec4 m2 = turf_noise(p, 260.0);
+		float m = m1.r * 0.6 + m2.g * 0.4;
+		vec3 tint = mix(vec3(0.90, 0.99, 1.0), vec3(1.10, 1.03, 0.82), smoothstep(0.3, 0.7, m)) * mix(0.93, 1.06, m1.b);
+		float w = macro_amt * (1.0 - sand) * (1.0 - green * 0.85) * mix(1.0, 0.45, mown);
+		c *= mix(vec3(1.0), tint, w);
+		float dist = length(to_cam);
+		vec4 mot = turf_noise(p, 2.9);
+		c *= 1.0 + (mot.a - 0.5) * 0.30 * smoothstep(25.0, 90.0, dist) * (1.0 - sand) * (1.0 - green) * macro_amt * mix(1.0, 0.4, mown);
+	}
 	return c;
 }

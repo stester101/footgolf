@@ -1120,6 +1120,11 @@ func _open_settings_visual() -> void:
 	body.add_child(_toggle("Vibration on shots and hole-outs", st.vibration, func(on: bool) -> void:
 		st.vibration = on
 		st.save()))
+	body.add_child(_toggle("High graphics (sky, ground variation, per-hole sun)", st.graphics_quality == 1, func(on: bool) -> void:
+		st.graphics_quality = 1 if on else 0
+		HoleAtmosphere.high_quality = on
+		st.save()))
+	body.add_child(_note("Graphics changes apply from the next round."))
 	body.add_child(_toggle("Drag up/down to change trajectory (trial)", st.drag_trajectory, func(on: bool) -> void:
 		st.drag_trajectory = on
 		st.save()))

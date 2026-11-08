@@ -93,6 +93,8 @@ func _run() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--smoke-course="):
 			course_name = a.substr(15)
+		if a == "--smoke-gfx=low":
+			App.settings.graphics_quality = 0
 	if OS.get_cmdline_user_args().has("--smoke-tour"):
 		for step in [["How to Play", "tutorial"], ["Next", "tutorial2"], ["Skip tutorial", ""],
 				["Settings", "settings"], ["Gameplay", "settings_gameplay"], ["Edit hole pars", "par_editor"], ["Done", ""], ["BACK", ""], ["Controls", "settings_controls"], ["BACK", ""],

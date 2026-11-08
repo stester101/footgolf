@@ -76,6 +76,8 @@ var wind_bearing := 0.0
 var sim_speed := 1.0
 var show_trail := true
 var vibration := true
+## Graphics quality: 0 = Low (original look/cost), 1 = High (sky shader, ground variation, per-hole sun).
+var graphics_quality := 1
 var lie_effect_exact := false  # spin-ball lie read-out: false = range (-10 to -20%), true = this shot's exact value
 var drag_trajectory := true  # trial: drag up/down on the aim view to change trajectory
 ## Favourite footballer ids (starred in the picker). Global for now; per-profile later.
@@ -113,6 +115,7 @@ func load_settings() -> void:
 	sim_speed = clampf(float(d.get("sim_speed", 1.0)), 0.25, 8.0)
 	show_trail = bool(d.get("show_trail", true))
 	vibration = bool(d.get("vibration", true))
+	graphics_quality = clampi(int(d.get("graphics_quality", 1)), 0, 1)
 	lie_effect_exact = bool(d.get("lie_effect_exact", false))
 	drag_trajectory = bool(d.get("drag_trajectory", true))
 	favourites = (d.get("favourites", []) as Array).duplicate() if typeof(d.get("favourites")) == TYPE_ARRAY else []
@@ -159,6 +162,7 @@ func save() -> void:
 		"sim_speed": sim_speed,
 		"show_trail": show_trail,
 		"vibration": vibration,
+		"graphics_quality": graphics_quality,
 		"lie_effect_exact": lie_effect_exact,
 		"drag_trajectory": drag_trajectory,
 		"favourites": favourites,
