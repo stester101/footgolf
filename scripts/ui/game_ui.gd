@@ -77,6 +77,19 @@ var _target_value: Label
 var _pin_value: Label
 var _toast: Label
 var _toast_t := 0.0
+var _card_dist: Label
+
+## Shot-screen design: broadcast-style blue banner, white shot card, dark spin strip.
+const C_BLUE := Color("#0E4BA8")
+const C_BLUE_DEEP := Color("#0A3A88")
+const C_BLUE_TEXT := Color("#C9D8F0")
+const C_CARD := Color("#F2F5FA")
+const C_CARD_DIM := Color("#E1E7F0")
+const C_NAVY := Color("#0B2A5E")
+const C_NAVY_MUTED := Color("#5B6A85")
+const C_GO := Color("#3FE07A")
+const C_GO_OFF := Color("#C5CCD8")
+const C_CHIP := Color(0.07, 0.10, 0.09, 0.84)
 var _target_dist_m := -1.0
 
 
@@ -190,49 +203,56 @@ func _icon_btn(kind: String, label: String, cb: Callable, ui_id: String, w: int 
 
 
 func _build_scoreboard() -> PanelContainer:
-	var p := _plate(PAD, 12)
-	var row := UiKit.hbox(PAD)
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", UiKit.box(C_BLUE, UiKit.RADIUS, 0))
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var row := UiKit.hbox(0)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(row)
-	# ivory hole-number block
+	# hole number on a deeper blue block
 	var block := PanelContainer.new()
-	block.add_theme_stylebox_override("panel", _flat_style(UiKit.C_TEXT))
-	block.custom_minimum_size = Vector2(84, 84)
+	block.add_theme_stylebox_override("panel", UiKit.box(C_BLUE_DEEP, UiKit.RADIUS, 0))
+	block.custom_minimum_size = Vector2(104, 96)
 	block.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var bv := UiKit.vbox(0)
 	bv.alignment = BoxContainer.ALIGNMENT_CENTER
 	bv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bv.add_child(_tag("HOLE", 16, UiKit.C_ACTION_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
-	_hole_num = _num("01", 40, UiKit.C_ACTION_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	bv.add_child(_tag("HOLE", 15, C_BLUE_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
+	_hole_num = _num("01", 42, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	_hole_num.add_theme_font_override("font", UiKit.font_semi())
 	bv.add_child(_hole_num)
 	block.add_child(bv)
 	row.add_child(block)
+	var mid_m := MarginContainer.new()
+	UiKit.expand(mid_m)
+	mid_m.add_theme_constant_override("margin_left", 16)
+	mid_m.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var mid := UiKit.vbox(2)
-	UiKit.expand(mid)
 	mid.alignment = BoxContainer.ALIGNMENT_CENTER
 	mid.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hole_name = UiKit.label("", 34)
+	_hole_name = UiKit.label("", 32, Color.WHITE)
 	_hole_name.add_theme_font_override("font", UiKit.font_semi())
 	_hole_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	mid.add_child(_hole_name)
-	_hole_sub = _num("", 21, UiKit.C_MUTED)
+	_hole_sub = _num("", 20, C_BLUE_TEXT)
 	mid.add_child(_hole_sub)
-	row.add_child(mid)
-	var div := ColorRect.new()
-	div.color = UiKit.C_DIVIDER
-	div.custom_minimum_size = Vector2(2, 64)
-	div.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(div)
+	mid_m.add_child(mid)
+	row.add_child(mid_m)
+	# round score on a white tile
+	var tile := PanelContainer.new()
+	tile.add_theme_stylebox_override("panel", UiKit.box(C_CARD, UiKit.RADIUS, 0))
+	tile.custom_minimum_size = Vector2(124, 96)
+	tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var right := UiKit.vbox(0)
 	right.alignment = BoxContainer.ALIGNMENT_CENTER
-	right.custom_minimum_size.x = 104
 	right.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_round_score = _num("E", 48, Color("#FBF6E9"), HORIZONTAL_ALIGNMENT_RIGHT)
+	_round_score = _num("E", 46, C_NAVY, HORIZONTAL_ALIGNMENT_CENTER)
 	_round_score.add_theme_font_override("font", UiKit.font_semi())
 	right.add_child(_round_score)
-	_round_sub = _num("", 17, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
+	_round_sub = _num("", 16, C_NAVY_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	right.add_child(_round_sub)
-	row.add_child(right)
+	tile.add_child(right)
+	row.add_child(tile)
 	return p
 
 
@@ -308,61 +328,106 @@ func _build_utility_row() -> HBoxContainer:
 
 
 func _build_shot_controls() -> VBoxContainer:
-	var v := UiKit.vbox(GAP)
+	var v := UiKit.vbox(8)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# 1. small lie / shot label above the controls
-	var lie_row := UiKit.hbox(GAP)
-	lie_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var lie := _plate(14, 8)
-	lie.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var lv := UiKit.vbox(0)
-	lv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_lie_label = _tag("", 20, UiKit.C_TEXT)
-	lv.add_child(_lie_label)
-	_lie_hint = UiKit.label("", 17, UiKit.C_MUTED)
-	lv.add_child(_lie_hint)
-	lie.add_child(lv)
-	lie_row.add_child(lie)
-	v.add_child(lie_row)
-	# 2. Distance source and ball movement are separate choices in one compact strip.
-	var strip := _plate(4, 4)
-	var sr := UiKit.hbox(0)
-	strip.add_child(sr)
-	var group := ButtonGroup.new()
-	_caps_btn = _mode_btn("CAPS", group, "mode_caps", func() -> void: session.set_mode(ShotTypes.Mode.CAPS))
-	_goals_btn = _mode_btn("GOALS", group, "mode_goals", func() -> void: session.set_mode(ShotTypes.Mode.GOALS))
-	var style_group := ButtonGroup.new()
-	_flight_btn = _mode_btn("FLIGHT", style_group, "style_flight", func() -> void: session.set_style(ShotTypes.Style.FLIGHT))
-	_roll_btn = _mode_btn("ROLL", style_group, "style_roll", func() -> void: session.set_style(ShotTypes.Style.ROLL))
-	sr.add_child(_caps_btn)
-	sr.add_child(_goals_btn)
-	var divider := VSeparator.new()
-	divider.custom_minimum_size.x = 8
-	sr.add_child(divider)
-	sr.add_child(_flight_btn)
-	sr.add_child(_roll_btn)
-	v.add_child(strip)
-	# 3. separate footballer row: flag, name, country, swap icon
+	# 1. dark strip: spin dial, readout, trajectory, skip
+	var dark := _plate(12, 8, C_CHIP)
+	var dr := UiKit.hbox(GAP)
+	dr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_spin_box = UiKit.hbox(GAP)
+	_spin_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_spin = SpinControl.new()
+	_spin.spin_changed.connect(func(val: float) -> void: session.set_spin(val))
+	_spin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_spin_box.add_child(_spin)
+	_spin_label = _num("NO SPIN", 20, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	_spin_label.add_theme_font_override("font", UiKit.font_semi())
+	_spin_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_spin_box.add_child(_spin_label)
+	_traj_btn = Button.new()
+	_traj_btn.custom_minimum_size = Vector2(124, 72)
+	_traj_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_traj_btn.focus_mode = Control.FOCUS_ALL
+	_traj_btn.set_meta("ui_id", "trajectory")
+	_traj_btn.set("accessibility_name", "Trajectory")
+	_traj_btn.tooltip_text = "Trajectory: tap to cycle Punch, Low, Standard, High"
+	for st in ["normal", "hover"]:
+		_traj_btn.add_theme_stylebox_override(st, _flat_style(UiKit.C_RAISED))
+	_traj_btn.add_theme_stylebox_override("pressed", _flat_style(UiKit.C_SELECTED))
+	_traj_btn.add_theme_font_size_override("font_size", 19)
+	_traj_btn.add_theme_font_override("font", UiKit.font_semi())
+	_traj_btn.add_theme_color_override("font_color", UiKit.C_TEXT)
+	_traj_btn.add_theme_color_override("font_hover_color", UiKit.C_TEXT)
+	_traj_btn.add_theme_color_override("font_pressed_color", UiKit.C_TEXT)
+	_traj_btn.pressed.connect(func() -> void: session.cycle_trajectory())
+	_spin_box.add_child(_traj_btn)
+	dr.add_child(_spin_box)
+	_skip_btn = UiKit.button("Skip", func() -> void: session.skip_motion(), 72, 22)
+	_skip_btn.custom_minimum_size.x = 130
+	_skip_btn.set_meta("ui_id", "skip")
+	_skip_btn.visible = false
+	dr.add_child(_skip_btn)
+	dark.add_child(dr)
+	v.add_child(dark)
+	# 2. white shot card: tee tag and distance, switches, footballer, take shot
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", UiKit.box(C_CARD, 18, 18))
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	var cv := UiKit.vbox(10)
+	cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var top := UiKit.hbox(12)
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tl := UiKit.vbox(0)
+	UiKit.expand(tl)
+	tl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_lie_label = _tag("", 19, C_NAVY_MUTED)
+	tl.add_child(_lie_label)
+	_lie_hint = UiKit.label("", 16, C_NAVY_MUTED)
+	tl.add_child(_lie_hint)
+	top.add_child(tl)
+	_card_dist = _num("", 44, C_NAVY, HORIZONTAL_ALIGNMENT_RIGHT)
+	_card_dist.add_theme_font_override("font", UiKit.font_semi())
+	top.add_child(_card_dist)
+	cv.add_child(top)
+	var seg := UiKit.hbox(6)
+	seg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var g := ButtonGroup.new()
+	_caps_btn = _seg_btn("CAPS", g, "mode_caps", func() -> void: session.set_mode(ShotTypes.Mode.CAPS))
+	_goals_btn = _seg_btn("GOALS", g, "mode_goals", func() -> void: session.set_mode(ShotTypes.Mode.GOALS))
+	var g2 := ButtonGroup.new()
+	_flight_btn = _seg_btn("FLIGHT", g2, "style_flight", func() -> void: session.set_style(ShotTypes.Style.FLIGHT))
+	_roll_btn = _seg_btn("ROLL", g2, "style_roll", func() -> void: session.set_style(ShotTypes.Style.ROLL))
+	seg.add_child(_caps_btn)
+	seg.add_child(_goals_btn)
+	var sep := ColorRect.new()
+	sep.color = C_NAVY_MUTED
+	sep.custom_minimum_size = Vector2(2, 40)
+	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	seg.add_child(sep)
+	seg.add_child(_flight_btn)
+	seg.add_child(_roll_btn)
+	cv.add_child(seg)
+	# footballer row
 	_player_btn = Button.new()
-	_player_btn.custom_minimum_size = Vector2(0, 100)
+	_player_btn.custom_minimum_size = Vector2(0, 84)
 	_player_btn.focus_mode = Control.FOCUS_ALL
 	_player_btn.set_meta("ui_id", "player_row")
 	_player_btn.tooltip_text = "Choose footballer"
 	_player_btn.set("accessibility_name", "Choose footballer")
 	for st in ["normal", "hover"]:
-		_player_btn.add_theme_stylebox_override(st, _flat_style(UiKit.C_SURFACE))
-	_player_btn.add_theme_stylebox_override("pressed", _flat_style(UiKit.C_SELECTED))
-	_player_btn.add_theme_stylebox_override("disabled", _flat_style(UiKit.C_SURFACE.darkened(0.1)))
+		_player_btn.add_theme_stylebox_override(st, UiKit.box(C_CARD_DIM, 12, 0))
+	_player_btn.add_theme_stylebox_override("pressed", UiKit.box(Color("#CBD4E2"), 12, 0))
+	_player_btn.add_theme_stylebox_override("disabled", UiKit.box(C_CARD_DIM, 12, 0))
 	_player_btn.pressed.connect(show_picker)
 	var pm := MarginContainer.new()
 	pm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	pm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for side in ["left", "right"]:
-		pm.add_theme_constant_override("margin_" + side, 18)
-	var pr := UiKit.hbox(16)
+		pm.add_theme_constant_override("margin_" + side, 16)
+	var pr := UiKit.hbox(14)
 	pr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_player_flag = TextureRect.new()
-	_player_flag.custom_minimum_size = Vector2(56, 38)
+	_player_flag.custom_minimum_size = Vector2(52, 36)
 	_player_flag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_player_flag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_player_flag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -372,82 +437,75 @@ func _build_shot_controls() -> VBoxContainer:
 	UiKit.expand(pv)
 	pv.alignment = BoxContainer.ALIGNMENT_CENTER
 	pv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_player_name = UiKit.label("", 32)
+	_player_name = UiKit.label("", 28, C_NAVY)
 	_player_name.add_theme_font_override("font", UiKit.font_semi())
 	_player_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	pv.add_child(_player_name)
-	_player_sub = _num("", 21, UiKit.C_MUTED)
+	_player_sub = _num("", 19, C_NAVY_MUTED)
 	_player_sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	pv.add_child(_player_sub)
 	pr.add_child(pv)
-	var swap := LineIcon.make("swap", 38, UiKit.C_TEXT)
+	var swap := LineIcon.make("swap", 34, C_NAVY)
 	swap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	pr.add_child(swap)
 	pm.add_child(pr)
 	_player_btn.add_child(pm)
-	v.add_child(_player_btn)
-	# 4. spin control lower left, ivory Take shot lower right
-	var br := UiKit.hbox(GAP)
-	br.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_spin_box = UiKit.hbox(GAP)
-	_spin_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_spin = SpinControl.new()
-	_spin.spin_changed.connect(func(val: float) -> void: session.set_spin(val))
-	_spin.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_spin_box.add_child(_spin)
-	var sl := _plate(14, 10)
-	sl.custom_minimum_size = Vector2(132, 0)
-	sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_spin_label = _num("NO SPIN", 20, UiKit.C_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
-	_spin_label.add_theme_font_override("font", UiKit.font_semi())
-	sl.add_child(_spin_label)
-	_spin_box.add_child(sl)
-	# Flight trajectory: tap to cycle Punch / Low / Standard / High; resets after each shot
-	_traj_btn = Button.new()
-	_traj_btn.custom_minimum_size = Vector2(132, 84)
-	_traj_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_traj_btn.focus_mode = Control.FOCUS_ALL
-	_traj_btn.set_meta("ui_id", "trajectory")
-	_traj_btn.set("accessibility_name", "Trajectory")
-	_traj_btn.tooltip_text = "Trajectory: tap to cycle Punch, Low, Standard, High"
-	for st in ["normal", "hover"]:
-		_traj_btn.add_theme_stylebox_override(st, _flat_style(UiKit.C_SURFACE))
-	_traj_btn.add_theme_stylebox_override("pressed", _flat_style(UiKit.C_SELECTED))
-	_traj_btn.add_theme_font_size_override("font_size", 19)
-	_traj_btn.add_theme_font_override("font", UiKit.font_semi())
-	_traj_btn.add_theme_color_override("font_color", UiKit.C_TEXT)
-	_traj_btn.add_theme_color_override("font_hover_color", UiKit.C_TEXT)
-	_traj_btn.add_theme_color_override("font_pressed_color", UiKit.C_TEXT)
-	_traj_btn.pressed.connect(func() -> void: session.cycle_trajectory())
-	_spin_box.add_child(_traj_btn)
-	br.add_child(_spin_box)
-	_skip_btn = UiKit.button("Skip", func() -> void: session.skip_motion(), 96, 24)
-	_skip_btn.custom_minimum_size.x = 150
-	_skip_btn.set_meta("ui_id", "skip")
-	_skip_btn.visible = false
-	br.add_child(_skip_btn)
+	cv.add_child(_player_btn)
+	# take shot: full-width green bar
 	_shot_btn = UiKit.primary(Button.new())
-	_shot_btn.custom_minimum_size = Vector2(0, 100)
-	UiKit.expand(_shot_btn)
+	_shot_btn.custom_minimum_size = Vector2(0, 84)
 	_shot_btn.focus_mode = Control.FOCUS_ALL
 	_shot_btn.set_meta("ui_id", "take_shot")
 	_shot_btn.set("accessibility_name", "Take shot")
+	_shot_btn.add_theme_stylebox_override("normal", UiKit.box(C_GO, 12, 0))
+	_shot_btn.add_theme_stylebox_override("hover", UiKit.box(C_GO.lightened(0.08), 12, 0))
+	_shot_btn.add_theme_stylebox_override("pressed", UiKit.box(C_GO.darkened(0.12), 12, 0))
+	_shot_btn.add_theme_stylebox_override("hover_pressed", UiKit.box(C_GO.darkened(0.12), 12, 0))
+	_shot_btn.add_theme_stylebox_override("disabled", UiKit.box(C_GO_OFF, 12, 0))
 	_shot_btn.pressed.connect(_on_take_shot)
 	var sc := CenterContainer.new()
 	sc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	sc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sh := UiKit.hbox(12)
 	sh.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_shot_label = UiKit.label("Take shot", 29, UiKit.C_ACTION_TEXT)
+	_shot_label = UiKit.label("Take shot", 30, UiKit.C_ACTION_TEXT)
 	_shot_label.add_theme_font_override("font", UiKit.font_semi())
 	sh.add_child(_shot_label)
-	_shot_icon = LineIcon.make("arrow_right", 34, UiKit.C_ACTION_TEXT)
+	_shot_icon = LineIcon.make("arrow_right", 32, UiKit.C_ACTION_TEXT)
 	sh.add_child(_shot_icon)
 	sc.add_child(sh)
 	_shot_btn.add_child(sc)
-	br.add_child(_shot_btn)
-	v.add_child(br)
+	cv.add_child(_shot_btn)
+	card.add_child(cv)
+	v.add_child(card)
 	return v
+
+
+## Segment button for the white shot card: light when idle, navy when selected.
+func _seg_btn(text: String, group: ButtonGroup, ui_id: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.toggle_mode = true
+	b.button_group = group
+	b.focus_mode = Control.FOCUS_ALL
+	b.custom_minimum_size = Vector2(0, 52)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.add_theme_font_size_override("font_size", 22)
+	b.add_theme_font_override("font", UiKit.font_semi())
+	b.add_theme_stylebox_override("normal", UiKit.box(C_CARD_DIM, 12, 0))
+	b.add_theme_stylebox_override("hover", UiKit.box(Color("#D3DBE8"), 12, 0))
+	b.add_theme_stylebox_override("pressed", UiKit.box(C_NAVY, 12, 0))
+	b.add_theme_stylebox_override("hover_pressed", UiKit.box(C_NAVY, 12, 0))
+	b.add_theme_stylebox_override("disabled", UiKit.box(Color("#E9EDF3"), 12, 0))
+	b.add_theme_color_override("font_color", C_NAVY_MUTED)
+	b.add_theme_color_override("font_hover_color", C_NAVY)
+	b.add_theme_color_override("font_pressed_color", Color.WHITE)
+	b.add_theme_color_override("font_hover_pressed_color", Color.WHITE)
+	b.add_theme_color_override("font_disabled_color", Color("#9AA5B8"))
+	b.set_meta("ui_id", ui_id)
+	b.set("accessibility_name", text)
+	b.pressed.connect(cb)
+	return b
 
 
 func _mode_btn(text: String, group: ButtonGroup, ui_id: String, cb: Callable) -> Button:
@@ -603,6 +661,7 @@ func refresh() -> void:
 	var neutral := hint.contains("neutral") and hint.contains("normal")
 	_lie_hint.text = "" if neutral else hint
 	_lie_hint.visible = not neutral
+	_card_dist.text = Units.fmt_len(session.distance_to_pin_m())
 	if lie == Surface.Type.GREEN and h != null:
 		var sl := h.normal_at(session.ball_pos.x, session.ball_pos.z)
 		var pct := Vector2(sl.x, sl.z).length() / maxf(sl.y, 0.01) * 100.0
