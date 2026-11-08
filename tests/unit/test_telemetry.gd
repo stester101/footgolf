@@ -166,6 +166,7 @@ func test_summary_and_export_files() -> void:
 func test_attached_session_logs_shots_holes_round() -> void:
 	var tl := _tmp_log()
 	var s := GameSession.new(PhysicsConfig.new(), TestHelpers.make_repo())
+	s.holeout_radius_ft = 5.0
 	tl.attach(s, "starter", "Starter Links")
 	s.start_round(TestHelpers.load_holes(), 777)
 	s.begin_play()

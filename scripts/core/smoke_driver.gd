@@ -86,6 +86,7 @@ func _press(text_prefix: String) -> bool:
 
 
 func _run() -> void:
+	App.settings.holeout_radius_ft = 5.0  # smoke rounds rely on the auto hole-out radius (game default is 0 ft)
 	await _frames(5)
 	await _shot("main_menu")
 	var course_name := "Starter Links"
