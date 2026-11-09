@@ -206,7 +206,7 @@ func _step_air(dt: float) -> void:
 		var res := _collide_trees(p1, v1, true, dt)
 		p1 = res[0]
 		v1 = res[1]
-	if hole.has_cup and not _pin_hit_air and cfg.pin_active():
+	if hole.has_cup and not _pin_hit_air and cfg.pin_active() and not _on_green(p1):
 		var ph := _pin_strike(p0, p1, v1)
 		if not ph.is_empty():
 			_pin_hit_air = true
@@ -355,7 +355,7 @@ func _step_roll(dt: float) -> void:
 			vel = res[1]
 			p_new.y = hole.terrain_height(p_new.x, p_new.z) + r
 	else:
-		if cfg.pin_active() and vel.length() > cfg.pin_soft_speed:
+		if cfg.pin_active() and vel.length() > cfg.pin_soft_speed and not _on_green(p_new):
 			var ph := _pin_strike(pos, p_new, vel)
 			if not ph.is_empty():
 				p_new = ph[0]
@@ -639,3 +639,8 @@ func _collide_trees(p: Vector3, v: Vector3, airborne: bool, dt: float) -> Array:
 			elif _in_canopy.has(idx):
 				_in_canopy.erase(idx)
 	return [p, v]
+
+
+## Putting: the flagstick is taken out on the green, so a putt is decided by the rim and the floor alone.
+func _on_green(p: Vector3) -> bool:
+	return hole.surface_at(p.x, p.z) == Surface.Type.GREEN

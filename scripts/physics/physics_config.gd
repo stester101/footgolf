@@ -39,8 +39,8 @@ var cup_floor_roll_drag := 0.6
 var pin_radius := 0.0125
 var pin_height := 2.0
 var pin_soft_speed := 1.0
-var pin_restitution := 0.35
-var pin_air_loss := 0.55
+var pin_restitution := 0.6  # firm hits rebound with real pace (was 0.35)
+var pin_air_loss := 0.8  # airborne hit on the pole keeps most of its speed (was 0.55)
 var pin_max_cup_radius := 0.45
 var canopy_damping := 5.0
 ## Strike-point spin (flight only), s in [-1 backspin .. +1 topspin]:
