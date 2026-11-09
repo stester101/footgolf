@@ -70,33 +70,10 @@ func dispose() -> void:
 			if connection.callable.get_object() == self:
 				sig.disconnect(connection.callable)
 
-## Guest's own pre-pick (local, never sent): survives host updates while it is still available.
-var _preselect := ""
-
-
-func select_footballer(id: String) -> bool:
-	var ok := super.select_footballer(id)
-	if ok and not _applying:  # a pick made on this phone (not the host replaying someone else's shot)
-		_preselect = id
-	return ok
-
-
-func clear_selection() -> void:
-	if not _applying:
-		_preselect = ""
-	super.clear_selection()
-
-
-func preselected_id() -> String:
-	return _preselect if _preselect != "" and repo.has(_preselect) and pool.is_available(_preselect, mode) else ""
-
-
-## When the turn comes back to this phone, restore its pre-pick if that footballer is still free.
+## When the turn comes back to this phone, restore the shot setup (not the footballer) this player chose.
 func _switch_to(i: int) -> void:
 	super._switch_to(i)
 	_restore_pre_shot()
-	if room != null and room.seat == turn and _preselect != "" and repo.has(_preselect) and pool.is_available(_preselect, mode):
-		selected_id = _preselect
 
 
 ## Shot setup (Caps/Goals, Approach/Putt, trajectory, spin) chosen on THIS phone, kept until this player shoots.
@@ -120,9 +97,6 @@ func _restore_pre_shot() -> void:
 func apply_lie_defaults() -> void:
 	super.apply_lie_defaults()
 	_restore_pre_shot()
-	if room != null and room.seat == turn and selected_id == "" and _preselect != "" and repo.has(_preselect) \
-			and pool.is_available(_preselect, mode):
-		selected_id = _preselect
 
 
 func set_mode(m: int) -> void:
@@ -172,8 +146,7 @@ func take_shot() -> bool:
 	var sent := _request("shot", {"id": selected_id, "aim": aim_bearing_deg,
 		"mode": mode, "style": style, "spin": spin, "trajectory": trajectory})
 	if sent:
-		_pre_shot.clear()
-		_preselect = ""  # this pick is used by this shot; never carry it to the next one  # used up: the next shot starts from the normal defaults again
+		_pre_shot.clear()  # used up: the next shot starts from the normal defaults again
 	return sent
 
 func begin_play() -> void:
@@ -337,13 +310,7 @@ func apply_snapshot(data: Dictionary, animate: bool) -> void:
 	spin = float(data.spin)
 	trajectory = int(data.trajectory)
 	_restore_pre_shot()  # host updates must not overwrite the shot setup this player chose themselves
-	# The host's selection belongs to the active player. A guest keeps its own pre-pick across updates: it stays
-	# selected while the footballer is still free, and is dropped (the player re-picks) once someone else uses them.
-	selected_id = String(data.selected) if _host else ""
-	if not _host and _preselect != "" and repo.has(_preselect) and pool.is_available(_preselect, mode):
-		selected_id = _preselect
-	elif not _host:
-		_preselect = ""
+	selected_id = String(data.selected)
 	_next_is_replacement = bool(data.replacement)
 	sim = null
 	if old_hole != round_state.current_index:
