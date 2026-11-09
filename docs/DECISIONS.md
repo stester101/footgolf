@@ -161,3 +161,11 @@ Changes to locked rules in `docs/SPECIFICATION.md`, made explicitly by the produ
 
 ## 2026-11-09: hole uses the course physics, 4 ft default (owner)
 The pit rim, wall and floor use the SAME bounce/roll model as the green (speed-dependent restitution, retention, roll decel/drag); no special cup constants. Pit is 4 in deep. Default hole 4 ft; untouched 6 ft and 1 ft saved defaults migrate. Probe (4 ft hole): rolling balls stay in up to ~22 m/s and skim over at ~30 m/s; balls landing at 20+ m/s bounce back out at every descent angle tried, 8-14 m/s mostly stay in.
+
+## 2026-11-09: master handover (Career + TV + GI01-GI14) clarifications (OWNER-CONFIRMED)
+- Default hole stays **4 ft** for all modes (replaces the handover's 12 in locked default); Round Setup still offers other sizes.
+- **Mini season and build-your-own course combos stay** as separate modes; GI10 (return to menu, no rematch/series) applies to an ordinary single round only.
+- Handover gate in force: no commit, push, tag or APK build without explicit owner authorisation for that action.
+- **TV (Q-M3):** the Chromebook browser draws its own broadcast view from the host's authoritative, redacted state (no video streaming, no web build of the game in V1).
+- **TV (Q-M4):** clean broadcast style for V1: leaderboard, player bar (name, colour, footballer name), distance to pin, ball tracer, hole graphics, lead-change banner; no replays, no sound.
+- **Workflow (owner, 9 Nov):** commits and pushes are allowed freely; **APK builds only when the owner says**.
