@@ -149,3 +149,12 @@ Changes to locked rules in `docs/SPECIFICATION.md`, made explicitly by the produ
 - Custom course combinations: Course Select > Build your own > "One combined round". Any courses from `data/courses.json`, in any order, become ONE round (hole list concatenated; a hole id already included is skipped). Encoded as the course id `combo:a+b+c` (`CourseCombo`), so Round Setup, telemetry and the online setup carry it unchanged.
 - Mini season (`Season`, `SeasonPages`): an ordered list of courses (repeats allowed) played back to back in one sitting, no save/resume. Each course is its own normal round (own History/telemetry), same players, profiles, rules and tees. Multi-player points per course by place (lowest strokes-to-par): 1st 2.0 x holes, 2nd 1.2 x, 3rd 0.7 x, 4th 0.4 x, each rounded to the nearest integer, minimum 1; tied players share the average of the places they cover (then rounded). No bonus beyond that (the earlier "bonus for the course winner" idea was dropped). One player: no points, per-course scores are summed. A standings page follows each course; the final page shows the winner (ties share). Leaving to the menu ends the season.
 - Online: the host freezes the course list in `RoundConfig.season_courses` (inside the setup `rules`), so both phones build the same season; each phone computes the course result from the synced round states. "Next course" is host-driven (a `season_next` event carries the course, its pars and the host's season state, which the guest adopts).
+
+## 2026-11-09: the hole is a real physical pit (owner)
+- Replaces the heuristic hole (speed-threshold capture, landing capture 7 m/s, `cup_sink_fraction`, lip deflection
+  rules, canned drop animation). `BallSim` simulates a cylindrical pit (radius `cup_radius`, default 6 ft across,
+  4.25-72 in allowed; flat floor `cup_depth()` deep; vertical wall): rim-edge support and deflection, free fall into
+  the pit, wall/floor bounces. HOLED = ball at rest in the pit. Details in docs/PHYSICS_CALIBRATION.md.
+- Neutral plane and `ShotCalculator` unchanged; calibration unchanged. Old saved cup keys are ignored on load.
+- Rendering: the ball inside the pit is drawn over the hole disc (depth test off, darker/smaller with depth); the
+  hole-out shows the simulated path. Banner, ring/spark effect and vibration unchanged.

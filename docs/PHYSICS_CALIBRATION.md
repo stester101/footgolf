@@ -14,30 +14,37 @@ except the stat conversions and the neutral-baseline definitions.
 - Rough and sand catch a ball below 0.15 m/s instead of allowing a long hillside creep.
 - **Rest:** speed < 0.02 m/s for 0.3 s. Hard timeout 60 s. Non-finite state → `ERROR`, ball restored.
 - **Trees:** trunk cylinder (restitution 0.4) and canopy ellipsoid (damping 5/s) proxies.
-- **Cup:** radius 0.054 m regulation (game default 12 in diameter); rolling capture ≤ 1.6 m/s x sqrt(R/0.054) (cap 3x),
-  landing capture ≤ 7 m/s. See "Cup rim and flagstick" below.
+- **Cup:** a real pit (game default 6 ft across = 0.9144 m; 4.25-72 in allowed). No capture-speed rule: HOLED = the
+  simulated ball comes to rest inside the pit. See "Cup pit and flagstick" below.
 - **Ball radius:** 0.02135 m physically. The *visual* sphere is enlarged with camera distance
   (visual-only, documented) so it remains visible on a phone.
 
-## Cup rim and flagstick (owner-approved; all deterministic, no RNG; `tests/integration/test_cup_flag.gd`)
-Neutral calibration is unaffected (the neutral reference plane has no cup). Defaults in `PhysicsConfig`:
-`pin_radius` 0.0125 m, `pin_height` 2.0 m, `pin_soft_speed` 1.0 m/s, `pin_restitution` 0.35,
-`pin_air_loss` 0.55, `pin_max_cup_radius` 0.45 m, `cup_rim_lip` 0.5, `cup_lip_max_factor` 2.0,
-`cup_lip_deflect_deg` 35, `cup_lip_loss` 0.12. All are saved/loaded via `to_dict`/`apply_dict`.
-- **Rolling rim:** the drop decision is made once per pass, when the ball first reaches the cup radius,
-  from the lateral offset `b` of its line from the centre: drop if `v <= capture_eff * (1 - 0.5 (b/R)^2)`
-  (dead centre = the old capture speed, a ball clipping the edge must be ~half as fast). Faster up to
-  `2 x capture_eff`: lip-out, the path is bent toward the cup centre by `35 deg x b/R` and 12% of the speed is
-  lost. Faster still: skips over unchanged. A ball that stops on the lip falls in.
-- **Landing:** drops if inside the radius and `v <= 7 m/s * (1 - 0.5 (d/R)^2)` (d = landing distance from centre);
-  otherwise it bounces as before.
-- **Flagstick** (pole at the cup centre, active only when `cup_radius <= 0.45 m`, i.e. up to a ~3 ft cup; bigger cups
-  ignore it): a ball slower than 1.0 m/s ignores the pole. Faster, a ball whose path comes within
-  `pin_radius + ball_radius` reflects its horizontal normal velocity (restitution 0.35). Rolling: the drop test then
-  uses the PRE-impact speed, so a strike up to the capture speed loses its pace and drops, a harder one bounces out.
-  Airborne (below 2 m, once per flight): the velocity is also scaled by 0.55, so a ball hitting the pin on the way
-  down usually falls in (landing capture applies afterwards).
-- Collision log entries `pin`, `lip`, `skip`, `rim` (landing too fast to drop) are recorded in `BallSim.collisions`.
+## Cup pit and flagstick (owner-approved 9 Nov 2026; deterministic, no RNG; `tests/integration/test_cup_flag.gd`)
+Neutral calibration and `ShotCalculator` are unaffected (the neutral reference plane has no cup).
+- **Geometry:** vertical cylinder of radius R = `cup_radius` under the green, flat floor `cup_depth()` =
+  clamp(0.25 R, 0.10 m, 0.30 m) below the LOWEST rim point (so a big hole on a slope is a pit all round).
+  Ball centre support vs distance d from the axis: d >= R turf (ground + r); R - r < d < R the rim edge circle
+  (centre sqrt(r^2 - (R - d)^2) above the rim height, contact normal from edge point to centre, no rolling
+  resistance on the bare edge); d <= R - r no support.
+- **Leaving the ground:** a rolling ball follows the support only while it does not fall away faster than
+  gravity can follow; otherwise it becomes airborne (`_lip_air`) and falls into the pit or carries over.
+- **In the air:** sphere vs rim-edge circle, wall (centre confined to R - r while below the rim) and floor.
+  Impacts: normal reversed with restitution (`cup_wall_restitution` 0.35 wall/edge, `cup_floor_restitution` 0.25
+  floor), tangential reduced by Coulomb friction `cup_friction` 0.3. Gentle contact on a near-flat support rolls.
+  Floor rolling: `cup_floor_roll_decel` 1.6 m/s^2 + `cup_floor_roll_drag` 0.6 v.
+- **Sub-steps:** near the cup each fixed step is split so the ball travels <= r/4 per sub-step (max 32); away from
+  the cup the step is unchanged.
+- **Emergent outcomes (tests):** 0.9 m/s centre putt into a 1 ft cup drops and settles on the floor; 6 m/s across it
+  meets the far rim/wall and stays out; 12 m/s skims over; a lip graze is pulled sideways; steep drops into a 6 ft
+  hole stay in; 12 m/s flat just above the turf hits the far wall of a 6 ft hole and stays in, 25 m/s rising skims
+  across; rolling balls 0.8-15 m/s into a 6 ft hole end HOLED.
+- **Flagstick** (pole at the cup centre, active only when `cup_radius <= 0.45 m`): `pin_radius` 0.0125 m,
+  `pin_height` 2 m; slower than `pin_soft_speed` 1.0 m/s it is ignored; faster, the horizontal normal velocity is
+  reflected (restitution 0.35). In flight (once per flight) the velocity is also scaled by 0.55, except for a ball
+  that just ran off the rim. The pit decides the rest (a moderate strike falls in, a hard head-on one bounces out).
+- Old heuristic keys (`cup_capture_speed`, `cup_sink_fraction`, `cup_landing_capture_speed`, `cup_rim_lip`,
+  `cup_lip_*`) are ignored by `apply_dict`, so older saved settings still load.
+- Collision log entries `pin`, `rim` (edge impact), `cup_wall`, `cup_floor` are recorded in `BallSim.collisions`.
 - Gimme (rest within gimme distance of the cup edge) stays in `ScoringService`. The hole-out drop animation is
   unchanged (no separate pin/rim bounce visual).
 
@@ -102,5 +109,5 @@ The player sees only the approximate range text, never a predicted landing point
 Hole defaults: H1 1.5 m/s, H2 2.5 m/s, H3 3.0 m/s. Bearing = direction the wind blows **toward**
 (0° = +Z). Developer panel can override speed/bearing or zero the wind.
 
-## Cup capture (8 Nov 2026, owner: "battered balls must not drop")
+## Cup capture (8 Nov 2026; SUPERSEDED 9 Nov 2026 by the real pit above)
 Rolling and landing use the same physics: a ball drops only if it sinks k x ball radius before reaching the far rim (k = cup_sink_fraction = 1.5). Rolling: v_crit = chord / sqrt(2 k r / g) (about 1.3 m/s centre-line on a regulation cup, 3.7 m/s on the 1 ft default). Landing: sink = v_down * t + g t^2 / 2 with t = distance to the far rim / horizontal speed. The old flat 7 m/s landing capture is no longer used.

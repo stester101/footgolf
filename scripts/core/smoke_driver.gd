@@ -12,6 +12,7 @@ var _log: Array[String] = []
 var _shot_no := 0
 var _picker_shot_done := false
 var _card_done := false
+var _pit_shots := 0
 var _menus_done := false
 var _last_pos := Vector3.INF
 var _stuck := 0
@@ -252,6 +253,19 @@ func _run() -> void:
 				if session.current_hole_state().strokes != before + 1:
 					return _fail("double tap counted twice")
 				await _frames(20)
+				if OS.get_cmdline_user_args().has("--smoke-near-pin") and _pit_shots < 3:
+					# Dev tool check: photograph the simulated ball while it is inside the pit (drawn over the hole disc).
+					var cup4 := session.hole.cup_position()
+					var guard4 := 600
+					while session.is_ball_moving() and guard4 > 0 and _pit_shots < 3:
+						guard4 -= 1
+						var bp: Vector3 = session.ball_pos if session.sim == null else session.sim.pos
+						if Units.horizontal_distance(bp, cup4) < session.cfg.cup_radius and bp.y < cup4.y:
+							_pit_shots += 1
+							await _shot("hole%d_in_pit_%d" % [session.round_state.current_index + 1, _pit_shots])
+							await _frames(6)
+						else:
+							await _frames(1)
 				if session.is_ball_moving():
 					await _shot("in_flight")
 					_press_id("skip")
