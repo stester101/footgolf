@@ -29,6 +29,7 @@ func _sample_result() -> ShotResult:
 	r.start_pos = Vector3(0, 0.02, 0)
 	r.final_pos = Vector3(3, 0.02, 100)
 	r.carry_m = Units.caps_to_carry_m(100)
+	r.had_contact = true
 	r.total_m = 100.04
 	r.start_lie = Surface.Type.TEE
 	r.final_lie = Surface.Type.FAIRWAY

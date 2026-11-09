@@ -9,6 +9,8 @@ signal state_changed(state: int)
 signal shot_started(request: ShotRequest)
 signal shot_resolved(result: ShotResult)
 signal shot_mulliganed(result: ShotResult)
+## Developer Undo / Replay removed this shot (telemetry marks it undone; it never counts).
+signal shot_undone(result: ShotResult)
 signal hole_started(index: int)
 signal hole_completed(hole_state: HoleState)
 signal round_completed
@@ -754,6 +756,7 @@ func _restore_last_shot() -> bool:
 	spin = s.get("spin", 0.0)
 	trajectory = int(s.get("trajectory", ShotTypes.Trajectory.STANDARD))
 	selected_id = s["selected"]
+	var undone := last_result
 	last_result = null
 	last_request = null
 	sim = null
@@ -761,6 +764,8 @@ func _restore_last_shot() -> bool:
 	_set_state(ShotTypes.State.AIMING)
 	ball_placed.emit()
 	selection_changed.emit()
+	if undone != null:
+		shot_undone.emit(undone)
 	return true
 
 

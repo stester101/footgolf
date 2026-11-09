@@ -12,6 +12,7 @@ extends Control
 ## Only features that exist are functional; the rest are clearly labelled placeholders.
 
 signal play_requested(course_id: String, dev: bool, mulligans: int, players: int, rules: RoundConfig)
+signal resume_requested(save_id: String)
 
 const WORD_GREEN := Color("#3AB52B")
 
@@ -346,6 +347,9 @@ func _build_home() -> Control:
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(list)
 	list.add_child(_nav_row("player", "Single Player", "", _open_course_select, "menu_single"))
+	var saved_rounds := RoundSave.list_saves().size()
+	if saved_rounds > 0:
+		list.add_child(_nav_row("flag", "Resume round", "%d unfinished" % saved_rounds, func() -> void: HistoryPages.open_resume(self), "menu_resume"))
 	list.add_child(_multiplayer_card())
 	list.add_child(_nav_row("course", "Course Select", "", _open_course_select, "menu_courses"))
 	list.add_child(_nav_row("gear", "Settings", "", _open_settings, "menu_settings"))
@@ -1270,43 +1274,13 @@ func _open_statistics() -> void:
 	var pg := _page("Statistics")
 	var body: VBoxContainer = pg["body"]
 	body.add_child(_nav_row("bars", "Overview", "What is recorded on this device", _open_stats_overview, "stats_overview"))
-	body.add_child(_nav_row("list", "Round History", "Finished rounds", func() -> void: _open_placeholder("Round History",
-		"Finished rounds will be listed here once saving and History are built. Shots are already recorded for export (Settings > Developer > Export data)."), "stats_history"))
-	body.add_child(_nav_row("target", "Records", "Personal bests", func() -> void: _open_placeholder("Records",
-		"Personal bests per course and rule set will appear here once History is built."), "stats_records"))
+	body.add_child(_nav_row("list", "Round History", "Finished rounds and scorecards", func() -> void: HistoryPages.open_history(self), "stats_history"))
+	body.add_child(_nav_row("target", "Records", "Personal bests", func() -> void: HistoryPages.open_records(self), "stats_records"))
 	_push(pg["root"])
 
 
 func _open_stats_overview() -> void:
-	var pg := _page("Overview")
-	var body: VBoxContainer = pg["body"]
-	var rounds := 0
-	var holes := 0
-	var shots := 0
-	if App.telemetry != null:
-		var recs := App.telemetry.load_records()
-		rounds = TelemetryLog.of_type(recs, "round_start").size()
-		holes = TelemetryLog.of_type(recs, "hole").size()
-		shots = TelemetryLog.of_type(recs, "shot").size()
-	var grid := HBoxContainer.new()
-	grid.add_theme_constant_override("separation", 10)
-	for pair in [["ROUNDS", rounds], ["HOLES", holes], ["SHOTS", shots]]:
-		var p := PanelContainer.new()
-		p.add_theme_stylebox_override("panel", UiKit.skin("recess", 6, 12, 14))
-		p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var v := UiKit.vbox(0)
-		var n := UiKit.label(str(int(pair[1])), 44, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-		n.add_theme_font_override("font", UiKit.font_semi())
-		v.add_child(n)
-		var c := UiKit.label(String(pair[0]), 16, UiKit.C_CYAN, HORIZONTAL_ALIGNMENT_CENTER)
-		c.add_theme_font_override("font", UiKit.font_caps())
-		v.add_child(c)
-		p.add_child(v)
-		grid.add_child(p)
-	body.add_child(grid)
-	body.add_child(_note("Recorded on this device. Full statistics (fairways, greens, putts) come with History."))
-	body.add_child(_nav_row("list", "Export data", "Copy a summary or save CSV / JSON files", _show_export))
-	_push(pg["root"])
+	HistoryPages.open_overview(self)
 
 
 func _open_placeholder(title: String, text: String) -> void:

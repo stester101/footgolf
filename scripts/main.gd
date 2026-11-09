@@ -40,9 +40,18 @@ func show_menu() -> void:
 	_canvas.add_child(_menu)
 	_menu.setup()
 	_menu.play_requested.connect(func(course_id: String, dev: bool, mulligans: int, players: int, rules: RoundConfig) -> void: start_round(course_id, dev, mulligans, players, rules))
+	_menu.resume_requested.connect(_resume_round)
 
 
-func start_round(course_id: String, dev: bool = false, mulligans: int = 0, players: int = 1, rules: RoundConfig = null) -> void:
+## Resumes a saved offline round with its frozen rules, player count and mulligan setting.
+func _resume_round(save_id: String) -> void:
+	var sv := RoundSave.load_save(save_id)
+	if sv.is_empty():
+		return
+	start_round(String(sv.get("course_id", "")), false, RoundSave.mulligans_of(sv), RoundSave.players_of(sv), RoundSave.rules_of(sv), save_id)
+
+
+func start_round(course_id: String, dev: bool = false, mulligans: int = 0, players: int = 1, rules: RoundConfig = null, resume_id: String = "") -> void:
 	if _menu != null:
 		_menu.queue_free()
 		_menu = null
@@ -65,6 +74,7 @@ func start_round(course_id: String, dev: bool = false, mulligans: int = 0, playe
 	_round.mulligans = mulligans
 	_round.players = players
 	_round.rules = rules if rules != null else RoundConfig.from_settings(App.settings)
+	_round.resume_id = resume_id
 	App.settings.last_course = course_id
 	App.settings.save()
 	_round.exit_to_menu.connect(show_menu)

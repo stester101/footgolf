@@ -45,6 +45,9 @@ var rules: RoundConfig
 ## Mini season in progress (owned by Main, null for a normal round).
 var season: Season
 signal next_course_requested(course_id: String)
+## Save id of an unfinished round to resume (see RoundSave); "" starts a new round.
+var resume_id := ""
+var autosave: RoundAutosave
 var _marker: MeshInstance3D
 var _marker_pos := Vector3.INF
 var _shown_cup_r := -1.0
@@ -161,12 +164,25 @@ func _ready() -> void:
 		seed_value = int(App.online.setup.seed)
 		for h in defs:
 			h.par = int(App.online.setup.pars.get(h.id, h.par))
+	var cname := String(App.course_info(course_id).get("name", course_id))
+	var resumed := {}
+	if resume_id != "" and not App.online.started:
+		resumed = RoundSave.load_save(resume_id)
+		if resumed.is_empty() or not RoundSave.restore(session, resumed, defs):
+			resumed = {}
+			ui.toast("That saved round could not be loaded.")
+	if not resumed.is_empty():
+		App.telemetry.attach(session, course_id, cname, String(resumed.get("telemetry_round_id", "")))
 	else:
-		App.telemetry.attach(session, course_id, String(App.course_info(course_id).get("name", course_id)))
-	session.start_round(defs, seed_value, rules.pool_rule(), mulligans, players)
-	for i in mini(players, MainMenu.player_names.size()):
-		session.player_names[i] = String(MainMenu.player_names[i])
-		session.profile_ids.append(String(MainMenu.player_profile_ids[i]))
+		if not App.online.started:
+			App.telemetry.attach(session, course_id, cname)
+		session.start_round(defs, seed_value, rules.pool_rule(), mulligans, players)
+		for i in mini(players, MainMenu.player_names.size()):
+			session.player_names[i] = String(MainMenu.player_names[i])
+			session.profile_ids.append(String(MainMenu.player_profile_ids[i]))
+	if not App.online.started and not App.dev_mode and season == null:
+		autosave = RoundAutosave.new()
+		autosave.attach(session, course_id, cname, App.telemetry, resumed)
 	if App.online.started:
 		for i in App.online.players.size():
 			session.player_names[i] = String(App.online.players[i].name)
