@@ -490,12 +490,15 @@ func _pit_wall(p0: Vector3, p1: Vector3, v: Vector3) -> Array:
 ## Impact response for the rim, wall and floor of the hole: the SAME bounce model as every other surface on the
 ## course (green parameters): speed-dependent restitution e = restitution / (1 + |vn| / bounce_soft), and the
 ## tangential velocity kept by the green's retention (plus spin), exactly as in the terrain bounce.
-func _impact(v: Vector3, nrm: Vector3, vn: float, _unused_e: float) -> Vector3:
+func _impact(v: Vector3, nrm: Vector3, vn: float, _unused_e: float, hard_edge: bool = true) -> Vector3:
+	# Normal part: the green's speed-dependent restitution, like every other surface. Tangential part: the floor is
+	# turf (green retention, as anywhere else); the rim lip and wall are a hard edge the ball slides/rolls along, so
+	# a glancing touch keeps its pace (a fast ball rides over or lips out instead of stopping dead on the rim).
 	var gp := cfg.surface(Surface.Type.GREEN)
 	var vt := v - nrm * vn
 	var e: float = float(gp["restitution"]) / (1.0 + absf(vn) / cfg.bounce_soft)
-	var ret: float = float(gp["retention"]) + spin * cfg.spin_retention
-	return vt * clampf(ret, -0.15, 0.95) - nrm * (vn * e)
+	var ret: float = cfg.cup_edge_retention if hard_edge else float(gp["retention"]) + spin * cfg.spin_retention
+	return vt * clampf(ret, -0.15, 0.98) - nrm * (vn * e)
 
 
 ## Air step that touches the cup: pit wall, outer turf, rim edge (sphere vs circle) and floor.
@@ -555,7 +558,7 @@ func _cup_contact(nrm: Vector3, is_floor: bool) -> void:
 		return
 	var gp := cfg.surface(Surface.Type.GREEN)
 	var e: float = float(gp["restitution"]) / (1.0 + absf(vn) / cfg.bounce_soft)
-	vel = _impact(vel, nrm, vn, e)
+	vel = _impact(vel, nrm, vn, e, not is_floor)
 	spin *= 0.5
 	if vn < -0.3:
 		bounces += 1

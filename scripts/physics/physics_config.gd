@@ -27,6 +27,8 @@ var cup_radius := DEFAULT_CUP_DIAMETER_IN * 0.0254 * 0.5
 var cup_depth_min := 0.10  # regulation: about 4 in, whatever the hole width
 var cup_depth_frac := 0.0
 var cup_depth_max := 0.10
+## Tangential speed kept when the ball touches the hole's rim lip or wall (a hard edge, not turf).
+var cup_edge_retention := 0.92
 ## Pit contacts: normal restitution (wall and rim edge / floor), Coulomb friction on impact.
 var cup_wall_restitution := 0.35
 var cup_floor_restitution := 0.25
