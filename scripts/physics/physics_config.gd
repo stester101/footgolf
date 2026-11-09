@@ -21,28 +21,25 @@ var max_motion_time := 60.0
 const REGULATION_CUP_RADIUS := 0.054
 const DEFAULT_CUP_DIAMETER_IN := 72.0  # owner: default hole is 6 ft
 var cup_radius := DEFAULT_CUP_DIAMETER_IN * 0.0254 * 0.5
-var cup_capture_speed := 1.6
-## How far (fraction of the ball radius) a ball must sink while crossing the cup to drop in (see BallSim._roll_cup).
-var cup_sink_fraction := 1.5
-var cup_landing_capture_speed := 7.0
-## Flagstick (thin vertical pole at the cup centre). Balls faster than pin_soft_speed that touch it
-## bounce off (horizontal normal component reflected with pin_restitution; in the air the whole
-## velocity is also scaled by pin_air_loss, so a ball hitting the pin on the way down loses most of its
-## energy and drops). Slower balls ignore it. Cups wider than pin_max_cup_radius ignore the pole.
+## The cup is a real pit (BallSim): a cylinder of radius cup_radius under the green with a vertical wall and a
+## flat floor cup_depth() below the rim. The ball meets the rim edge, wall and floor like any other surface;
+## nothing decides "holed" except the ball coming to rest inside the pit.
+var cup_depth_min := 0.10
+var cup_depth_frac := 0.25
+var cup_depth_max := 0.30
+## Pit contacts: normal restitution (wall and rim edge / floor), Coulomb friction on impact.
+var cup_wall_restitution := 0.35
+var cup_floor_restitution := 0.25
+var cup_friction := 0.3
+## Rolling on the pit floor (soft liner): a = decel + drag * v.
+var cup_floor_roll_decel := 1.6
+var cup_floor_roll_drag := 0.6
 var pin_radius := 0.0125
 var pin_height := 2.0
 var pin_soft_speed := 1.0
 var pin_restitution := 0.35
 var pin_air_loss := 0.55
 var pin_max_cup_radius := 0.45
-## Cup rim (rolling): a ball entering the cup at lateral offset b from the centre line drops only if
-## speed <= cup_capture_speed_eff * (1 - cup_rim_lip * (b/R)^2) (landing: same factor on the landing
-## capture speed). Faster balls up to cup_lip_max_factor * capture speed lip out (path bent around the
-## rim by cup_lip_deflect_deg * b/R, speed loss cup_lip_loss); faster still skip over unchanged.
-var cup_rim_lip := 0.5
-var cup_lip_max_factor := 2.0
-var cup_lip_deflect_deg := 35.0
-var cup_lip_loss := 0.12
 var canopy_damping := 5.0
 ## Strike-point spin (flight only), s in [-1 backspin .. +1 topspin]:
 ## Magnus lift a = -s * spin_lift_k * |v_rel|^2 (perpendicular to flight, upward for backspin);
@@ -65,9 +62,9 @@ func set_cup_diameter_in(inches: float) -> void:
 	cup_radius = clampf(inches, 4.25, 72.0) * 0.0254 * 0.5
 
 
-## Bigger cups also accept slightly faster rolling balls (sqrt scaling, capped).
-func cup_capture_speed_eff() -> float:
-	return cup_capture_speed * clampf(sqrt(cup_radius / REGULATION_CUP_RADIUS), 1.0, 3.0)
+## Pit depth below the rim: max(cup_depth_min, cup_depth_frac * R), capped at cup_depth_max.
+func cup_depth() -> float:
+	return clampf(cup_depth_frac * cup_radius, cup_depth_min, maxf(cup_depth_max, cup_depth_min))
 
 
 func pin_active() -> bool:
@@ -112,9 +109,14 @@ func to_dict() -> Dictionary:
 		"static_factor": static_factor,
 		"max_motion_time": max_motion_time,
 		"cup_radius": cup_radius,
-		"cup_capture_speed": cup_capture_speed,
-		"cup_sink_fraction": cup_sink_fraction,
-		"cup_landing_capture_speed": cup_landing_capture_speed,
+		"cup_depth_min": cup_depth_min,
+		"cup_depth_frac": cup_depth_frac,
+		"cup_depth_max": cup_depth_max,
+		"cup_wall_restitution": cup_wall_restitution,
+		"cup_floor_restitution": cup_floor_restitution,
+		"cup_friction": cup_friction,
+		"cup_floor_roll_decel": cup_floor_roll_decel,
+		"cup_floor_roll_drag": cup_floor_roll_drag,
 		"canopy_damping": canopy_damping,
 		"pin_radius": pin_radius,
 		"pin_height": pin_height,
@@ -122,10 +124,6 @@ func to_dict() -> Dictionary:
 		"pin_restitution": pin_restitution,
 		"pin_air_loss": pin_air_loss,
 		"pin_max_cup_radius": pin_max_cup_radius,
-		"cup_rim_lip": cup_rim_lip,
-		"cup_lip_max_factor": cup_lip_max_factor,
-		"cup_lip_deflect_deg": cup_lip_deflect_deg,
-		"cup_lip_loss": cup_lip_loss,
 		"trunk_restitution": trunk_restitution,
 		"spin_lift_k": spin_lift_k,
 		"spin_retention": spin_retention,
@@ -136,9 +134,11 @@ func to_dict() -> Dictionary:
 func apply_dict(d: Dictionary) -> void:
 	for key in ["gravity", "dt", "ball_radius", "launch_angle_deg", "drag_k", "bounce_soft",
 			"min_bounce_speed", "rest_speed", "rest_time", "static_factor", "max_motion_time",
-			"cup_radius", "cup_capture_speed", "cup_sink_fraction", "cup_landing_capture_speed", "canopy_damping",
+			"cup_radius", "cup_depth_min", "cup_depth_frac", "cup_depth_max", "cup_wall_restitution",
+			"cup_floor_restitution", "cup_friction", "cup_floor_roll_decel", "cup_floor_roll_drag", "canopy_damping",
 			"trunk_restitution", "spin_lift_k", "spin_retention",
-			"pin_radius", "pin_height", "pin_soft_speed", "pin_restitution", "pin_air_loss", "pin_max_cup_radius", "cup_rim_lip", "cup_lip_max_factor", "cup_lip_deflect_deg", "cup_lip_loss"]:
+			"pin_radius", "pin_height", "pin_soft_speed", "pin_restitution", "pin_air_loss", "pin_max_cup_radius"]:
+		# keys of the old heuristic cup (cup_capture_speed, cup_sink_fraction, cup_lip_*, ...) are ignored
 		if d.has(key):
 			var v = d[key]
 			if (typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT) and is_finite(float(v)):
@@ -146,6 +146,15 @@ func apply_dict(d: Dictionary) -> void:
 	launch_angle_deg = clampf(launch_angle_deg, 5.0, 80.0)
 	dt = clampf(dt, 1.0 / 1000.0, 1.0 / 30.0)
 	drag_k = clampf(drag_k, 0.0, 0.02)
+	cup_radius = clampf(cup_radius, REGULATION_CUP_RADIUS * 0.99, 72.0 * 0.0254 * 0.5)
+	cup_depth_min = clampf(cup_depth_min, 0.05, 1.0)
+	cup_depth_max = clampf(cup_depth_max, cup_depth_min, 1.0)
+	cup_depth_frac = clampf(cup_depth_frac, 0.0, 2.0)
+	cup_wall_restitution = clampf(cup_wall_restitution, 0.0, 0.95)
+	cup_floor_restitution = clampf(cup_floor_restitution, 0.0, 0.95)
+	cup_friction = clampf(cup_friction, 0.0, 2.0)
+	cup_floor_roll_decel = maxf(cup_floor_roll_decel, 0.05)
+	cup_floor_roll_drag = maxf(cup_floor_roll_drag, 0.0)
 	if d.has("surfaces") and typeof(d["surfaces"]) == TYPE_DICTIONARY:
 		var s: Dictionary = d["surfaces"]
 		for name in s.keys():

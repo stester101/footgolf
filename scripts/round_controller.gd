@@ -30,21 +30,12 @@ var _tap_place := false
 var _built_hole_id := ""
 var _last_aim := -1.0
 var _last_ball := Vector3.INF
-## Hole-out drop: the ball rolls in from the rim with the shot's line, then falls into the cup.
-const DROP_TIME := 0.9
-var _drop_t := -1.0
-var _drop_dir := Vector3.FORWARD
-var _drop_result: ShotResult = null
-
-
-static func _drop_pos(cup: Vector3, dir: Vector3, cup_r: float, t: float) -> Vector3:
-	var rim := Vector3(cup.x, cup.y, cup.z) + dir * (cup_r * 1.0)  # enters over the rim itself
-	var roll := clampf(t / 0.45, 0.0, 1.0)
-	var fall := clampf((t - 0.40) / 0.50, 0.0, 1.0)
-	var xz := Vector3(rim.x, 0.0, rim.z).lerp(Vector3(cup.x, 0.0, cup.z), 1.0 - (1.0 - roll) * (1.0 - roll))
-	var depth := 0.06 + 0.3 * cup_r  # a big hole is a deep drop, a regulation cup stays shallow
-	var y := lerpf(cup.y + 0.02, cup.y - depth, fall * fall)
-	return Vector3(xz.x, y, xz.z)
+## The hole-out itself is the simulated ball path (BallSim models the cup as a real pit); this only remembers which
+## holed result already got its celebration.
+var _celebrated: ShotResult = null
+## Ball materials: normal, and "in the pit" (drawn over the hole disc, which the terrain mesh would otherwise hide).
+var _ball_mat: StandardMaterial3D
+var _ball_pit_mat: StandardMaterial3D
 var open_dev_on_start := false
 var course_id := "starter"
 var mulligans := 0
@@ -84,6 +75,11 @@ func _ready() -> void:
 	bm.emission_enabled = true
 	bm.emission = Color(0.25, 0.25, 0.25)
 	ball_mesh.material_override = bm
+	_ball_mat = bm
+	_ball_pit_mat = bm.duplicate() as StandardMaterial3D
+	_ball_pit_mat.no_depth_test = true
+	_ball_pit_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA  # drawn after the opaque turf and hole disc
+	_ball_pit_mat.render_priority = 10
 	add_child(ball_mesh)
 	tee_peg = MeshInstance3D.new()
 	var pm := CylinderMesh.new()
@@ -410,17 +406,12 @@ func _process(delta: float) -> void:
 	var vis_r := clampf(dist * 0.011, 0.045, 2.2) if rig.mode == CameraRig.Mode.BEHIND else clampf(rig.cam.size * 0.006, 0.4, 4.0)
 	ball_mesh.scale = Vector3.ONE * vis_r
 	var draw_pos := bpos
-	if _drop_result == null or session.last_result != _drop_result:
-		if session.last_result != null and session.last_result.holed:
-			_drop_result = session.last_result
-			_drop_t = 0.0
-			_drop_dir = Units.bearing_to_dir(session.last_result.aim_bearing_deg)
-			_cup_celebrate(session.hole.cup_position(), session.current_hole_state())
-	if _drop_t >= 0.0 and _drop_t < DROP_TIME:
-		draw_pos = _drop_pos(session.hole.cup_position(), _drop_dir, session.cfg.cup_radius, _drop_t)
-		_drop_t += get_process_delta_time()
+	if session.last_result != _celebrated and session.last_result != null and session.last_result.holed:
+		_celebrated = session.last_result
+		_cup_celebrate(session.hole.cup_position(), session.current_hole_state())
+	var pit_depth := _pit_depth(bpos)
 	# first shot of a hole (and any shot from the tee box): the ball sits on a tee peg
-	var on_tee := not moving and not (_drop_t >= 0.0 and _drop_t < DROP_TIME) and session.current_lie() == Surface.Type.TEE \
+	var on_tee := not moving and pit_depth < 0.0 and session.current_lie() == Surface.Type.TEE \
 			and session.state != ShotTypes.State.HOLE_COMPLETE and rig.mode == CameraRig.Mode.BEHIND
 	var peg_h := vis_r * 0.9 if on_tee else 0.0
 	tee_peg.visible = on_tee
@@ -428,6 +419,10 @@ func _process(delta: float) -> void:
 		tee_peg.scale = Vector3(vis_r * 0.7, peg_h, vis_r * 0.7)
 		tee_peg.position = draw_pos + Vector3.DOWN * session.cfg.ball_radius + Vector3.UP * (peg_h * 0.5)
 	ball_mesh.position = draw_pos + Vector3.UP * (vis_r - session.cfg.ball_radius + peg_h)
+	if pit_depth >= 0.0:
+		_draw_ball_in_pit(bpos, vis_r, pit_depth)
+	elif ball_mesh.material_override != _ball_mat:
+		ball_mesh.material_override = _ball_mat
 	ball_mesh.visible = session.state != ShotTypes.State.HOLE_COMPLETE or moving
 	var fwd := -rig.cam.global_transform.basis.z
 	ui.camera_yaw = deg_to_rad(Units.dir_to_bearing(fwd))
@@ -444,6 +439,34 @@ func _process(delta: float) -> void:
 		course.pin_label.visible = false  # the HUD draws the pin distance label now (HudMarkers)
 	_update_aim_guide(bpos)
 	_update_trail(bpos, moving)
+
+
+## How far the ball centre is below where it would sit on the turf, while it is inside the cup radius
+## (the ball is in the pit, under the terrain mesh); -1 when it is not in the hole.
+func _pit_depth(bpos: Vector3) -> float:
+	var h := session.hole
+	if not h.has_cup:
+		return -1.0
+	var cup := h.cup_position()
+	if Units.horizontal_distance(bpos, cup) >= session.cfg.cup_radius:
+		return -1.0
+	var depth := h.terrain_height(bpos.x, bpos.z) + session.cfg.ball_radius - bpos.y
+	return depth if depth > 0.002 else -1.0
+
+
+## The terrain mesh covers the pit, so a ball inside it is drawn over the dark hole disc (depth test off), at its
+## real horizontal position, a little smaller and darker the deeper it is, so it reads as falling into the hole.
+func _draw_ball_in_pit(bpos: Vector3, vis_r: float, depth: float) -> void:
+	var cfg := session.cfg
+	var k := clampf(depth / maxf(cfg.cup_depth(), 0.05), 0.0, 1.0)
+	var pr := minf(vis_r, maxf(cfg.cup_radius * 0.5, cfg.ball_radius)) * (1.0 - 0.3 * k)
+	ball_mesh.scale = Vector3.ONE * pr
+	var ground := session.hole.terrain_height(bpos.x, bpos.z)
+	ball_mesh.position = Vector3(bpos.x, ground + pr * (1.0 - k) * 0.5 + 0.015, bpos.z)
+	var c := 1.0 - 0.55 * k
+	_ball_pit_mat.albedo_color = Color(0.98 * c, 0.98 * c, 0.98 * c)
+	_ball_pit_mat.emission = Color(0.25, 0.25, 0.25) * c
+	ball_mesh.material_override = _ball_pit_mat
 
 
 ## Online spectators see the active player's live aim (cosmetic preview, never authoritative).

@@ -8,6 +8,11 @@ extends RefCounted
 ## ROLL: constrained to terrain; 5/7 g slope acceleration; surface rolling resistance
 ##       a = roll_decel + roll_drag * v; analytic stop within a step; static friction.
 ## Rest: speed below rest_speed for rest_time seconds; hard timeout failsafe.
+## CUP: a real pit under the green (radius R, vertical wall, flat floor cfg.cup_depth() below the rim). The rim is
+##       a circular edge: a rolling ball follows its curved support and leaves the ground once the support falls
+##       away faster than gravity can follow; in the air it meets the rim edge (sphere vs circle), the wall
+##       (vertical cylinder of radius R - r for the centre) and the floor like any other surface. HOLED = the ball
+##       comes to rest inside the pit. Near the cup each step is split into sub-steps (~r/4 of travel each).
 
 enum Phase { IDLE, AIR, ROLL, REST, HOLED, HAZARD, ERROR }
 
@@ -43,14 +48,26 @@ var end_reason := ""
 var _steps := 0
 var _in_canopy: Dictionary = {}
 var _cup := Vector3.ZERO
-var _cup_decided := false
+var _cup_r := 0.0
+var _cup_floor := 0.0
 var _pin_hit_air := false
+## The ball left rolling contact at the rim (it is not a flight shot coming down).
+var _lip_air := false
 
 
 func _init(p_hole: HoleDefinition, p_cfg: PhysicsConfig) -> void:
 	hole = p_hole
 	cfg = p_cfg
+	_setup_cup()
+
+
+func _setup_cup() -> void:
 	_cup = hole.cup_position()
+	_cup_r = maxf(cfg.cup_radius, cfg.ball_radius * 1.5)
+	# floor level: depth below the LOWEST rim point (a big hole on a slope stays a proper pit all round)
+	var n := hole.normal_at(_cup.x, _cup.z)
+	var drop := _cup_r * sqrt(maxf(1.0 - n.y * n.y, 0.0)) / maxf(n.y, 0.3)
+	_cup_floor = _cup.y - drop - cfg.cup_depth()
 
 
 func launch(start: Vector3, velocity: Vector3, airborne: bool, p_spin: float = 0.0) -> void:
@@ -72,8 +89,10 @@ func launch(start: Vector3, velocity: Vector3, airborne: bool, p_spin: float = 0
 	end_reason = ""
 	_steps = 0
 	_in_canopy = {}
-	_cup_decided = false
 	_pin_hit_air = false
+	_lip_air = false
+	if hole.has_cup:
+		_setup_cup()
 	if velocity.length() <= 0.0:
 		phase = Phase.REST
 		end_reason = "no_motion"
@@ -100,10 +119,15 @@ func run_until_done(max_time: float = -1.0) -> void:
 func step() -> void:
 	if not is_moving():
 		return
-	if phase == Phase.AIR:
-		_step_air()
-	else:
-		_step_roll()
+	var n := _substeps()
+	var h := cfg.dt / float(n)
+	for i in n:
+		if phase == Phase.AIR:
+			_step_air(h)
+		else:
+			_step_roll(h)
+		if not is_moving():
+			break
 	time += cfg.dt
 	_steps += 1
 	if _steps % TRAIL_EVERY == 0 or not is_moving():
@@ -119,6 +143,10 @@ func step() -> void:
 		timed_out = true
 		end_reason = "timeout"
 		vel = Vector3.ZERO
+		if _in_pit(pos):
+			_hole_out()
+			end_reason = "timeout"
+			return
 		if phase == Phase.AIR:
 			pos.y = hole.contact_height(pos.x, pos.z) + cfg.ball_radius
 		phase = Phase.REST
@@ -154,8 +182,8 @@ func _set_hazard(kind: String) -> void:
 	end_reason = kind.to_lower()
 
 
+## The ball has come to rest inside the pit: it stays exactly where the physics left it.
 func _hole_out() -> void:
-	pos = Vector3(_cup.x, _cup.y - 0.06, _cup.z)
 	vel = Vector3.ZERO
 	phase = Phase.HOLED
 	end_reason = "cup"
@@ -167,8 +195,7 @@ func _record(kind: String) -> void:
 
 # ------------------------------------------------------------------ AIR
 
-func _step_air() -> void:
-	var dt := cfg.dt
+func _step_air(dt: float) -> void:
 	var r := cfg.ball_radius
 	var p0 := pos
 	var v0 := vel
@@ -176,7 +203,7 @@ func _step_air() -> void:
 	var p1 := p0 + vh * dt
 	var v1 := v0 + _air_accel(vh) * dt
 	if not hole.trees.is_empty():
-		var res := _collide_trees(p1, v1, true)
+		var res := _collide_trees(p1, v1, true, dt)
 		p1 = res[0]
 		v1 = res[1]
 	if hole.has_cup and not _pin_hit_air and cfg.pin_active():
@@ -184,7 +211,11 @@ func _step_air() -> void:
 		if not ph.is_empty():
 			_pin_hit_air = true
 			p1 = ph[0]
-			v1 = (ph[1] as Vector3) * cfg.pin_air_loss
+			# a flight coming down onto the pole loses most of its pace; a ball that just ran off the rim does not
+			v1 = (ph[1] as Vector3) * (1.0 if _lip_air else cfg.pin_air_loss)
+	if hole.has_cup and (_cup_d(p0) < _cup_r or _cup_d(p1) < _cup_r):
+		_air_cup(p0, v0, p1, v1)
+		return
 	var g1 := hole.contact_height(p1.x, p1.z)
 	if p1.y - r <= g1:
 		var g0 := hole.contact_height(p0.x, p0.z)
@@ -206,7 +237,8 @@ func _step_air() -> void:
 			_set_hazard("OOB")
 
 
-func _on_contact() -> void:
+## First ground contact bookkeeping (carry). Returns true when the sim stops here (calibration mode).
+func _note_contact() -> bool:
 	if not first_contact:
 		first_contact = true
 		first_contact_pos = pos
@@ -214,7 +246,13 @@ func _on_contact() -> void:
 		if stop_at_first_contact:
 			phase = Phase.REST
 			end_reason = "first_contact"
-			return
+			return true
+	return false
+
+
+func _on_contact() -> void:
+	if _note_contact():
+		return
 	var surf := _surface(pos.x, pos.z)
 	if surf == Surface.Type.OOB:
 		_set_hazard("OOB")
@@ -222,27 +260,6 @@ func _on_contact() -> void:
 	if surf == Surface.Type.WATER:
 		_set_hazard("WATER")
 		return
-	if hole.has_cup:
-		var dl := Units.horizontal_distance(pos, _cup)
-		if dl <= cfg.cup_radius:
-			# Real physics, same rule as rolling over the cup: from where it lands, the ball must sink k*r before it
-			# reaches the far rim. Time to the far rim t = s / v_h; sink = v_down * t + g t^2 / 2. A ball dropping in
-			# steeply always stays in; one battered in flat and fast clears the hole and carries on.
-			var rel := Vector2(pos.x - _cup.x, pos.z - _cup.z)
-			var vh2 := Vector2(vel.x, vel.z)
-			var vhl := vh2.length()
-			var captured := true
-			if vhl > 1e-4:
-				var dir2 := vh2 / vhl
-				var bq := dir2.dot(rel)
-				var s_ahead := -bq + sqrt(maxf(bq * bq - (rel.length_squared() - cfg.cup_radius * cfg.cup_radius), 0.0))
-				var t := s_ahead / vhl
-				var sink := maxf(-vel.y, 0.0) * t + 0.5 * 9.81 * t * t
-				captured = sink >= cfg.cup_sink_fraction * cfg.ball_radius
-			if captured:
-				_hole_out()
-				return
-			_record("rim")
 	var n := hole.normal_at(pos.x, pos.z)
 	var vn := vel.dot(n)
 	if vn >= 0.0:
@@ -264,8 +281,7 @@ func _on_contact() -> void:
 
 # ------------------------------------------------------------------ ROLL
 
-func _step_roll() -> void:
-	var dt := cfg.dt
+func _step_roll(dt: float) -> void:
 	var r := cfg.ball_radius
 	var surf := _surface(pos.x, pos.z)
 	if surf == Surface.Type.OOB:
@@ -277,15 +293,31 @@ func _step_roll() -> void:
 	var prm := cfg.surface(surf)
 	var decel: float = prm["roll_decel"]
 	var drag: float = prm["roll_drag"]
-	var n := hole.normal_at(pos.x, pos.z)
+	var in_cup := hole.has_cup and _cup_d(pos) < _cup_r
+	var on_floor := false
+	var n: Vector3
+	if in_cup:
+		on_floor = pos.y < _rim_h(pos)
+		if on_floor:
+			n = Vector3.UP
+			decel = cfg.cup_floor_roll_decel
+			drag = cfg.cup_floor_roll_drag
+		else:
+			# on the rim edge itself: no turf under the ball, so no rolling resistance (a ball past the edge falls)
+			n = _lip_normal(pos)
+			decel = 0.0
+			drag = 0.0
+	else:
+		n = hole.normal_at(pos.x, pos.z)
 	var gv := Vector3(0.0, -cfg.gravity, 0.0)
 	var g_t := (gv - n * gv.dot(n)) * (5.0 / 7.0)
 	var holds := g_t.length() <= decel * cfg.static_factor
 	vel = vel - n * vel.dot(n)
+	var v_start := vel
 	var speed := vel.length()
 	# Deep grass and sand catch a very slow ball even on the steep terrain used
 	# by some courses; otherwise it can creep for over a minute on a hillside.
-	if (surf == Surface.Type.ROUGH or surf == Surface.Type.BUNKER) and speed < 0.15:
+	if not in_cup and (surf == Surface.Type.ROUGH or surf == Surface.Type.BUNKER) and speed < 0.15:
 		vel = Vector3.ZERO
 		phase = Phase.REST
 		end_reason = "grip"
@@ -314,42 +346,219 @@ func _step_roll() -> void:
 		else:
 			p_new = pos + (vel + v_new) * (0.5 * dt)
 			vel = v_new
-	p_new.y = hole.terrain_height(p_new.x, p_new.z) + r
-	if not hole.trees.is_empty():
-		var res := _collide_trees(p_new, vel, false)
-		p_new = res[0]
-		vel = res[1]
+	if not in_cup and not (hole.has_cup and _cup_d(p_new) < _cup_r):
 		p_new.y = hole.terrain_height(p_new.x, p_new.z) + r
-	if hole.has_cup:
-		var pinned := -1.0
+		if not hole.trees.is_empty():
+			var res := _collide_trees(p_new, vel, false, dt)
+			p_new = res[0]
+			vel = res[1]
+			p_new.y = hole.terrain_height(p_new.x, p_new.z) + r
+	else:
 		if cfg.pin_active() and vel.length() > cfg.pin_soft_speed:
-			var pre := vel.length()
 			var ph := _pin_strike(pos, p_new, vel)
 			if not ph.is_empty():
 				p_new = ph[0]
 				vel = ph[1]
-				p_new.y = hole.terrain_height(p_new.x, p_new.z) + r
-				pinned = pre
-		if _roll_cup(pos, p_new, pinned):
-			return
+		if on_floor:
+			var w := _pit_wall(pos, p_new, vel)
+			p_new = w[0]
+			vel = w[1]
+			p_new.y = _cup_floor + r
+		else:
+			# Rolling contact holds only while the support stays under the ball: when it falls away faster than
+			# gravity can follow (over the curved lip, or off the edge into the pit) the ball becomes airborne.
+			var ball_y := pos.y + v_start.y * dt - 0.5 * cfg.gravity * dt * dt
+			var sy := _roll_support_y(p_new)
+			if sy < ball_y - 1e-7:
+				pos = Vector3(p_new.x, ball_y, p_new.z)
+				vel = Vector3(vel.x, v_start.y - cfg.gravity * dt, vel.z)
+				still_time = 0.0
+				phase = Phase.AIR
+				_lip_air = true
+				_pin_hit_air = false
+				return
+			p_new.y = sy
 	pos = p_new
 	if vel.length() < cfg.rest_speed:
 		still_time += dt
 	else:
 		still_time = 0.0
 	if still_time >= cfg.rest_time:
-		if hole.has_cup and Units.horizontal_distance(pos, _cup) <= cfg.cup_radius:
-			_hole_out()  # stopped on the lip: it falls in
+		if _in_pit(pos):
+			_hole_out()
 			return
 		vel = Vector3.ZERO
 		phase = Phase.REST
 		end_reason = "rest"
 
 
-# ------------------------------------------------------------------ cup and flagstick
+# ------------------------------------------------------------------ cup (a real pit) and flagstick
 
 static func _flat(v: Vector3) -> Vector3:
 	return Vector3(v.x, 0.0, v.z)
+
+
+## Horizontal distance from the cup axis.
+func _cup_d(p: Vector3) -> float:
+	return Vector2(p.x - _cup.x, p.z - _cup.z).length()
+
+
+## Sub-steps for this step: 1 away from the cup (the normal path is unchanged); near it, enough that the ball
+## travels at most ~r/4 per sub-step, so the rim edge, wall and floor are never stepped over.
+func _substeps() -> int:
+	if not hole.has_cup:
+		return 1
+	var travel := vel.length() * cfg.dt
+	if _cup_d(pos) > _cup_r + cfg.ball_radius + travel + 0.05:
+		return 1
+	return clampi(int(ceil(travel / (0.25 * cfg.ball_radius))), 1, 32)
+
+
+## Point of the rim edge (a circle at ground level) nearest to `p`, in p's radial direction.
+func _rim_point(p: Vector3) -> Vector3:
+	var dx := p.x - _cup.x
+	var dz := p.z - _cup.z
+	var d := sqrt(dx * dx + dz * dz)
+	if d < 1e-9:
+		dx = 0.0
+		dz = 1.0
+		d = 1.0
+	var x := _cup.x + dx / d * _cup_r
+	var z := _cup.z + dz / d * _cup_r
+	return Vector3(x, hole.terrain_height(x, z), z)
+
+
+## Ground height at the rim in p's direction (the top of the wall).
+func _rim_h(p: Vector3) -> float:
+	return _rim_point(p).y
+
+
+## Inside the pit: within the cup radius with the centre below the rim (below ground level).
+func _in_pit(p: Vector3) -> bool:
+	return hole.has_cup and _cup_d(p) < _cup_r and p.y < _rim_h(p)
+
+
+## Centre height of a ball resting on the rim edge at horizontal distance d (R - r < d < R).
+func _lip_y(p: Vector3) -> float:
+	var w := _cup_r - _cup_d(p)
+	var r := cfg.ball_radius
+	return _rim_h(p) + sqrt(maxf(r * r - w * w, 0.0))
+
+
+## Contact normal of a ball on the rim edge: from the edge point to the ball centre.
+func _lip_normal(p: Vector3) -> Vector3:
+	var q := _rim_point(p)
+	var c := Vector3(p.x, _lip_y(p), p.z)
+	var nv := c - q
+	return nv.normalized() if nv.length() > 1e-9 else Vector3.UP
+
+
+## Support height for the centre of a ball coming from above / outside: turf outside the cup, the curved
+## rim edge across the lip (R - r < d < R), the pit floor inside R - r.
+func _roll_support_y(p: Vector3) -> float:
+	var d := _cup_d(p)
+	var r := cfg.ball_radius
+	if d >= _cup_r:
+		return hole.terrain_height(p.x, p.z) + r
+	if d > _cup_r - r:
+		return _lip_y(p)
+	return _cup_floor + r
+
+
+## Pit wall: a ball inside the pit (centre below the rim) is kept within R - r of the axis.
+## Returns [p1, v1] (reflected with cup_wall_restitution and Coulomb friction on contact).
+func _pit_wall(p0: Vector3, p1: Vector3, v: Vector3) -> Array:
+	var lim := _cup_r - cfg.ball_radius
+	var d1 := _cup_d(p1)
+	if d1 <= lim:
+		return [p1, v]
+	if not (_cup_d(p0) < _cup_r and p0.y < _rim_h(p0)) or p1.y >= _rim_h(p1):
+		return [p1, v]
+	var out := Vector3(p1.x - _cup.x, 0.0, p1.z - _cup.z) / maxf(d1, 1e-9)
+	var nrm := -out
+	p1.x = _cup.x + out.x * (lim - 1e-4)
+	p1.z = _cup.z + out.z * (lim - 1e-4)
+	var vn := v.dot(nrm)
+	if vn < 0.0:
+		v = _impact(v, nrm, vn, cfg.cup_wall_restitution)
+		if vn < -0.3:
+			collisions.append({"type": "cup_wall", "pos": p1, "time": time})
+	return [p1, v]
+
+
+## Impact response: normal component reversed with restitution e, tangential reduced by Coulomb friction.
+func _impact(v: Vector3, nrm: Vector3, vn: float, e: float) -> Vector3:
+	var vt := v - nrm * vn
+	var tl := vt.length()
+	if tl > 1e-9:
+		vt -= vt / tl * minf(tl, cfg.cup_friction * (1.0 + e) * -vn)
+	return vt - nrm * (vn * e)
+
+
+## Air step that touches the cup: pit wall, outer turf, rim edge (sphere vs circle) and floor.
+func _air_cup(p0: Vector3, v0: Vector3, p1: Vector3, v1: Vector3) -> void:
+	var r := cfg.ball_radius
+	var w := _pit_wall(p0, p1, v1)
+	p1 = w[0]
+	v1 = w[1]
+	var d1 := _cup_d(p1)
+	if d1 >= _cup_r:
+		var g1 := hole.contact_height(p1.x, p1.z)
+		if p1.y - r <= g1:
+			var g0 := hole.contact_height(p0.x, p0.z)
+			var dd0 := p0.y - r - g0
+			var dd1 := p1.y - r - g1
+			var f := 1.0
+			if dd0 > 0.0 and dd0 - dd1 > 1e-12:
+				f = clampf(dd0 / (dd0 - dd1), 0.0, 1.0)
+			var pc := p0.lerp(p1, f)
+			if _cup_d(pc) < _cup_r:
+				pc = p1
+			pc.y = hole.contact_height(pc.x, pc.z) + r
+			pos = pc
+			vel = v0.lerp(v1, f)
+			_on_contact()
+			return
+		pos = p1
+		vel = v1
+		max_height = maxf(max_height, pos.y)
+		return
+	if d1 > _cup_r - r:
+		var q := _rim_point(p1)
+		var dv := p1 - q
+		var l := dv.length()
+		if l < r:
+			var nrm := dv / l if l > 1e-9 else Vector3.UP
+			pos = q + nrm * r
+			vel = v1
+			_cup_contact(nrm, false)
+			return
+	if p1.y < _cup_floor + r:
+		pos = Vector3(p1.x, _cup_floor + r, p1.z)
+		vel = v1
+		_cup_contact(Vector3.UP, true)
+		return
+	pos = p1
+	vel = v1
+	max_height = maxf(max_height, pos.y)
+
+
+## Bounce off the rim edge or the pit floor. A gentle contact on a near-flat support becomes rolling.
+func _cup_contact(nrm: Vector3, is_floor: bool) -> void:
+	if _note_contact():
+		return
+	var vn := vel.dot(nrm)
+	if vn >= 0.0:
+		return
+	var e := cfg.cup_floor_restitution if is_floor else cfg.cup_wall_restitution
+	vel = _impact(vel, nrm, vn, e)
+	spin *= 0.5
+	if vn < -0.3:
+		bounces += 1
+		_record("cup_floor" if is_floor else "rim")
+	if nrm.y > 0.7 and -vn * e < cfg.min_bounce_speed:
+		vel -= nrm * vel.dot(nrm)
+		phase = Phase.ROLL
 
 
 ## Closest approach of the horizontal segment a->b to the cup centre: [t, flat distance].
@@ -391,56 +600,9 @@ func _pin_strike(a: Vector3, b: Vector3, v: Vector3) -> Array:
 	return [out, nv]
 
 
-## Rolling cup entry. The drop/lip/skip decision is made once per pass from the lateral offset of the
-## ball's line from the cup centre. Returns true when the ball dropped.
-## `pinned` >= 0 means the ball hit the flagstick this step at that pre-impact speed: the drop test uses
-## that speed (a hard strike bounces off, a moderate one loses its pace and drops).
-func _roll_cup(a: Vector3, b: Vector3, pinned: float = -1.0) -> bool:
-	var c := _closest_t(a, b)
-	if float(c[1]) > cfg.cup_radius:
-		if (_flat(b) - _flat(_cup)).length() > cfg.cup_radius * 1.25:
-			_cup_decided = false
-		return false
-	if _cup_decided:
-		return false
-	_cup_decided = true
-	var vh := _flat(vel)
-	var speed := vh.length()
-	var off := float(c[1])
-	var side := 0.0
-	if speed > 1e-6:
-		var d := vh / speed
-		var rel := _flat(_cup) - _flat(a)
-		off = absf(d.x * rel.z - d.z * rel.x)
-		side = signf(d.x * rel.z - d.z * rel.x)
-	var rn := minf(off / cfg.cup_radius, 1.0)
-	var cap := cfg.cup_capture_speed_eff()
-	if pinned < 0.0 and cfg.pin_active() and speed > cfg.pin_soft_speed \
-			and off < cfg.pin_radius + cfg.ball_radius:
-		_cup_decided = false  # the pole is still ahead: it decides first
-		return false
-	var dspeed := vel.length() if pinned < 0.0 else pinned
-	# Real physics: a ball rolling over a gap of chord length L is in free fall for t = L / v and sinks
-	# h = g t^2 / 2. It drops in once it sinks more than a fraction of its radius (it then meets the far wall).
-	# So the critical speed is v_crit = L / sqrt(2 k r / g): about 1.6 m/s straight across a regulation cup,
-	# less off-centre (shorter chord), and very high for a big hole (a 6 ft cup swallows almost anything).
-	var chord := 2.0 * sqrt(maxf(cfg.cup_radius * cfg.cup_radius - off * off, 0.0))
-	cap = chord / sqrt(2.0 * cfg.cup_sink_fraction * cfg.ball_radius / 9.81)
-	if dspeed <= cap:
-		_hole_out()
-		return true
-	if dspeed <= cap * cfg.cup_lip_max_factor:
-		var ang := deg_to_rad(cfg.cup_lip_deflect_deg) * rn * side
-		vel = vel.rotated(Vector3.UP, -ang) * (1.0 - cfg.cup_lip_loss)
-		_record("lip")
-	else:
-		_record("skip")
-	return false
-
-
 # ------------------------------------------------------------------ trees
 
-func _collide_trees(p: Vector3, v: Vector3, airborne: bool) -> Array:
+func _collide_trees(p: Vector3, v: Vector3, airborne: bool, dt: float) -> Array:
 	var r := cfg.ball_radius
 	for idx in hole.trees_near(p.x, p.z):
 		var t: Dictionary = hole.trees[idx]
@@ -463,7 +625,7 @@ func _collide_trees(p: Vector3, v: Vector3, airborne: bool) -> Array:
 			var cr: float = t["canopy_r"]
 			var dy: float = (p.y - float(t["canopy_y"])) * (cr / float(t["canopy_ry"]))
 			if d2 + dy * dy < cr * cr:
-				v *= exp(-cfg.canopy_damping * cfg.dt)
+				v *= exp(-cfg.canopy_damping * dt)
 				if not _in_canopy.has(idx):
 					_in_canopy[idx] = true
 					collisions.append({"type": "canopy", "pos": p, "time": time})

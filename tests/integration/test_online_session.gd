@@ -79,10 +79,10 @@ func test_online_setup_freezes_round_config_and_physics() -> void:
 	rc.lie_exact = true
 	rc.show_stats = false
 	var host_cfg := PhysicsConfig.new()
-	host_cfg.cup_sink_fraction = 0.37
+	host_cfg.cup_wall_restitution = 0.37
 	host_cfg.pin_restitution = 0.21
-	host_cfg.cup_lip_loss = 0.33
-	host_cfg.cup_lip_deflect_deg = 12.0
+	host_cfg.cup_floor_restitution = 0.33
+	host_cfg.cup_depth_min = 0.12
 	host_cfg.set_cup_diameter_in(rc.cup_diameter_ft * 12.0)
 	var setup: Dictionary = JSON.parse_string(JSON.stringify({"physics": host_cfg.to_dict(), "rules": rc.to_dict(),
 		"wind_custom": false, "wind_speed": 0.0, "wind_bearing": 0.0}))
@@ -92,7 +92,7 @@ func test_online_setup_freezes_round_config_and_physics() -> void:
 		var got := OnlineSession.apply_setup(s, setup)
 		assert_eq(JSON.stringify(got.to_dict()), JSON.stringify(rc.to_dict()), "rules decode identically")
 		assert_eq(JSON.stringify(s.cfg.to_dict()), JSON.stringify(host_cfg.to_dict()), "physics decode identically")
-		assert_true(is_equal_approx(s.cfg.cup_sink_fraction, 0.37), "cup_sink_fraction travels")
+		assert_true(is_equal_approx(s.cfg.cup_wall_restitution, 0.37), "cup_wall_restitution travels")
 		assert_true(is_equal_approx(s.cfg.cup_radius, 2.5 * 12.0 * 0.0254 * 0.5), "cup size from rules")
 		assert_true(is_equal_approx(s.holeout_radius_ft, 3.5))
 		assert_true(is_equal_approx(s.wind_scale, 0.5))

@@ -452,7 +452,7 @@ func test_bigger_cup_default_and_setting() -> void:
 	assert_near(cfg.cup_diameter_in(), 72.0, 1e-6, "default 6 ft")
 	cfg.set_cup_diameter_in(4.25)
 	assert_near(cfg.cup_radius, PhysicsConfig.REGULATION_CUP_RADIUS, 0.0005)
-	assert_near(cfg.cup_capture_speed_eff(), cfg.cup_capture_speed, 0.01, "regulation cup: base capture speed")
+	assert_near(cfg.cup_depth(), cfg.cup_depth_min, 1e-9, "regulation cup: minimum pit depth")
 	cfg.set_cup_diameter_in(100.0)
 	assert_near(cfg.cup_diameter_in(), 72.0, 1e-6, "clamped to 72 in")
 
