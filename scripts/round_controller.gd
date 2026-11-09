@@ -407,11 +407,18 @@ func toggle_dev_panel() -> void:
 			_set_overhead(true))
 
 
+## Measurement only (--smoke-perf): script time of _process and of its grass / trail parts, microseconds.
+var perf := {"n": 0, "sum": 0, "max": 0, "grass": 0, "trail": 0, "advance": 0}
+
+
 func _process(delta: float) -> void:
 	if session == null or session.hole == null:
 		return
+	var _pt0 := Time.get_ticks_usec()
 	_step_preload()
+	var _pa := Time.get_ticks_usec()
 	session.advance(delta, App.settings.sim_speed * (4.0 if ui.fast_forward else 1.0))
+	perf["advance"] += Time.get_ticks_usec() - _pa
 	var bpos := session.ball_render_pos()
 	var moving := session.is_ball_moving()
 	var aim := _watched_aim().get("dir", session.aim_dir()) as Vector3
@@ -449,12 +456,20 @@ func _process(delta: float) -> void:
 		course.sync_pin()  # keep the flag and the cup on the real (possibly varied) pin
 	course.update_view(rig.cam)
 	course.set_grass_visible(rig.mode == CameraRig.Mode.BEHIND)
+	var _pg := Time.get_ticks_usec()
 	if not moving and session.state != ShotTypes.State.HOLE_COMPLETE:
 		course.place_grass(session.ball_pos)
+	perf["grass"] += Time.get_ticks_usec() - _pg
 	if course.pin_label != null and course.pin_label.visible:
 		course.pin_label.visible = false  # the HUD draws the pin distance label now (HudMarkers)
 	_update_aim_guide(bpos)
+	var _pt := Time.get_ticks_usec()
 	_update_trail(bpos, moving)
+	perf["trail"] += Time.get_ticks_usec() - _pt
+	var _used := Time.get_ticks_usec() - _pt0
+	perf["n"] += 1
+	perf["sum"] += _used
+	perf["max"] = maxi(perf["max"], _used)
 
 
 ## How far the ball centre is below where it would sit on the turf, while it is inside the cup radius

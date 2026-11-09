@@ -17,6 +17,8 @@ var pin_label: Label3D
 var cup_radius := 0.1524
 var terrain: TerrainBuilder
 var progress := 0.0
+## Measurement only (--smoke-perf): microseconds spent per build job of this view.
+var job_usec := {}
 
 var _cup_disc: MeshInstance3D
 var _cup_ring: MeshInstance3D
@@ -72,12 +74,12 @@ func begin_build(p_hole: HoleDefinition, p_cup_radius: float = 0.1524) -> void:
 	_job_i = 0
 	var tb := terrain
 	_jobs = [
-		{"w": tb.total_work(), "run": tb.step, "part": func() -> float: return tb.done_work() / maxf(tb.total_work(), 1.0)},
-		{"w": tb.total_work() * 0.12, "run": _job_terrain},
-		{"w": 3000.0, "run": _job_ground_water},
-		{"w": 400.0 + hole.trees.size() * 40.0, "run": _step_trees, "part": func() -> float: return float(_tree_i) / maxf(hole.trees.size(), 1.0)},
-		{"w": 6000.0, "run": _job_tree_meshes},
-		{"w": 1500.0, "run": _job_details},
+		{"n": "terrain_sample", "w": tb.total_work(), "run": tb.step, "part": func() -> float: return tb.done_work() / maxf(tb.total_work(), 1.0)},
+		{"n": "terrain_mesh", "w": tb.total_work() * 0.12, "run": _job_terrain},
+		{"n": "ground_water", "w": 3000.0, "run": _job_ground_water},
+		{"n": "trees_xform", "w": 400.0 + hole.trees.size() * 40.0, "run": _step_trees, "part": func() -> float: return float(_tree_i) / maxf(hole.trees.size(), 1.0)},
+		{"n": "tree_multimeshes_sky", "w": 6000.0, "run": _job_tree_meshes},
+		{"n": "details_pin_grass", "w": 1500.0, "run": _job_details},
 	]
 
 
@@ -120,7 +122,10 @@ func build_step(budget_usec: int) -> bool:
 	var deadline := Time.get_ticks_usec() + budget_usec
 	while _job_i < _jobs.size():
 		var job: Dictionary = _jobs[_job_i]
-		if (job["run"] as Callable).call(deadline):
+		var j0 := Time.get_ticks_usec()
+		var done: bool = (job["run"] as Callable).call(deadline)
+		job_usec[job["n"]] = int(job_usec.get(job["n"], 0)) + Time.get_ticks_usec() - j0
+		if done:
 			_job_i += 1
 		if Time.get_ticks_usec() > deadline:
 			break
