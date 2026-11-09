@@ -39,7 +39,9 @@ var cup_floor_roll_drag := 0.6
 var pin_radius := 0.0125
 var pin_height := 2.0
 var pin_soft_speed := 1.0
-var pin_restitution := 0.6  # firm hits rebound with real pace (was 0.35)
+var pin_restitution := 0.6  # bounce at a firm hit (top value of the speed curve)
+## Speed at which the pole bounce is half its full value: gentle touches drop in, firm hits rebound.
+var pin_bounce_speed := 1.5
 var pin_air_loss := 0.8  # airborne hit on the pole keeps most of its speed (was 0.55)
 var pin_max_cup_radius := 0.45
 var canopy_damping := 5.0
@@ -112,6 +114,7 @@ func to_dict() -> Dictionary:
 		"max_motion_time": max_motion_time,
 		"cup_radius": cup_radius,
 		"cup_depth_min": cup_depth_min,
+		"pin_bounce_speed": pin_bounce_speed,
 		"cup_depth_frac": cup_depth_frac,
 		"cup_depth_max": cup_depth_max,
 		"cup_wall_restitution": cup_wall_restitution,
@@ -136,7 +139,7 @@ func to_dict() -> Dictionary:
 func apply_dict(d: Dictionary) -> void:
 	for key in ["gravity", "dt", "ball_radius", "launch_angle_deg", "drag_k", "bounce_soft",
 			"min_bounce_speed", "rest_speed", "rest_time", "static_factor", "max_motion_time",
-			"cup_radius", "cup_depth_min", "cup_depth_frac", "cup_depth_max", "cup_wall_restitution",
+			"cup_radius", "pin_bounce_speed", "cup_depth_min", "cup_depth_frac", "cup_depth_max", "cup_wall_restitution",
 			"cup_floor_restitution", "cup_friction", "cup_floor_roll_decel", "cup_floor_roll_drag", "canopy_damping",
 			"trunk_restitution", "spin_lift_k", "spin_retention",
 			"pin_radius", "pin_height", "pin_soft_speed", "pin_restitution", "pin_air_loss", "pin_max_cup_radius"]:

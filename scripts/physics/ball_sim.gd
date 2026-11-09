@@ -600,7 +600,10 @@ func _pin_strike(a: Vector3, b: Vector3, v: Vector3) -> Array:
 	var vn := vh.dot(n)
 	if vn >= 0.0:
 		return []
-	var nv := v - n * (vn * (1.0 + cfg.pin_restitution))
+	# Speed-dependent bounce: a gentle touch barely rebounds (drops in), a firm hit rebounds towards pin_restitution.
+	var speed := -vn
+	var e := cfg.pin_restitution * speed / (speed + cfg.pin_bounce_speed)
+	var nv := v - n * (vn * (1.0 + e))
 	var out := _flat(_cup) + n * (rr + 0.001)
 	out.y = q.y
 	collisions.append({"type": "pin", "pos": out, "time": time})
