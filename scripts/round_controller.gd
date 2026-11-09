@@ -35,7 +35,7 @@ var _last_ball := Vector3.INF
 var _celebrated: ShotResult = null
 ## Ball materials: normal, and "in the pit" (drawn over the hole disc, which the terrain mesh would otherwise hide).
 var _ball_mat: StandardMaterial3D
-var _ball_pit_mat: StandardMaterial3D
+var _ball_pit_mat: ShaderMaterial
 var open_dev_on_start := false
 var course_id := "starter"
 var mulligans := 0
@@ -79,10 +79,9 @@ func _ready() -> void:
 	bm.emission = Color(0.25, 0.25, 0.25)
 	ball_mesh.material_override = bm
 	_ball_mat = bm
-	_ball_pit_mat = bm.duplicate() as StandardMaterial3D
-	_ball_pit_mat.no_depth_test = true
-	_ball_pit_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA  # drawn after the opaque turf and hole disc
-	_ball_pit_mat.render_priority = 10
+	_ball_pit_mat = ShaderMaterial.new()
+	_ball_pit_mat.shader = load("res://assets/shaders/hole_ball.gdshader")
+	_ball_pit_mat.render_priority = 3  # after the hole mask (1) and the pit (2)
 	add_child(ball_mesh)
 	tee_peg = MeshInstance3D.new()
 	var pm := CylinderMesh.new()
@@ -451,6 +450,7 @@ func _process(delta: float) -> void:
 	ui.camera_yaw = deg_to_rad(Units.dir_to_bearing(fwd))
 	if not is_equal_approx(_shown_cup_r, session.cfg.cup_radius):
 		_shown_cup_r = session.cfg.cup_radius
+		course.cup_depth = session.cfg.cup_depth()
 		course.set_cup_radius(_shown_cup_r)
 	if course.hole == session.hole and course.shown_pin != session.hole.cup_position():
 		course.sync_pin()  # keep the flag and the cup on the real (possibly varied) pin
@@ -488,15 +488,14 @@ func _pit_depth(bpos: Vector3) -> float:
 ## The terrain mesh covers the pit, so a ball inside it is drawn over the dark hole disc (depth test off), at its
 ## real horizontal position, a little smaller and darker the deeper it is, so it reads as falling into the hole.
 func _draw_ball_in_pit(bpos: Vector3, vis_r: float, depth: float) -> void:
+	# Real position and depth, true-ish size (the distance-boost would make it bigger than the hole), drawn only
+	# through the hole opening (stencil), darker as it sinks into the shadow of the hole.
 	var cfg := session.cfg
-	var k := clampf(depth / maxf(cfg.cup_depth(), 0.05), 0.0, 1.0)
-	var pr := minf(vis_r, maxf(cfg.cup_radius * 0.5, cfg.ball_radius)) * (1.0 - 0.3 * k)
+	var pr := minf(vis_r, maxf(cfg.cup_radius * 0.35, cfg.ball_radius))
 	ball_mesh.scale = Vector3.ONE * pr
-	var ground := session.hole.terrain_height(bpos.x, bpos.z)
-	ball_mesh.position = Vector3(bpos.x, ground + pr * (1.0 - k) * 0.5 + 0.015, bpos.z)
-	var c := 1.0 - 0.55 * k
-	_ball_pit_mat.albedo_color = Color(0.98 * c, 0.98 * c, 0.98 * c)
-	_ball_pit_mat.emission = Color(0.25, 0.25, 0.25) * c
+	ball_mesh.position = bpos + Vector3.UP * (pr - cfg.ball_radius)
+	var k := clampf(depth / maxf(cfg.cup_depth(), 0.05), 0.0, 1.0)
+	_ball_pit_mat.set_shader_parameter("shade", 1.0 - 0.6 * k)
 	ball_mesh.material_override = _ball_pit_mat
 
 

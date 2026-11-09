@@ -22,6 +22,10 @@ var job_usec := {}
 
 var _cup_disc: MeshInstance3D
 var _cup_ring: MeshInstance3D
+var _cup_pit: MeshInstance3D
+var _cup_pit_mat: ShaderMaterial
+## Depth of the hole (set from PhysicsConfig.cup_depth() so the picture matches the physics).
+var cup_depth := 0.10
 var _pin_root: Node3D
 var _terrain_mat: ShaderMaterial
 var _grass_mat: ShaderMaterial
@@ -59,6 +63,7 @@ func begin_build(p_hole: HoleDefinition, p_cup_radius: float = 0.1524) -> void:
 		c.queue_free()
 	_cup_disc = null
 	_cup_ring = null
+	_cup_pit = null
 	_pin_root = null
 	_grass = null
 	_grass_mat = null
@@ -445,10 +450,25 @@ func _build_pin() -> void:
 	cm.height = 0.01
 	cm.radial_segments = 24
 	_cup_disc.mesh = cm
-	var cmat := StandardMaterial3D.new()
-	cmat.albedo_color = Color(0.03, 0.03, 0.03)
-	cmat.cull_mode = BaseMaterial3D.CULL_DISABLED  # the terrain-following disc must show from above whatever its winding
+	# The opening is a stencil mask: the pit below (wall + floor) and a ball inside it are drawn through it.
+	var cmat := ShaderMaterial.new()
+	cmat.shader = load("res://assets/shaders/hole_mask.gdshader")
+	cmat.render_priority = 1
 	_cup_disc.material_override = cmat
+	_cup_pit = MeshInstance3D.new()
+	var pit := CylinderMesh.new()
+	pit.top_radius = 1.0
+	pit.bottom_radius = 1.0
+	pit.height = 1.0
+	pit.radial_segments = 32
+	pit.cap_top = false
+	_cup_pit.mesh = pit
+	_cup_pit_mat = ShaderMaterial.new()
+	_cup_pit_mat.shader = load("res://assets/shaders/hole_pit.gdshader")
+	_cup_pit_mat.render_priority = 2
+	_cup_pit.material_override = _cup_pit_mat
+	_cup_pit.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_cup_pit)
 	_cup_disc.position = cup + Vector3(0, 0.006, 0)
 	add_child(_cup_disc)
 	_cup_ring = MeshInstance3D.new()
@@ -586,6 +606,10 @@ func sync_pin() -> void:
 		_cup_disc.transform = Transform3D(tilt * Basis.from_scale(Vector3(cup_radius, 1.0, cup_radius)), cup + Vector3(0, lift, 0))
 	if _cup_ring != null:
 		_cup_ring.transform = Transform3D(tilt * Basis.from_scale(Vector3(cup_radius, 0.1, cup_radius)), cup + Vector3(0, lift + 0.004, 0))
+	if _cup_pit != null:
+		_cup_pit.transform = Transform3D(tilt * Basis.from_scale(Vector3(cup_radius, cup_depth, cup_radius)), cup + Vector3(0, lift - cup_depth * 0.5, 0))
+		_cup_pit_mat.set_shader_parameter("rim_y", cup.y + lift)
+		_cup_pit_mat.set_shader_parameter("depth", cup_depth)
 
 
 ## Flat annulus (inner..outer radius, metres) whose vertices sit on the terrain plus a small lift.
