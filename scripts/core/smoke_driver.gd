@@ -87,6 +87,9 @@ func _press(text_prefix: String) -> bool:
 
 
 func _run() -> void:
+	if OS.get_cmdline_user_args().has("--smoke-perf"):
+		await _perf_run()
+		return
 	App.settings.holeout_radius_ft = 5.0  # smoke rounds rely on the auto hole-out radius (game default is 0 ft)
 	await _frames(5)
 	await _shot("main_menu")
@@ -337,4 +340,219 @@ func _menus_tour() -> void:
 			(tabs[0] as TabContainer).current_tab = i
 			await _frames(3)
 			await _shot("dev_tab%d" % i)
+	get_tree().quit(0)
+
+
+# ------------------------------------------------------------------ performance measurement (--smoke-perf)
+# One course per process:  --smoke-perf --smoke-course="Pinewood Ridge" [--smoke-gfx=low] [--perf-out=<file>]
+# Measures hole load, tee view, a full-flight shot, a putt and the hole-to-hole transition, using the real UI.
+# Needs a rendering driver (xvfb), numbers from --headless would not include drawing. Never run in the test suite.
+var _perf_lines: Array[String] = []
+
+
+func _perf(t: String) -> void:
+	print("[PERF] ", t)
+	_perf_lines.append(t)
+
+
+## Awaits frames until `until` returns true (or max_frames); returns the per-frame wall times in ms.
+func _perf_n(default_n: int) -> int:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--perf-frames="):
+			return int(a.substr(14))
+	return default_n
+
+
+func _perf_frames(max_frames: int, until: Callable = Callable()) -> PackedFloat64Array:
+	var out := PackedFloat64Array()
+	var last := Time.get_ticks_usec()
+	for i in max_frames:
+		await get_tree().process_frame
+		var now := Time.get_ticks_usec()
+		out.append(float(now - last) / 1000.0)
+		last = now
+		if until.is_valid() and until.call():
+			break
+	return out
+
+
+## Script time of RoundController._process since the last call (ms): avg, max, and grass/trail/advance totals per frame.
+func _perf_script(label: String) -> void:
+	var p: Dictionary = get_tree().root.find_child("Round", true, false).perf
+	var n := maxi(int(p["n"]), 1)
+	_perf("  script %s: _process avg %.2f ms, max %.2f ms; per frame: advance %.2f, place_grass %.2f, trail %.2f ms (%d frames)" % [label,
+		float(p["sum"]) / n / 1000.0, float(p["max"]) / 1000.0, float(p["advance"]) / n / 1000.0,
+		float(p["grass"]) / n / 1000.0, float(p["trail"]) / n / 1000.0, int(p["n"])])
+	for k in p:
+		p[k] = 0
+
+
+func _perf_stats(label: String, f: PackedFloat64Array) -> void:
+	if f.is_empty():
+		_perf("%s: no frames" % label)
+		return
+	var s := Array(f)
+	s.sort()
+	var sum := 0.0
+	for v in f:
+		sum += v
+	var p95: float = s[mini(int(ceil(0.95 * s.size())) - 1, s.size() - 1)]
+	_perf("%s: frames %d, avg %.1f ms, p95 %.1f ms, max %.1f ms" % [label, f.size(), sum / f.size(), p95, s[s.size() - 1]])
+
+
+func _perf_counters(label: String) -> void:
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	_perf("%s: nodes %d, objects/frame %d, draw calls/frame %d, primitives/frame %d, video mem %.1f MB" % [label,
+		int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)),
+		int(Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)),
+		int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
+		int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)),
+		Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0])
+
+
+## Same UI path a player uses: mode, style, footballer closest to the needed stat, Take Shot.
+func _perf_shot(session: GameSession, want_goals: bool) -> bool:
+	session.aim_at_pin()
+	var d := session.distance_to_pin_m()
+	if not _press_id("mode_goals" if want_goals else "mode_caps"):
+		return false
+	if not _press_id("style_roll" if want_goals else "style_flight"):
+		return false
+	if not _press_id("player_row"):
+		return false
+	await _frames(2)
+	var need := Units.m_to_feet(d) if want_goals else Units.m_to_yards(d)
+	var best: Footballer = null
+	for fb in session.repo.all_sorted():
+		if not session.pool.is_available(fb.id, session.mode):
+			continue
+		var stat := float(fb.goals if want_goals else fb.caps)
+		if best == null or absf(stat - need) < absf(float(best.goals if want_goals else best.caps) - need):
+			best = fb
+	var picker := get_tree().root.find_children("*", "FootballerPicker", true, false)
+	if best == null or picker.is_empty() or not session.select_footballer(best.id):
+		return false
+	(picker[0] as FootballerPicker).picked.emit(best.id)
+	await _frames(2)
+	return _press_id("take_shot")
+
+
+func _perf_run() -> void:
+	App.settings.holeout_radius_ft = 5.0
+	var course_name := "Starter Links"
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--smoke-course="):
+			course_name = a.substr(15)
+		if a == "--smoke-gfx=low":
+			App.settings.graphics_quality = 0
+	_perf("== %s, graphics %s, renderer %s, driver %s" % [course_name, "High" if App.settings.graphics_quality == 1 else "Low",
+		RenderingServer.get_current_rendering_method(), DisplayServer.get_name()])
+	await _frames(5)
+	if not _press("Single Player"):
+		return _fail("perf: Single Player")
+	await _frames(3)
+	if not _press(course_name):
+		return _fail("perf: course select")
+	await _frames(3)
+	# --- hole load: from Start round until the hole intro is ready and drawn
+	var t0 := Time.get_ticks_usec()
+	if not _press("Start round"):
+		return _fail("perf: no Start round")
+	var round_node: Node = get_tree().root.find_child("Round", true, false)
+	var tb := Time.get_ticks_usec()
+	if round_node == null:
+		return _fail("perf: round scene missing")
+	var session: GameSession = round_node.session
+	_perf("hole 1 load, synchronous part (Start round press, includes round scene + HUD + hole build): %.0f ms" % ((tb - t0) / 1000.0))
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	_perf("hole 1 ready (first drawn frame): %.0f ms" % ((Time.get_ticks_usec() - t0) / 1000.0))
+	var jobs := ""
+	for k in round_node.course.job_usec:
+		jobs += "%s %.0f ms; " % [k, float(round_node.course.job_usec[k]) / 1000.0]
+	_perf("hole 1 build jobs: " + jobs)
+	await _frames(20)
+	if not _press("Tee off"):
+		return _fail("perf: no Tee off")
+	await _frames(60)  # let the camera settle
+	for k in round_node.perf:
+		round_node.perf[k] = 0
+	_perf_stats("tee view (idle, aiming)", await _perf_frames(_perf_n(150)))
+	_perf_script("tee view")
+	await _perf_counters("tee view counters")
+	# --- full flight shot
+	if not await _perf_shot(session, false):
+		return _fail("perf: flight shot not taken")
+	var flight := await _perf_frames(900, func() -> bool: return not session.is_ball_moving())
+	_perf_stats("full-flight shot (ball moving)", flight)
+	_perf_script("flight")
+	await _frames(3)
+	var guard := 40
+	while session.state != ShotTypes.State.AIMING and guard > 0:
+		guard -= 1
+		if session.state == ShotTypes.State.SHOT_RESULT:
+			_press("Continue")
+		await _frames(2)
+	_perf_stats("aiming after shot (idle, new ball position)", await _perf_frames(_perf_n(60)))
+	# --- putt: dev ball placement 3 m short of the pin, then hole out
+	var pin := session.hole.cup_position()
+	var dir2 := Vector2(pin.x - session.ball_pos.x, pin.z - session.ball_pos.z).normalized()
+	var err := session.dev_place_ball(pin.x - dir2.x * 3.0 + dir2.y * 1.0, pin.z - dir2.y * 3.0 - dir2.x * 1.0)
+	if err != "":
+		return _fail("perf: dev_place_ball " + err)
+	await _frames(30)
+	_perf_stats("putt position (idle, on green)", await _perf_frames(_perf_n(100)))
+	var putt := PackedFloat64Array()
+	var tries := 0
+	while session.state != ShotTypes.State.HOLE_COMPLETE and tries < 6:
+		tries += 1
+		if session.state == ShotTypes.State.SHOT_RESULT:
+			_press("Continue")
+			await _frames(2)
+			continue
+		if session.state != ShotTypes.State.AIMING:
+			await _frames(2)
+			continue
+		if not await _perf_shot(session, true):
+			return _fail("perf: putt not taken")
+		putt.append_array(await _perf_frames(900, func() -> bool: return not session.is_ball_moving()))
+		await _frames(3)
+	_perf_stats("putt (ball rolling, %d putt(s))" % tries, putt)
+	_perf_script("putt")
+	if session.state == ShotTypes.State.SHOT_RESULT:
+		_press("Continue")
+		await _frames(3)
+	if session.state != ShotTypes.State.HOLE_COMPLETE:
+		return _fail("perf: hole not completed (state %s)" % ShotTypes.state_name(session.state))
+	# --- hole-to-hole transition: preload behind the summary, then Next hole
+	var pre_t0 := Time.get_ticks_usec()
+	var pre := PackedFloat64Array()
+	var last := pre_t0
+	var waited := 0
+	while _find_button(get_tree().root, "Next hole") == null and waited < 3000:
+		waited += 1
+		await get_tree().process_frame
+		var now := Time.get_ticks_usec()
+		pre.append(float(now - last) / 1000.0)
+		last = now
+	_perf("next-hole preload (hole summary shown, loading bar): %.0f ms wall over %d frames" % [(last - pre_t0) / 1000.0, waited])
+	_perf_stats("  frame times during preload", pre)
+	var t1 := Time.get_ticks_usec()
+	if not _press("Next hole"):
+		return _fail("perf: no Next hole")
+	var tsync := Time.get_ticks_usec()
+	_perf("Next hole press -> hole 2 swapped in (synchronous): %.0f ms" % ((tsync - t1) / 1000.0))
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	_perf("Next hole press -> first drawn frame of hole 2: %.0f ms" % ((Time.get_ticks_usec() - t1) / 1000.0))
+	var out := ""
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--perf-out="):
+			out = a.substr(11)
+	if out != "":
+		var f := FileAccess.open(out, FileAccess.WRITE)
+		if f != null:
+			f.store_string("\n".join(_perf_lines) + "\n")
+	_say("PERF DONE")
 	get_tree().quit(0)
