@@ -82,6 +82,7 @@ func test_online_setup_freezes_round_config_and_physics() -> void:
 	host_cfg.cup_wall_restitution = 0.37
 	host_cfg.pin_restitution = 0.21
 	host_cfg.cup_floor_restitution = 0.33
+	host_cfg.cup_depth_max = 0.2
 	host_cfg.cup_depth_min = 0.12
 	host_cfg.set_cup_diameter_in(rc.cup_diameter_ft * 12.0)
 	var setup: Dictionary = JSON.parse_string(JSON.stringify({"physics": host_cfg.to_dict(), "rules": rc.to_dict(),

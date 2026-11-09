@@ -201,6 +201,7 @@ func test_config_roundtrip_cup_params() -> void:
 	var c := PhysicsConfig.new()
 	c.pin_soft_speed = 1.7
 	c.cup_wall_restitution = 0.3
+	c.cup_depth_max = 0.2
 	c.cup_depth_min = 0.12
 	var d := c.copy()
 	assert_near(d.pin_soft_speed, 1.7, 1e-9)
@@ -211,6 +212,6 @@ func test_config_roundtrip_cup_params() -> void:
 	e.apply_dict({"cup_capture_speed": 2.0, "cup_sink_fraction": 1.5, "cup_lip_loss": 0.1, "cup_rim_lip": 0.5,
 		"cup_landing_capture_speed": 7.0, "cup_radius": 0.1524})
 	assert_near(e.cup_radius, 0.1524, 1e-9)
-	assert_near(PhysicsConfig.new().cup_depth(), 0.25 * PhysicsConfig.new().cup_radius, 1e-9, "6 ft hole: depth 0.25 R")
+	assert_near(PhysicsConfig.new().cup_depth(), 0.10, 1e-9, "6 ft hole: regulation 4 in deep")
 	e.set_cup_diameter_in(4.25)
 	assert_near(e.cup_depth(), 0.10, 1e-9, "small cup: minimum depth")

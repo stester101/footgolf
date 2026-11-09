@@ -24,9 +24,9 @@ var cup_radius := DEFAULT_CUP_DIAMETER_IN * 0.0254 * 0.5
 ## The cup is a real pit (BallSim): a cylinder of radius cup_radius under the green with a vertical wall and a
 ## flat floor cup_depth() below the rim. The ball meets the rim edge, wall and floor like any other surface;
 ## nothing decides "holed" except the ball coming to rest inside the pit.
-var cup_depth_min := 0.10
-var cup_depth_frac := 0.25
-var cup_depth_max := 0.30
+var cup_depth_min := 0.10  # regulation: about 4 in, whatever the hole width
+var cup_depth_frac := 0.0
+var cup_depth_max := 0.10
 ## Pit contacts: normal restitution (wall and rim edge / floor), Coulomb friction on impact.
 var cup_wall_restitution := 0.35
 var cup_floor_restitution := 0.25
