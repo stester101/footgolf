@@ -6,7 +6,9 @@ extends RefCounted
 ## the session's signals and never changes game state. Export helpers build CSV / JSON / text.
 
 const DIR := "user://telemetry"
-const FORMAT_VERSION := 1
+## 2 = authoritative shot record: seq, player ids, shot_type, par, tee_shot, null (never nominal) measured
+## distances, mulligan/undo records name the replaced shot by seq. Version-1 files still load (see StatsEngine).
+const FORMAT_VERSION := 2
 const EXPORT_FALLBACK := "user://export"
 const CLIPBOARD_MAX_SHOTS := 500
 
@@ -16,7 +18,8 @@ const SHOT_COLUMNS := ["round_id", "time", "course_id", "hole_id", "hole_index",
 	"start_lie", "final_lie", "start_x", "start_y", "start_z", "end_x", "end_y", "end_z",
 	"carry_m", "carry_yd", "roll_m", "total_m", "total_yd", "max_height_m", "bounces", "collisions",
 	"hazard", "penalty", "holed", "pin_before_m", "pin_before_yd", "pin_after_m", "pin_after_yd",
-	"hole_score_after", "time_in_motion_s", "end_reason", "developer_replay"]
+	"hole_score_after", "time_in_motion_s", "end_reason", "developer_replay",
+	"seq", "player_idx", "player_id", "player_name", "par", "shot_type", "tee_shot", "stroke_delta", "replacement", "on_green_end"]
 const HOLE_COLUMNS := ["round_id", "time", "course_id", "hole_id", "hole_name", "hole_index", "par",
 	"strokes", "penalties", "score", "to_par", "completion", "shots", "footballers"]
 const ROUND_COLUMNS := ["round_id", "time", "course_id", "course_name", "round_seed", "holes", "holes_completed",
@@ -24,6 +27,8 @@ const ROUND_COLUMNS := ["round_id", "time", "course_id", "course_name", "round_s
 
 var dir := DIR
 var enabled := true
+## Id of the round most recently logged through attach() (saved with unfinished rounds for resume).
+var last_round_id := ""
 
 
 func _init(p_dir: String = DIR) -> void:
@@ -34,12 +39,20 @@ func _init(p_dir: String = DIR) -> void:
 
 ## Listen to a session. Call before session.start_round(); a later start_round() on the same
 ## session (restart / play again) is detected and logged as a new round.
-func attach(session: GameSession, course_id: String, course_name: String = "") -> void:
+## resume_round_id: continue an existing round's log after Resume (no second round_start record).
+func attach(session: GameSession, course_id: String, course_name: String = "", resume_round_id: String = "") -> void:
 	var ctx := {"course_id": course_id, "course_name": course_name if course_name != "" else course_id,
-		"round_obj": -1, "round_id": "", "started_ms": 0, "round_logged": false}
+		"round_obj": -1, "round_id": "", "started_ms": 0, "round_logged": false, "seq": 0, "seq_of": {}}
+	if resume_round_id != "":
+		ctx["round_obj"] = session.round_state.get_instance_id()
+		ctx["round_id"] = resume_round_id
+		ctx["started_ms"] = Time.get_ticks_msec()
+		last_round_id = resume_round_id
+		ctx["seq"] = of_type(parse_lines(FileAccess.get_file_as_string(round_path(resume_round_id))), "shot").size()
 	session.hole_started.connect(_on_hole_started.bind(session, ctx))
 	session.shot_resolved.connect(_on_shot_resolved.bind(session, ctx))
 	session.shot_mulliganed.connect(_on_shot_mulliganed.bind(session, ctx))
+	session.shot_undone.connect(_on_shot_undone.bind(session, ctx))
 	session.hole_completed.connect(_on_hole_completed.bind(session, ctx))
 	session.round_completed.connect(_on_round_completed.bind(session, ctx))
 
@@ -52,6 +65,9 @@ func _ensure_round(session: GameSession, ctx: Dictionary) -> void:
 	ctx["round_id"] = make_round_id(int(Time.get_unix_time_from_system()), session.round_state.round_seed)
 	ctx["started_ms"] = Time.get_ticks_msec()
 	ctx["round_logged"] = false
+	ctx["seq"] = 0
+	ctx["seq_of"] = {}
+	last_round_id = String(ctx["round_id"])
 	append(String(ctx["round_id"]), round_start_record(ctx, session.round_state))
 
 
@@ -64,14 +80,27 @@ func _on_shot_resolved(r: ShotResult, session: GameSession, ctx: Dictionary) -> 
 	var hs := session.current_hole_state()
 	var shot_no := hs.shots.find(r) + 1 if hs != null else 0
 	var cup := session.hole.cup_position() if session.hole != null else r.final_pos
-	append(String(ctx["round_id"]), shot_record(ctx, r, session.last_request, cup, shot_no, session.round_state.current_index))
+	ctx["seq"] = int(ctx["seq"]) + 1
+	(ctx["seq_of"] as Dictionary)[r.get_instance_id()] = int(ctx["seq"])
+	var extra := {"seq": int(ctx["seq"]), "player_idx": session.turn,
+		"player_id": session.profile_ids[session.turn] if session.turn < session.profile_ids.size() else "",
+		"player_name": session.active_name(), "par": hs.par if hs != null else 0}
+	append(String(ctx["round_id"]), shot_record(ctx, r, session.last_request, cup, shot_no, session.round_state.current_index, extra))
 
 
 func _on_shot_mulliganed(r: ShotResult, session: GameSession, ctx: Dictionary) -> void:
 	_ensure_round(session, ctx)
 	append(String(ctx["round_id"]), {"type": "mulligan", "v": FORMAT_VERSION,
 		"round_id": ctx["round_id"], "time": _now_iso(), "shot_id": r.shot_id,
+		"replaces_seq": int((ctx["seq_of"] as Dictionary).get(r.get_instance_id(), 0)), "player_idx": session.turn,
 		"hole_id": r.hole_id, "mulligans_used": session.round_state.mulligans_used})
+
+
+func _on_shot_undone(r: ShotResult, session: GameSession, ctx: Dictionary) -> void:
+	_ensure_round(session, ctx)
+	append(String(ctx["round_id"]), {"type": "undo", "v": FORMAT_VERSION,
+		"round_id": ctx["round_id"], "time": _now_iso(), "shot_id": r.shot_id,
+		"replaces_seq": int((ctx["seq_of"] as Dictionary).get(r.get_instance_id(), 0)), "hole_id": r.hole_id})
 
 
 func _on_hole_completed(hs: HoleState, session: GameSession, ctx: Dictionary) -> void:
@@ -104,6 +133,10 @@ static func _r(v: float, digits: int = 3) -> float:
 	return roundf(v * k) / k
 
 
+static func _f(v) -> float:
+	return float(v) if (v is float or v is int) else 0.0
+
+
 static func _vec(v: Vector3) -> Array:
 	return [_r(v.x), _r(v.y), _r(v.z)]
 
@@ -133,13 +166,26 @@ static func round_start_record(ctx: Dictionary, rs: RoundState) -> Dictionary:
 		"mulligans_allowed": rs.mulligans_allowed}
 
 
-static func shot_record(ctx: Dictionary, r: ShotResult, req: Object, cup: Vector3, shot_no: int, hole_index: int) -> Dictionary:
+## Single authoritative shot-completion record. extra: {seq, player_idx, player_id, player_name, par}.
+## Measured distances are null (never 0 / nominal) when they were not measured: carry needs a flight shot with a
+## first ground contact; roll needs a first contact (flight) or is the whole travel (roll shots); a sim error measures nothing.
+static func shot_record(ctx: Dictionary, r: ShotResult, _req: Object, cup: Vector3, shot_no: int, hole_index: int, extra: Dictionary = {}) -> Dictionary:
 	var before := Units.horizontal_distance(r.start_pos, cup)
 	var after := 0.0 if r.holed else r.remaining_m
 	var traj := ShotTypes.trajectory_name(r.trajectory)
+	var flight := r.style == ShotTypes.Style.FLIGHT
+	var carry = _r(r.carry_m) if (flight and r.had_contact and not r.sim_error) else null
+	var roll = null
+	if not r.sim_error and (r.style == ShotTypes.Style.ROLL or r.had_contact):
+		roll = _r(r.roll_m)
+	var total = null if r.sim_error else _r(r.total_m)
 	return {"type": "shot", "v": FORMAT_VERSION, "round_id": ctx.get("round_id", ""), "time": _now_iso(),
 		"course_id": ctx.get("course_id", ""), "hole_id": r.hole_id, "hole_index": hole_index,
-		"shot_no": shot_no, "shot_id": r.shot_id,
+		"shot_no": shot_no, "shot_id": r.shot_id, "seq": int(extra.get("seq", 0)),
+		"player_idx": int(extra.get("player_idx", 0)), "player_id": String(extra.get("player_id", "")),
+		"player_name": String(extra.get("player_name", "")), "par": int(extra.get("par", 0)),
+		"shot_type": "Putt" if r.style == ShotTypes.Style.ROLL else "Approach", "tee_shot": shot_no == 1,
+		"stroke_delta": r.stroke_delta, "replacement": r.is_replacement,
 		"footballer_id": r.footballer_id, "footballer_name": r.footballer_name, "nationality": r.nationality,
 		"mode": r.mode_name(), "style": ShotTypes.style_name(r.style), "stat": r.stat_value, "caps": r.caps, "goals": r.goals,
 		"spin": _r(r.spin), "trajectory": traj,
@@ -147,9 +193,10 @@ static func shot_record(ctx: Dictionary, r: ShotResult, req: Object, cup: Vector
 		"aim_bearing_deg": _r(r.aim_bearing_deg, 2),
 		"wind_speed_mps": _r(r.wind_speed_mps), "wind_bearing_deg": _r(r.wind_bearing_deg, 1),
 		"start_lie": Surface.name_of(r.start_lie), "final_lie": Surface.name_of(r.final_lie),
+		"on_green_end": r.final_lie == Surface.Type.GREEN,
 		"start_pos": _vec(r.start_pos), "end_pos": _vec(r.final_pos),
-		"carry_m": _r(r.carry_m), "carry_yd": _r(Units.m_to_yards(r.carry_m), 2),
-		"roll_m": _r(r.roll_m), "total_m": _r(r.total_m), "total_yd": _r(Units.m_to_yards(r.total_m), 2),
+		"carry_m": carry, "carry_yd": null if carry == null else _r(Units.m_to_yards(r.carry_m), 2),
+		"roll_m": roll, "total_m": total, "total_yd": null if total == null else _r(Units.m_to_yards(r.total_m), 2),
 		"max_height_m": _r(r.max_height_m, 2), "bounces": r.bounces, "collisions": r.collisions.size(),
 		"hazard": r.hazard, "penalty": r.penalty, "holed": r.holed,
 		"pin_before_m": _r(before), "pin_before_yd": _r(Units.m_to_yards(before), 2),
@@ -299,19 +346,24 @@ static func shots_csv(records: Array) -> String:
 	return to_csv(played_shots(records), SHOT_COLUMNS)
 
 
-## The append-only log retains discarded shots as an audit trail; exports and records
-## only include shots that were not followed by a matching mulligan event.
+## The append-only log retains replaced shots as an audit trail; exports and statistics only include shots
+## that were not followed by a matching mulligan / undo record. v2 records match by seq; v1 by shot_id + hole.
 static func played_shots(records: Array) -> Array:
 	var kept: Array = []
 	for record in records:
 		var d: Dictionary = record
-		if d.get("type", "") == "shot":
+		var t := String(d.get("type", ""))
+		if t == "shot":
 			kept.append(d)
-		elif d.get("type", "") == "mulligan":
+		elif t == "mulligan" or t == "undo":
+			var seq := int(d.get("replaces_seq", 0))
 			for i in range(kept.size() - 1, -1, -1):
-				if kept[i].get("round_id") == d.get("round_id") \
-						and kept[i].get("shot_id") == d.get("shot_id") \
-						and kept[i].get("hole_id") == d.get("hole_id"):
+				var k: Dictionary = kept[i]
+				if k.get("round_id") != d.get("round_id"):
+					continue
+				var hit: bool = (int(k.get("seq", 0)) == seq) if seq > 0 else \
+					(k.get("shot_id") == d.get("shot_id") and k.get("hole_id") == d.get("hole_id"))
+				if hit:
 					kept.remove_at(i)
 					break
 	return kept
@@ -356,10 +408,10 @@ static func summary_text(records: Array, include_csv: bool = true) -> String:
 	for s in shots:
 		if String(s.get("mode", "")) == ShotTypes.mode_name(ShotTypes.Mode.CAPS):
 			caps_n += 1
-			caps_carry += float(s.get("carry_yd", 0.0))
+			caps_carry += _f(s.get("carry_yd"))
 		else:
 			goals_n += 1
-			goals_total += Units.m_to_feet(float(s.get("total_m", 0.0)))
+			goals_total += Units.m_to_feet(_f(s.get("total_m")))
 		pens += int(s.get("penalty", 0))
 		holed += 1 if bool(s.get("holed", false)) else 0
 	lines.append("Rounds: %d (%d completed) · holes completed: %d · shots: %d" % [rounds.size(), ends.size(), of_type(records, "hole").size(), shots.size()])
