@@ -300,8 +300,9 @@ func _step_roll(dt: float) -> void:
 		on_floor = pos.y < _rim_h(pos)
 		if on_floor:
 			n = Vector3.UP
-			decel = cfg.cup_floor_roll_decel
-			drag = cfg.cup_floor_roll_drag
+			var gp := cfg.surface(Surface.Type.GREEN)  # the hole is part of the green: same rolling model
+			decel = float(gp["roll_decel"])
+			drag = float(gp["roll_drag"])
 		else:
 			# on the rim edge itself: no turf under the ball, so no rolling resistance (a ball past the edge falls)
 			n = _lip_normal(pos)
@@ -486,13 +487,15 @@ func _pit_wall(p0: Vector3, p1: Vector3, v: Vector3) -> Array:
 	return [p1, v]
 
 
-## Impact response: normal component reversed with restitution e, tangential reduced by Coulomb friction.
-func _impact(v: Vector3, nrm: Vector3, vn: float, e: float) -> Vector3:
+## Impact response for the rim, wall and floor of the hole: the SAME bounce model as every other surface on the
+## course (green parameters): speed-dependent restitution e = restitution / (1 + |vn| / bounce_soft), and the
+## tangential velocity kept by the green's retention (plus spin), exactly as in the terrain bounce.
+func _impact(v: Vector3, nrm: Vector3, vn: float, _unused_e: float) -> Vector3:
+	var gp := cfg.surface(Surface.Type.GREEN)
 	var vt := v - nrm * vn
-	var tl := vt.length()
-	if tl > 1e-9:
-		vt -= vt / tl * minf(tl, cfg.cup_friction * (1.0 + e) * -vn)
-	return vt - nrm * (vn * e)
+	var e: float = float(gp["restitution"]) / (1.0 + absf(vn) / cfg.bounce_soft)
+	var ret: float = float(gp["retention"]) + spin * cfg.spin_retention
+	return vt * clampf(ret, -0.15, 0.95) - nrm * (vn * e)
 
 
 ## Air step that touches the cup: pit wall, outer turf, rim edge (sphere vs circle) and floor.
@@ -550,7 +553,8 @@ func _cup_contact(nrm: Vector3, is_floor: bool) -> void:
 	var vn := vel.dot(nrm)
 	if vn >= 0.0:
 		return
-	var e := cfg.cup_floor_restitution if is_floor else cfg.cup_wall_restitution
+	var gp := cfg.surface(Surface.Type.GREEN)
+	var e: float = float(gp["restitution"]) / (1.0 + absf(vn) / cfg.bounce_soft)
 	vel = _impact(vel, nrm, vn, e)
 	spin *= 0.5
 	if vn < -0.3:

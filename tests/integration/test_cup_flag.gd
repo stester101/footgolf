@@ -91,8 +91,8 @@ func test_edge_graze_deflects() -> void:
 		probe.step()
 		max_dev = maxf(max_dev, absf(probe.vel.x))
 	assert_gt(max_dev, 0.01, "the rim pulls the ball sideways")
-	var fast := _roll(_sim(), 2.0, off, 4.0)
-	assert_false(_holed(fast), "a 2 m/s graze of the lip stays out")
+	var fast := _roll(_sim(), 4.0, off, 4.0)
+	assert_false(_holed(fast), "a 4 m/s graze of the lip stays out")
 	var slow := _roll(_sim(), 0.65, R - sim0.cfg.ball_radius * 1.2, 8.0)
 	assert_true(_holed(slow), "a dying putt over the edge falls in")
 

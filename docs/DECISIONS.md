@@ -158,3 +158,6 @@ Changes to locked rules in `docs/SPECIFICATION.md`, made explicitly by the produ
 - Neutral plane and `ShotCalculator` unchanged; calibration unchanged. Old saved cup keys are ignored on load.
 - Rendering: the ball inside the pit is drawn over the hole disc (depth test off, darker/smaller with depth); the
   hole-out shows the simulated path. Banner, ring/spark effect and vibration unchanged.
+
+## 2026-11-09: hole uses the course physics, 4 ft default (owner)
+The pit rim, wall and floor use the SAME bounce/roll model as the green (speed-dependent restitution, retention, roll decel/drag); no special cup constants. Pit is 4 in deep. Default hole 4 ft; untouched 6 ft and 1 ft saved defaults migrate. Probe (4 ft hole): rolling balls stay in up to ~22 m/s and skim over at ~30 m/s; balls landing at 20+ m/s bounce back out at every descent angle tried, 8-14 m/s mostly stay in.
