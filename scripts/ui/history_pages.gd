@@ -124,8 +124,14 @@ static func _kv_panel(title: String, rows: Array) -> PanelContainer:
 		var h := UiKit.hbox(8)
 		var k := UiKit.label(String(r[0]), 20, UiKit.C_MUTED)
 		k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		k.size_flags_stretch_ratio = 1.4
+		k.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		h.add_child(k)
-		h.add_child(UiKit.label(String(r[1]), 20, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT))
+		# long values (e.g. the most-used footballers) wrap instead of widening the page off-screen
+		var val := UiKit.label(String(r[1]), 20, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+		val.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		val.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		h.add_child(val)
 		v.add_child(h)
 	panel.add_child(v)
 	return panel

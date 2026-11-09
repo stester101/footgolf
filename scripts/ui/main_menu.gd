@@ -212,6 +212,20 @@ func _page(title: String) -> Dictionary:
 	sc.add_child(body)
 	var footer := UiKit.vbox(10)
 	v.add_child(footer)
+	# Short pages: the card hugs its content instead of stretching to the bottom of the screen (dead space).
+	# Long pages: the card fills the screen and the body scrolls, as before.
+	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	sc.size_flags_vertical = Control.SIZE_FILL
+	var fit := func() -> void:
+		if not is_instance_valid(sc) or not is_instance_valid(m):
+			return
+		var chrome := v.get_combined_minimum_size().y - sc.custom_minimum_size.y + 48.0
+		var screen_h := m.get_viewport().get_visible_rect().size.y if m.is_inside_tree() else 1280.0
+		var room := maxf(screen_h - float(sm[1]) - 36.0 - float(sm[3]) - 28.0 - chrome, 120.0)
+		sc.custom_minimum_size.y = minf(body.get_combined_minimum_size().y, room)
+	body.minimum_size_changed.connect(func() -> void: fit.call_deferred())
+	m.resized.connect(func() -> void: fit.call_deferred())
+	fit.call_deferred()
 	return {"root": root, "body": body, "footer": footer, "scroll": sc}
 
 
