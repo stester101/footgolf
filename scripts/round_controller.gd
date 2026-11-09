@@ -38,11 +38,12 @@ var _drop_result: ShotResult = null
 
 
 static func _drop_pos(cup: Vector3, dir: Vector3, cup_r: float, t: float) -> Vector3:
-	var rim := Vector3(cup.x, cup.y, cup.z) + dir * (cup_r * 1.6)
+	var rim := Vector3(cup.x, cup.y, cup.z) + dir * (cup_r * 1.0)  # enters over the rim itself
 	var roll := clampf(t / 0.45, 0.0, 1.0)
 	var fall := clampf((t - 0.40) / 0.50, 0.0, 1.0)
 	var xz := Vector3(rim.x, 0.0, rim.z).lerp(Vector3(cup.x, 0.0, cup.z), 1.0 - (1.0 - roll) * (1.0 - roll))
-	var y := lerpf(cup.y + 0.02, cup.y - 0.06, fall * fall)
+	var depth := 0.06 + 0.3 * cup_r  # a big hole is a deep drop, a regulation cup stays shallow
+	var y := lerpf(cup.y + 0.02, cup.y - depth, fall * fall)
 	return Vector3(xz.x, y, xz.z)
 var open_dev_on_start := false
 var course_id := "starter"

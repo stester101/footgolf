@@ -3,7 +3,7 @@ extends RefCounted
 ## Local preferences and developer test settings, persisted to user://settings.json.
 
 const PATH := "user://settings.json"
-const VERSION := 4
+const VERSION := 5
 
 ## Physics values shipped in settings_version 2 that were replaced by the v3 golf-ball tuning.
 ## A saved value equal to one of these is an untouched old default and is replaced by the new
@@ -126,7 +126,9 @@ func load_settings() -> void:
 	favourites = (d.get("favourites", []) as Array).duplicate() if typeof(d.get("favourites")) == TYPE_ARRAY else []
 	show_stats = bool(d.get("show_stats", true))
 	if typeof(d.get("round_defaults")) == TYPE_DICTIONARY:
-		round_defaults = d["round_defaults"]
+		round_defaults = (d["round_defaults"] as Dictionary).duplicate()
+		if int(d.get("settings_version", 1)) < 5 and round_defaults.has("cup_diameter_ft") and is_equal_approx(float(round_defaults["cup_diameter_ft"]), 1.0):
+			round_defaults.erase("cup_diameter_ft")  # v5: old 1 ft default -> new 6 ft default
 	tutorial_seen = bool(d.get("tutorial_seen", false))
 	last_course = String(d.get("last_course", "starter"))
 	if typeof(d.get("par_overrides")) == TYPE_DICTIONARY:
@@ -145,6 +147,9 @@ func load_settings() -> void:
 			phys = migrate_physics_v2(phys)  # untouched v2 defaults move to the v3 tuning
 		if int(d.get("settings_version", 1)) < 4:
 			phys = migrate_physics_v3(phys)  # untouched v3 rough/bunker move to the v4 penalties
+		if int(d.get("settings_version", 1)) < 5 and phys.has("cup_radius") and is_equal_approx(float(phys["cup_radius"]), 12.0 * 0.0254 * 0.5):
+			phys = phys.duplicate()
+			phys.erase("cup_radius")  # v5: the untouched old 1 ft default moves to the new 6 ft default
 		physics.apply_dict(phys)
 		if int(d.get("settings_version", 1)) < 2:
 			physics.cup_radius = PhysicsConfig.new().cup_radius  # v2: larger default hole

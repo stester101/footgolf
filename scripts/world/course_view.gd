@@ -560,10 +560,6 @@ func set_cup_radius(r: float) -> void:
 	# turf on one side and floated on the other, which showed as a dark ellipse at the hole.
 	# Back to the flat cup (it was visible in earlier builds; the terrain-following mesh was not drawn). It sits at
 	# the cup's own ground height, drawn two-sided so it shows from any angle.
-	if _cup_disc != null:
-		_cup_disc.scale = Vector3(r, 1.0, r)
-	if _cup_ring != null:
-		_cup_ring.scale = Vector3(r, 0.1, r)
 	sync_pin()
 
 
@@ -576,10 +572,15 @@ func sync_pin() -> void:
 	shown_pin = cup
 	if _pin_root != null:
 		_pin_root.position = cup
+	# Lay the hole flat ON the ground: tilt it to the terrain normal and lift it by the slope across its radius,
+	# so a big hole on a slope is not half buried (it showed as a half-disc).
+	var n := hole.normal_at(cup.x, cup.z)
+	var tilt := Basis(Quaternion(Vector3.UP, n))
+	var lift := cup_radius * sqrt(maxf(1.0 - n.y * n.y, 0.0)) / maxf(n.y, 0.3) + 0.012
 	if _cup_disc != null:
-		_cup_disc.position = cup + Vector3(0, 0.006, 0)
+		_cup_disc.transform = Transform3D(tilt * Basis.from_scale(Vector3(cup_radius, 1.0, cup_radius)), cup + Vector3(0, lift, 0))
 	if _cup_ring != null:
-		_cup_ring.position = cup + Vector3(0, 0.004, 0)
+		_cup_ring.transform = Transform3D(tilt * Basis.from_scale(Vector3(cup_radius, 0.1, cup_radius)), cup + Vector3(0, lift + 0.004, 0))
 
 
 ## Flat annulus (inner..outer radius, metres) whose vertices sit on the terrain plus a small lift.

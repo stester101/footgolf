@@ -178,6 +178,7 @@ func test_no_maximum_score() -> void:
 
 func test_holeout_requires_rest_inside_radius() -> void:
 	var s := TestHelpers.make_session()
+	s.cfg.set_cup_diameter_in(12.0)  # a deliberate near-miss: with the 6 ft default cup this ball would simply drop
 	var cup := s.hole.cup_position()
 	# Place 8 m short of the cup on the green, then putt firmly THROUGH the radius.
 	var dir := (Vector3(cup.x, 0, cup.z) - Vector3(s.hole.tee.x, 0, s.hole.tee.y)).normalized()
@@ -448,7 +449,7 @@ func test_trajectory_keeps_neutral_carry_and_changes_flight() -> void:
 
 func test_bigger_cup_default_and_setting() -> void:
 	var cfg := PhysicsConfig.new()
-	assert_near(cfg.cup_diameter_in(), 12.0, 1e-6, "default 12 in")
+	assert_near(cfg.cup_diameter_in(), 72.0, 1e-6, "default 6 ft")
 	cfg.set_cup_diameter_in(4.25)
 	assert_near(cfg.cup_radius, PhysicsConfig.REGULATION_CUP_RADIUS, 0.0005)
 	assert_near(cfg.cup_capture_speed_eff(), cfg.cup_capture_speed, 0.01, "regulation cup: base capture speed")

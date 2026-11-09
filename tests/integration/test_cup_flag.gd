@@ -9,6 +9,7 @@ func _sim(cup_radius: float = -1.0) -> BallSim:
 	h.has_cup = true
 	h.pin = Vector2(0.0, CUP_Z)
 	var cfg := PhysicsConfig.new()
+	cfg.set_cup_diameter_in(12.0)  # these tests describe a 1 ft cup (the game default is now 6 ft)
 	if cup_radius > 0.0:
 		cfg.cup_radius = cup_radius
 	return BallSim.new(h, cfg)

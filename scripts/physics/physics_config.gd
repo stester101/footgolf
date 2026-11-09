@@ -19,7 +19,7 @@ var max_motion_time := 60.0
 ## Cup radius in metres. Regulation is 0.054 m (4.25 in diameter); the game default is a deliberately
 ## larger 12 in diameter so more shots drop. Adjustable in Settings / DEV.
 const REGULATION_CUP_RADIUS := 0.054
-const DEFAULT_CUP_DIAMETER_IN := 12.0
+const DEFAULT_CUP_DIAMETER_IN := 72.0  # owner: default hole is 6 ft
 var cup_radius := DEFAULT_CUP_DIAMETER_IN * 0.0254 * 0.5
 var cup_capture_speed := 1.6
 ## How far (fraction of the ball radius) a ball must sink while crossing the cup to drop in (see BallSim._roll_cup).
