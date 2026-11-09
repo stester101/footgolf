@@ -19,7 +19,7 @@ var max_motion_time := 60.0
 ## Cup radius in metres. Regulation is 0.054 m (4.25 in diameter); the game default is a deliberately
 ## larger 12 in diameter so more shots drop. Adjustable in Settings / DEV.
 const REGULATION_CUP_RADIUS := 0.054
-const DEFAULT_CUP_DIAMETER_IN := 48.0  # owner: default hole is 4 ft
+const DEFAULT_CUP_DIAMETER_IN := 12.0  # owner: default hole is 12 in
 var cup_radius := DEFAULT_CUP_DIAMETER_IN * 0.0254 * 0.5
 ## The cup is a real pit (BallSim): a cylinder of radius cup_radius under the green with a vertical wall and a
 ## flat floor cup_depth() below the rim. The ball meets the rim edge, wall and floor like any other surface;

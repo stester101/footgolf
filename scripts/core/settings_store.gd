@@ -3,7 +3,7 @@ extends RefCounted
 ## Local preferences and developer test settings, persisted to user://settings.json.
 
 const PATH := "user://settings.json"
-const VERSION := 6
+const VERSION := 7
 
 ## Physics values shipped in settings_version 2 that were replaced by the v3 golf-ball tuning.
 ## A saved value equal to one of these is an untouched old default and is replaced by the new
@@ -131,6 +131,8 @@ func load_settings() -> void:
 			round_defaults.erase("cup_diameter_ft")  # v5: old 1 ft default -> new default
 		if int(d.get("settings_version", 1)) < 6 and round_defaults.has("cup_diameter_ft") and is_equal_approx(float(round_defaults["cup_diameter_ft"]), 6.0):
 			round_defaults.erase("cup_diameter_ft")  # v6: untouched 6 ft default -> new 4 ft default
+		if int(d.get("settings_version", 1)) < 7 and round_defaults.has("cup_diameter_ft") and is_equal_approx(float(round_defaults["cup_diameter_ft"]), 4.0):
+			round_defaults.erase("cup_diameter_ft")  # v7: untouched 4 ft default -> new 12 in default
 	tutorial_seen = bool(d.get("tutorial_seen", false))
 	last_course = String(d.get("last_course", "starter"))
 	if typeof(d.get("par_overrides")) == TYPE_DICTIONARY:
@@ -155,6 +157,9 @@ func load_settings() -> void:
 		if int(d.get("settings_version", 1)) < 6 and phys.has("cup_radius") and is_equal_approx(float(phys["cup_radius"]), 72.0 * 0.0254 * 0.5):
 			phys = phys.duplicate()
 			phys.erase("cup_radius")  # v6: the untouched 6 ft default moves to the new 4 ft default
+		if int(d.get("settings_version", 1)) < 7 and phys.has("cup_radius") and is_equal_approx(float(phys["cup_radius"]), 48.0 * 0.0254 * 0.5):
+			phys = phys.duplicate()
+			phys.erase("cup_radius")  # v7: the untouched 4 ft default moves to the new 12 in default
 		physics.apply_dict(phys)
 		if int(d.get("settings_version", 1)) < 2:
 			physics.cup_radius = PhysicsConfig.new().cup_radius  # v2: larger default hole

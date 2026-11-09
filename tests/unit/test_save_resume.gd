@@ -43,6 +43,7 @@ func _json_roundtrip(d: Dictionary) -> Dictionary:
 
 func _two_player_session(mulligans: int = 2) -> GameSession:
 	var s := GameSession.new(PhysicsConfig.new(), TestHelpers.make_repo())
+	s.holeout_radius_ft = 5.0  # the bot needs the 5 ft auto hole-out to finish rounds
 	s.cfg.cup_radius = 0.3
 	s.holeout_radius_ft = 3.5
 	s.wind_custom = true
@@ -212,6 +213,7 @@ func test_autosave_writes_after_shots_and_completion_writes_history() -> void:
 	var dir := _dir()
 	var hist := dir + "/history.json"
 	var s := GameSession.new(PhysicsConfig.new(), TestHelpers.make_repo())
+	s.holeout_radius_ft = 5.0  # the bot needs the 5 ft auto hole-out to finish rounds
 	var a := RoundAutosave.new()
 	a.save_dir = dir
 	a.history_path = hist
@@ -264,6 +266,7 @@ func test_resumed_autosave_keeps_id_and_telemetry_not_duplicated() -> void:
 
 func test_history_record_content() -> void:
 	var s := GameSession.new(PhysicsConfig.new(), TestHelpers.make_repo())
+	s.holeout_radius_ft = 5.0  # the bot needs the 5 ft auto hole-out to finish rounds
 	s.start_round(TestHelpers.load_holes(), 99, FootballerPool.ReuseRule.ONCE_PER_ROUND, 1, 1)
 	s.player_names[0] = "Kit"
 	s.begin_play()
