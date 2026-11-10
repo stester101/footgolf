@@ -47,6 +47,8 @@ var season: Season
 signal next_course_requested(course_id: String)
 ## Save id of an unfinished round to resume (see RoundSave); "" starts a new round.
 var resume_id := ""
+## Career Mode round (frozen course snapshot, career save as the autosave target); null for ordinary play.
+var career_run: CareerRoundRun
 var autosave: RoundAutosave
 var _marker: MeshInstance3D
 var _marker_pos := Vector3.INF
@@ -157,7 +159,7 @@ func _ready() -> void:
 	# after ui.setup(): the summary card exists before preloading reports progress into it
 	session.hole_completed.connect(func(_hs: HoleState) -> void: _start_preload())
 	DisplayServer.screen_set_keep_on(true)
-	var defs := App.load_holes(course_id)
+	var defs := career_run.hole_defs() if career_run != null else App.load_holes(course_id)
 	var seed_value := -1
 	if App.online.started:
 		seed_value = int(App.online.setup.seed)
@@ -165,7 +167,12 @@ func _ready() -> void:
 			h.par = int(App.online.setup.pars.get(h.id, h.par))
 	var cname := String(App.course_info(course_id).get("name", course_id))
 	var resumed := {}
-	if resume_id != "" and not App.online.started:
+	if career_run != null:
+		resumed = career_run.resume_data()
+		if not resumed.is_empty() and not RoundSave.restore(session, resumed, defs):
+			resumed = {}
+			ui.toast("That saved round could not be loaded.")
+	elif resume_id != "" and not App.online.started:
 		resumed = RoundSave.load_save(resume_id)
 		if resumed.is_empty() or not RoundSave.restore(session, resumed, defs):
 			resumed = {}
@@ -179,7 +186,11 @@ func _ready() -> void:
 		for i in mini(players, MainMenu.player_names.size()):
 			session.player_names[i] = String(MainMenu.player_names[i])
 			session.profile_ids.append(String(MainMenu.player_profile_ids[i]))
-	if not App.online.started and not App.dev_mode and season == null:
+		if career_run != null:
+			session.player_names[0] = career_run.career.player_name()
+	if career_run != null:
+		career_run.attach(session, ui)
+	elif not App.online.started and not App.dev_mode and season == null:
 		autosave = RoundAutosave.new()
 		autosave.attach(session, course_id, cname, App.telemetry, resumed)
 	if App.online.started:

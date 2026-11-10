@@ -13,6 +13,8 @@ extends Control
 
 signal play_requested(course_id: String, dev: bool, mulligans: int, players: int, rules: RoundConfig)
 signal resume_requested(save_id: String)
+## Career Mode: the player started or resumed a tournament round (state is in CareerManager.active).
+signal career_round_requested
 
 const WORD_GREEN := Color("#3AB52B")
 
@@ -364,6 +366,7 @@ func _build_home() -> Control:
 	var saved_rounds := RoundSave.list_saves().size()
 	if saved_rounds > 0:
 		list.add_child(_nav_row("flag", "Resume round", "%d unfinished" % saved_rounds, func() -> void: HistoryPages.open_resume(self), "menu_resume"))
+	list.add_child(_nav_row("flag", "Career Mode", CareerPages.menu_subtitle(), func() -> void: CareerPages.open_entry(self), "menu_career"))
 	list.add_child(_multiplayer_card())
 	list.add_child(_nav_row("course", "Course Select", "", _open_course_select, "menu_courses"))
 	list.add_child(_nav_row("gear", "Settings", "", _open_settings, "menu_settings"))
@@ -387,6 +390,13 @@ func _build_home() -> Control:
 			tag.add_child(line)
 	v.add_child(tag)
 	return root
+
+
+## Opens the career hub (and, for "tournament", the tournament page) after returning from a career round.
+func open_career(page: String = "hub") -> void:
+	CareerPages.open_entry(self)
+	if page == "tournament" and CareerManager.active != null and CareerManager.active.has_active_tournament():
+		CareerPages.open_tournament(self)
 
 
 ## Online play is hotspot-only: the host turns on the phone's hotspot and taps Host; friends join

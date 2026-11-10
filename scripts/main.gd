@@ -9,6 +9,8 @@ var _canvas: CanvasLayer
 ## Mini season in progress (null otherwise). Lives here so it survives the per-course round scenes.
 var _season: Season
 var _keep_season := false
+## Career round in progress / page to reopen when returning to the menu ("" = ordinary menu).
+var _career_return := ""
 
 
 func _ready() -> void:
@@ -39,8 +41,13 @@ func show_menu() -> void:
 	_menu = MainMenu.new()
 	_canvas.add_child(_menu)
 	_menu.setup()
+	_menu.career_round_requested.connect(_start_career_round)
 	_menu.play_requested.connect(func(course_id: String, dev: bool, mulligans: int, players: int, rules: RoundConfig) -> void: start_round(course_id, dev, mulligans, players, rules))
 	_menu.resume_requested.connect(_resume_round)
+	if _career_return != "":
+		var page := _career_return
+		_career_return = ""
+		_menu.open_career(page)
 
 
 ## Resumes a saved offline round with its frozen rules, player count and mulligan setting.
@@ -51,7 +58,7 @@ func _resume_round(save_id: String) -> void:
 	start_round(String(sv.get("course_id", "")), false, RoundSave.mulligans_of(sv), RoundSave.players_of(sv), RoundSave.rules_of(sv), save_id)
 
 
-func start_round(course_id: String, dev: bool = false, mulligans: int = 0, players: int = 1, rules: RoundConfig = null, resume_id: String = "") -> void:
+func start_round(course_id: String, dev: bool = false, mulligans: int = 0, players: int = 1, rules: RoundConfig = null, resume_id: String = "", career_run: CareerRoundRun = null) -> void:
 	if _menu != null:
 		_menu.queue_free()
 		_menu = null
@@ -75,12 +82,30 @@ func start_round(course_id: String, dev: bool = false, mulligans: int = 0, playe
 	_round.players = players
 	_round.rules = rules if rules != null else RoundConfig.from_settings(App.settings)
 	_round.resume_id = resume_id
+	_round.career_run = career_run
 	App.settings.last_course = course_id
 	App.settings.save()
 	_round.exit_to_menu.connect(show_menu)
 	_round.season = _season
 	_round.next_course_requested.connect(_next_season_course)
 	add_child(_round)
+
+
+## Career Mode: plays (or resumes) the active tournament's current round from its frozen course snapshot.
+func _start_career_round() -> void:
+	var career := CareerManager.active
+	if career == null or not career.has_active_tournament():
+		return
+	var run := CareerRoundRun.new(career)
+	if run.hole_defs().is_empty():
+		_menu._open_placeholder("Career course unavailable", "This tournament's saved course could not be rebuilt. Your career data is untouched; nothing was replaced with newer course data.")
+		return
+	_career_return = "hub"
+	run.finished.connect(func() -> void:
+		run.detach()
+		_career_return = "tournament"
+		show_menu())
+	start_round(run.course_id(), false, run.mulligans(), 1, run.rules(), "", run)
 
 
 func _next_season_course(course_id: String) -> void:
