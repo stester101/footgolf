@@ -87,13 +87,14 @@ static func _item_row(menu: MainMenu, c: CareerManager, it: Dictionary, new_ids:
 					CareerPages._present_save_error(menu, c.store, Callable())
 				refresh.call()
 			else:
-				status.text = String(r["reason"]), "shop_buy_%s" % id)
+				status.text = String(r["reason"])
+				status.visible = true, "shop_buy_%s" % id)
 		b.disabled = why != ""
 		v.add_child(b)
 		if why != "":
 			status.text = why
-	if status.text != "" or not owned:
-		v.add_child(status)
+	status.visible = status.text != ""
+	v.add_child(status)
 	p.add_child(v)
 	return p
 
