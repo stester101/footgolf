@@ -67,7 +67,7 @@ static func check(golfer: Dictionary, event: Dictionary, ctx: Dictionary) -> Dic
 		"regular":
 			out["eligible"] = true
 			out["via"] = "open"
-			out["reason"] = "Eligible: LBT card holder.""
+			out["reason"] = "Eligible: LBT card holder."
 		"finale":
 			if sr > 0 and sr <= CareerConfig.FINALE_QUALIFIERS:
 				out["eligible"] = true

@@ -126,7 +126,7 @@ static func open_create(menu: MainMenu, replacing: bool) -> void:
 	for l in CareerConfig.SEASON_LENGTHS:
 		labels.append("%s · %d events" % [CareerConfig.season_label(l), CareerConfig.total_events(l)])
 	body.add_child(_choice_buttons(labels, 1, func(i: int) -> void: state["length"] = i))
-	body.add_child(menu._note("You start on the Main Tour with a tour card, ranked %d in the world, with no wins and %s. Opponents are simulated golfers; you play every shot yourself with your footballers." % [CareerConfig.START_WORLD_RANK, money(CareerConfig.START_BALANCE)]))
+	body.add_child(menu._note("You start on the LBT with a tour card, ranked %d in the world, with no wins and %s. Opponents are simulated golfers; you play every shot yourself with your footballers." % [CareerConfig.START_WORLD_RANK, money(CareerConfig.START_BALANCE)]))
 	var status := UiKit.label("", 22, UiKit.C_WARN)
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var confirm := {"armed": not replacing}
@@ -179,18 +179,25 @@ static func open_hub(menu: MainMenu) -> void:
 	else:
 		var e := c.next_event()
 		if e.is_empty():
-			body.add_child(_card("SEASON COMPLETE", ["All events are done. Golfers age, some retire and new ones arrive when the next season starts (the full off-season is a later phase)."]))
-			body.add_child(menu._primary_button("Start next season", func() -> void:
-				if c.start_next_season():
-					_replace(menu, func() -> void: open_hub(menu))
+			body.add_child(_card("SEASON COMPLETE", ["All events are done. The off-season is next: season review, sponsors, shop, world news, then the new season."]))
+			body.add_child(menu._primary_button("Continue off-season" if c.off_season_active() else "Begin off-season", func() -> void:
+				if c.begin_off_season():
+					CareerOffSeasonPages.open(menu)
 				else:
-					_present_save_error(menu, c.store, Callable()), "career_next_season"))
+					_present_save_error(menu, c.store, func() -> void: CareerOffSeasonPages.open(menu)), "career_next_season"))
 		else:
 			var el := c.eligibility(e)
 			body.add_child(_card("NEXT EVENT", ["%s  (%s)" % [e["name"], CalendarManager.category_label(String(e["category"]))],
 				"%s  ·  %d rounds  ·  purse %s" % [CourseSource.course_info(String(e["course_id"])).get("name", e["course_id"]), int(e["rounds"]), money(int(e["purse"]))],
 				String(el["reason"])]))
 			body.add_child(menu._primary_button("View event", func() -> void: open_event(menu, int(e["serial"])), "career_next_event"))
+			body.add_child(menu._secondary_button("Skip to next event", func() -> void:
+				if c.skip_next_event():
+					_replace(menu, func() -> void: open_hub(menu))
+				elif c.store.is_blocked():
+					_present_save_error(menu, c.store, func() -> void: _replace(menu, func() -> void: open_hub(menu))), "career_hub_skip"))
+			body.add_child(menu._note("Skipping lets the world play the event without you: rankings, money for others and your footballer pool stay consistent."))
+	body.add_child(CareerOffSeasonPages.status_card(c))
 	body.add_child(CareerWorldPages.ledger_card(c))
 	body.add_child(CareerWorldPages.rivals_card(c))
 	body.add_child(menu._nav_row("course", "Calendar", "%d events this season" % (c.data["calendar"] as Array).size(), func() -> void: open_calendar(menu), "career_calendar"))
@@ -199,7 +206,6 @@ static func open_hub(menu: MainMenu) -> void:
 	body.add_child(menu._nav_row("people", "Rivals", "Head-to-head records", func() -> void: CareerWorldPages.open_rivals(menu), "career_rivals"))
 	body.add_child(menu._nav_row("star", "Trophy Cabinet", "%d trophies" % (c.data["trophies"] as Array).size(), func() -> void: CareerWorldPages.open_trophies(menu), "career_trophies"))
 	body.add_child(menu._nav_row("gear", "Career Settings", "Footballer rule, export, import, reset", func() -> void: open_settings(menu), "career_settings"))
-	body.add_child(menu._note("Sponsors, the shop, Q-School and the full off-season arrive in later phases."))
 	if c.store.is_blocked():
 		body.add_child(UiKit.text("Last save failed: " + c.store.last_error, 21, UiKit.C_WARN))
 		body.add_child(menu._secondary_button("Retry Save", func() -> void:
@@ -284,7 +290,7 @@ static func open_event(menu: MainMenu, serial: int) -> void:
 			, "career_enter")
 		enter.disabled = not bool(el["eligible"])
 		(pg["footer"] as VBoxContainer).add_child(enter)
-		(pg["footer"] as VBoxContainer).add_child(menu._secondary_button("Skip event (the world plays on without you)", func() -> void:
+		(pg["footer"] as VBoxContainer).add_child(menu._secondary_button("Skip event", func() -> void:
 			if c.skip_event(serial):
 				_replace(menu, func() -> void: open_event(menu, serial))
 			elif c.store.is_blocked():
@@ -423,6 +429,10 @@ static func open_settings(menu: MainMenu) -> void:
 	body.add_child(menu._toggle("Each footballer once per season (career rule)", c.footballer_rule_on(), func(on: bool) -> void:
 		c.set_footballer_rule(on)))
 	body.add_child(menu._note("Footballers used in any career round stay used until the next season starts. Mulliganed shots still count."))
+	body.add_child(menu._caption("RIVALS' FORM (OPPONENTS ONLY)"))
+	var modes := CareerConfig.ADAPTIVE_MODES
+	body.add_child(_choice_buttons(["Off", "Balanced", "Hard-lock"], maxi(0, modes.find(AdaptiveDifficulty.mode(c.data))), func(i: int) -> void: c.set_adaptive_mode(String(modes[i]))))
+	body.add_child(menu._note("Balanced nudges the opponents' ratings by a few points after each event you play, based on how you did against expectation. Hard-lock keeps rivals permanently tougher. It never changes your shots, physics or footballers. %s." % AdaptiveDifficulty.hint_text(c.data)))
 	var path := "user://exports/career_export.json"
 	var status := UiKit.label("", 21, UiKit.C_WARN)
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
