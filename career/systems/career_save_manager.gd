@@ -87,13 +87,16 @@ static func decode(text: String) -> Dictionary:
 
 
 ## Explicit, idempotent migrations: each step upgrades exactly one version and never recomputes results.
-## Add `if v < 2: data = _migrate_1_to_2(data)` here when the schema changes. Empty Dictionary = failure.
+## Empty Dictionary = failure.
 static func migrate(data: Dictionary, from_version: int) -> Dictionary:
 	var d := data.duplicate(true)
 	var v := from_version
-	# while v < CareerConfig.SCHEMA_VERSION: (no migrations exist yet; v1 is current)
-	v = CareerConfig.SCHEMA_VERSION
-	d["schema_version"] = v
+	if v < 2:
+		if not (d.has("calendar") and d.has("golfers") and d.has("player") and d.has("season") and d.has("economy")):
+			return {}
+		d = CareerMigration.v1_to_v2(d)
+		v = 2
+	d["schema_version"] = CareerConfig.SCHEMA_VERSION
 	return d
 
 

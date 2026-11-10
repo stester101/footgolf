@@ -3,15 +3,21 @@ extends RefCounted
 ## The single career in memory: `data` (the save, see career/models/README.md) + its CareerSaveManager.
 ## Every mutator changes `data` then commit()s; a failed commit leaves the new state in memory (fail-closed,
 ## store.is_blocked()) and returns false. Pure logic: the course source and the simulation are injectable.
-## TODO (later phases, documented only): rivals, sponsors/economy/shop, trophies and report ceremonies,
-## off-season, Q-School (uses the same season footballer pool: season_id key), adaptive difficulty, ageing/injury,
-## proper World Ranking (RankingManager) - player_rank stays at the start value for now.
+##
+## The opponent world is the real simulation (career/simulation/*): fields come from QualificationManager, scores
+## from OpponentSimulation, World Ranking / Season Standings from RankingManager, form / injuries / ageing from
+## WorldEvolution. Extras (ledger, trophies, rivals) live in CareerRecords.
+## TODO (later phases, documented only, NOT approved by the owner): sponsors / shop / wider economy, the proper
+## off-season sequence, Q-School and tour-card retention (uses the same season footballer pool: season_id key),
+## adaptive difficulty, an interactive sudden-death playoff (ties for first are settled by a seeded simulated
+## playoff in which the human plays as an average member of the tied group; see docs/DECISIONS.md).
 
 const ROSTER_PATH := "res://career/data/golfer_roster.json"
 const PLAYER := TournamentManager.PLAYER
 
-## The one place the opponent simulation is chosen (master swaps CareerSimStub for the real module).
-static var sim: Object = CareerSimStub
+## The simulation used for the opponents' round-by-round scores (CareerSim = OpponentSimulation adapter;
+## tests may swap in CareerSimStub). The final result of every event always comes from OpponentSimulation.
+static var sim: Object = CareerSim
 ## Course loader: Callable(course_id) -> CourseSource.load_course() shape. UI sets it to include Settings par edits.
 static var course_source: Callable = Callable()
 static var active: CareerManager
@@ -41,12 +47,16 @@ static func load_roster() -> Array:
 			c["form"] = 0.0
 			c["injured_until"] = 0
 			c["status"] = "active"
+			c["honours"] = []
 			out.append(c)
 	return out
 
 
 static func new_data(p_name: String, nationality: String, length: String, p_seed: int) -> Dictionary:
 	var career_id := "career_%d_%d" % [int(Time.get_unix_time_from_system()), p_seed & 0xffff]
+	var golfers := load_roster()
+	golfers.append(CareerMigration.new_human({"name": p_name.strip_edges(), "nationality": nationality}))
+	var world := RankingManager.init_world(golfers, 1)
 	return {
 		"schema_version": CareerConfig.SCHEMA_VERSION, "career_id": career_id,
 		"player": {"name": p_name.strip_edges(), "nationality": nationality},
@@ -54,10 +64,13 @@ static func new_data(p_name: String, nationality: String, length: String, p_seed
 		"season": {"number": 1, "id": "season_1", "length": length},
 		"calendar": CalendarManager.build(length, 1),
 		"active_tournament": {},
-		"world_rankings": {"player_rank": CareerConfig.START_WORLD_RANK},
-		"season_standings": {},
-		"golfers": load_roster(),
-		"rivalries": [], "sponsorships": {}, "cosmetics": {}, "achievements": [],
+		"world_rankings": {"player_rank": CareerConfig.START_WORLD_RANK, "world": world},
+		"season_standings": RankingManager.new_standings(1),
+		"prev_standings_rank": {}, "season_history": [],
+		"golfers": golfers,
+		"rivalries": [], "head_to_head": {"applied": {}, "records": {}},
+		"ledger": [], "trophies": [], "records": CareerRecords.default_records(),
+		"sponsorships": {}, "cosmetics": {}, "achievements": [],
 		"career_history": [],
 		"economy": {"balance": CareerConfig.START_BALANCE, "currency": CareerConfig.CURRENCY, "season_earnings": 0, "career_earnings": 0},
 		"simulation_state": {"seed": p_seed},
@@ -98,11 +111,26 @@ func season_id() -> String:
 	return String((data["season"] as Dictionary)["id"])
 
 
+func season_number() -> int:
+	return int((data["season"] as Dictionary)["number"])
+
+
+func career_seed() -> int:
+	return int((data["simulation_state"] as Dictionary)["seed"])
+
+
 func golfers_by_id() -> Dictionary:
 	var m := {}
 	for g in data["golfers"]:
 		m[String(g["id"])] = g
 	return m
+
+
+func human() -> Dictionary:
+	for g in data["golfers"]:
+		if bool(g.get("is_human", false)):
+			return g
+	return {}
 
 
 func tournament() -> Dictionary:
@@ -113,20 +141,45 @@ func has_active_tournament() -> bool:
 	return not tournament().is_empty()
 
 
+func world() -> Dictionary:
+	return (data["world_rankings"] as Dictionary)["world"]
+
+
+func standings() -> Dictionary:
+	return data["season_standings"]
+
+
+## World Ranking table, best first (non-retired golfers incl. the player): rows {id,name,rank,points,season_points,is_human}.
+func world_table() -> Array:
+	return RankingManager.world_table(world(), data["golfers"], season_number())
+
+
+## Season Standings table, best first: rows add {wins, starts, in_finale, tour_card_safe}.
+func standings_table(wtable: Array = []) -> Array:
+	if wtable.is_empty():
+		wtable = world_table()
+	return RankingManager.standings_table(standings(), data["golfers"], RankingManager.rank_map(wtable))
+
+
+func world_rank() -> int:
+	for r in world_table():
+		if bool(r["is_human"]):
+			return int(r["rank"])
+	return 0
+
+
 func season_points() -> int:
-	return int((data["season_standings"] as Dictionary).get(PLAYER, 0))
+	return int(round(float((standings()["points"] as Dictionary).get(PLAYER, 0.0))))
 
 
-## 1-based rank of the player by season points among everyone with points (ties share), 0 when no points.
+## 1-based Season Standings rank of the player; 0 while the season has no results yet.
 func season_rank() -> int:
-	var mine := season_points()
-	if mine <= 0:
+	if (standings()["applied"] as Dictionary).is_empty():
 		return 0
-	var better := 0
-	for k in data["season_standings"]:
-		if int(data["season_standings"][k]) > mine:
-			better += 1
-	return better + 1
+	for r in standings_table():
+		if bool(r["is_human"]):
+			return int(r["rank"])
+	return 0
 
 
 func season_wins() -> Array:
@@ -137,9 +190,38 @@ func season_wins() -> Array:
 	return wins
 
 
-func eligibility(event: Dictionary) -> Dictionary:
-	return CalendarManager.eligibility(event, {"world_rank": int((data["world_rankings"] as Dictionary)["player_rank"]),
-		"season_rank": season_rank() if season_rank() > 0 else 9999, "season_wins": season_wins()})
+## The calendar event as the simulation modules want it: order counter, {world, season} winner points.
+func sim_event(e: Dictionary) -> Dictionary:
+	var se := e.duplicate(true)
+	if not se.has("order"):
+		se["order"] = CalendarManager.order_of(season_number(), int(e["serial"]))
+	se["points"] = {"world": float((e.get("world_points", {}) as Dictionary).get("winner", CareerConfig.WINNER_POINTS.get(String(e["category"]), 0))),
+		"season": float((e["points"] as Dictionary).get("winner", 0))}
+	se.erase("result")
+	return se
+
+
+func event_seed(e: Dictionary) -> int:
+	return career_seed() + int(e["serial"]) * 7919
+
+
+func qual_ctx() -> Dictionary:
+	return QualificationManager.build_context(world(), standings(), data["golfers"], season_number(), _prev_standings())
+
+
+func _prev_standings() -> Dictionary:
+	var m := {}
+	var src: Dictionary = data.get("prev_standings_rank", {})
+	for k in src:
+		m[String(k)] = int(src[k])
+	return m
+
+
+## {eligible, via, reason, requirement, exemptions, world_rank, standings_rank} for the player.
+func eligibility(event: Dictionary, ctx: Dictionary = {}) -> Dictionary:
+	if ctx.is_empty():
+		ctx = qual_ctx()
+	return QualificationManager.check(human(), sim_event(event), ctx)
 
 
 ## The first event not yet played or skipped (the only one that can be entered), or {}.
@@ -195,32 +277,31 @@ func set_footballer_rule(on: bool) -> bool:
 
 # ------------------------------------------------------------------ tournament flow
 
-## Enter the next event: freezes eligibility + the course snapshot + the field. False if not allowed.
+## Enter the next event: freezes eligibility + the course snapshot + the field (built by QualificationManager).
+## False if the event is not the next one or the player is not eligible.
 func enter_event(serial: int) -> bool:
 	if has_active_tournament():
 		return false
 	var e := event_by_serial(serial)
-	if e.is_empty() or e != next_event() or not bool(eligibility(e)["eligible"]):
+	if e.is_empty() or e != next_event():
+		return false
+	var ctx := qual_ctx()
+	var se := sim_event(e)
+	var chk := QualificationManager.check(human(), se, ctx)
+	if not bool(chk["eligible"]):
 		return false
 	var snap := CourseSnapshot.capture(load_course(String(e["course_id"])))
 	if snap.is_empty():
 		return false
-	var t := TournamentManager.create(e, snap, _field_for(e), int((data["simulation_state"] as Dictionary)["seed"]) + int(e["serial"]) * 7919)
-	t["event"]["eligibility_frozen"] = eligibility(e)
+	var bf := QualificationManager.build_field(se, data["golfers"], ctx)
+	var ids: Array = (bf["ids"] as Array).filter(func(id) -> bool: return String(id) != PLAYER)
+	se["field_strength"] = OpponentSimulation.field_strength(bf["field"])
+	var t := TournamentManager.create(se, snap, ids, event_seed(e))
+	t["event"]["eligibility_frozen"] = chk
+	t["invited"] = bf["invited"]
 	e["status"] = "in_progress"
 	data["active_tournament"] = t
 	return store.commit(data)
-
-
-func _field_for(e: Dictionary) -> Array:
-	var list: Array = (data["golfers"] as Array).filter(func(g: Dictionary) -> bool: return String(g.get("status", "active")) == "active")
-	list.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["initial_rank"]) < int(b["initial_rank"]))
-	var ids: Array = []
-	for g in list:
-		if ids.size() >= int(e["field_size"]) - 1:
-			break
-		ids.append(String(g["id"]))
-	return ids
 
 
 ## Freezes this round's rules and mulligans (the player's Round Setup) and marks the round in progress.
@@ -262,54 +343,163 @@ func leaderboard() -> Array:
 	return TournamentManager.leaderboard(t, golfers_by_id(), player_name(), String((data["player"] as Dictionary)["nationality"]))
 
 
-## Idempotent: pays the prize money, awards season points, records the result in the calendar and closes the
-## tournament. Returns the result Dictionary ({} if nothing to finalize). Safe to call again after a failed save.
+## Idempotent: settles the event (official result, prize money into the ledger, Season Standings + World Ranking,
+## form / injuries, trophies, records, rivals), records it in the calendar and closes the tournament. Returns the
+## result Dictionary ({} if nothing to finalize). Safe to call again after a failed save.
 func finalize_tournament() -> Dictionary:
 	var t := tournament()
 	if t.is_empty() or String(t["status"]) != "complete":
 		return {}
 	var ev: Dictionary = event_by_serial(int(t["event"]["serial"]))
 	if not bool(t.get("finalized", false)):
-		var rows := leaderboard()
-		var result := _apply_results(ev, t, rows)
+		var res := _official_result(t)
+		var result := _settle(ev, res, true)
 		t["finalized"] = true
 		ev["result"] = result
 		ev["status"] = "complete"
-		(data["career_history"] as Array).append({"event_id": String(ev["id"]), "name": String(ev["name"]), "season": season_id(),
-			"human_place": int(result["human_place"]), "earnings": int(result["human_earnings"])})
-	var res: Dictionary = ev["result"]
+		var hist: Array = data["career_history"]
+		if not hist.any(func(h: Dictionary) -> bool: return String(h["event_id"]) == String(ev["id"])):
+			hist.append({"event_id": String(ev["id"]), "name": String(ev["name"]), "season": season_id(),
+				"human_place": int(result["human_place"]), "earnings": int(result["human_earnings"])})
+	var res_out: Dictionary = ev["result"]
 	data["active_tournament"] = {}
 	store.commit(data)
+	return res_out
+
+
+## The official event result for a finished tournament: the same OpponentSimulation scores the leaderboard showed,
+## with the cut, positions, payouts and points. A tie for first that includes the player is settled by a seeded
+## sudden-death playoff (the player counts as an average member of the tied group).
+func _official_result(t: Dictionary) -> Dictionary:
+	var ev: Dictionary = t["event"]
+	var by := golfers_by_id()
+	var field: Array = []
+	for id in t["field"]:
+		field.append(by[String(id)])
+	var hr: Array = []
+	if bool(t["has_human"]):
+		field.append(human())
+		for h in t["human_rounds"]:
+			hr.append(int((h as Dictionary)["strokes"]))
+	var ci := TournamentManager.course_info(t)
+	var seed_v := int(t["sim_seed"])
+	var res := OpponentSimulation.simulate_event_field(field, ev, ci, seed_v, hr)
+	var po: Dictionary = res["playoff"]
+	if bool(po["needed"]) and bool(po["human_involved"]) and not bool(po["resolved"]):
+		var tied: Array = []
+		var sum := 0.0
+		var n := 0
+		for g in field:
+			if (po["tied_ids"] as Array).has(String(g["id"])):
+				if bool(g.get("is_human", false)):
+					continue
+				sum += float(g.get("rating", 70.0))
+				n += 1
+		for g in field:
+			if (po["tied_ids"] as Array).has(String(g["id"])):
+				if bool(g.get("is_human", false)):
+					tied.append({"id": PLAYER, "rating": sum / float(maxi(1, n)), "consistency": 0.6, "form": 0.0})
+				else:
+					tied.append(g)
+		var sd := OpponentSimulation.sudden_death(tied, ev, ci, seed_v)
+		OpponentSimulation.apply_playoff_result(res, sd["groups"], ev, ci)
+		res["playoff"]["holes"] = sd["holes"]
 	return res
 
 
-func _apply_results(ev: Dictionary, t: Dictionary, rows: Array) -> Dictionary:
-	var pay := TournamentManager.payouts(int(ev["purse"]), rows)
-	var pts := TournamentManager.season_points(int((ev["points"] as Dictionary)["winner"]), rows)
-	var sd: Dictionary = data["season_standings"]
-	for id in pts:
-		sd[id] = int(sd.get(id, 0)) + int(pts[id])
-	var winner: Dictionary = rows[0]
+## Applies an official event result to the world (once per event id) and builds the compact result stored in the
+## calendar. `human_played` false = the player skipped the event.
+func _settle(e: Dictionary, res: Dictionary, human_played: bool) -> Dictionary:
+	var season := season_number()
+	var se := sim_event(e)
+	var golfers: Array = data["golfers"]
+	var bw := world_table()
+	var bs := standings_table(bw)
+	RankingManager.apply_event_to_world(world(), res, season)
+	RankingManager.apply_event_to_standings(standings(), res)
+	WorldEvolution.update_after_event(golfers, res, se, career_seed(), season)
+	var aw := world_table()
+	var as_ := standings_table(aw)
+	var rank_b := RankingManager.rank_map(bw)
+	var rank_a := RankingManager.rank_map(aw)
+	var srank_b := RankingManager.rank_map(bs)
+	var srank_a := RankingManager.rank_map(as_)
+	(data["world_rankings"] as Dictionary)["player_rank"] = int(rank_a.get(PLAYER, 0))
+	var lb: Array = res["leaderboard"]
+	var winner := {}
 	var me := {}
-	for r in rows:
-		if r["is_human"]:
+	for r in lb:
+		if String(r["id"]) == String(res["winner_id"]):
+			winner = r
+		if bool(r["is_human"]):
 			me = r
-	var earned := int(pay.get(PLAYER, 0))
-	var eco: Dictionary = data["economy"]
-	eco["balance"] = int(eco["balance"]) + earned
-	eco["season_earnings"] = int(eco["season_earnings"]) + earned
-	eco["career_earnings"] = int(eco["career_earnings"]) + earned
-	return {
-		"winner_id": String(winner["id"]), "winner_name": String(winner["name"]), "winner_total": int(winner["total"]),
-		"human_played": not me.is_empty(), "human_place": int(me.get("place", 0)), "human_total": int(me.get("total", 0)),
-		"human_rel": int(me.get("rel", 0)), "human_missed_cut": bool(me.get("cut", false)),
-		"human_won": not me.is_empty() and int(me["place"]) == 1, "human_earnings": earned,
-		"human_points": int(pts.get(PLAYER, 0)), "field": rows.size(),
-		"rounds": me.get("rounds", []),
+	if winner.is_empty() and not lb.is_empty():
+		winner = lb[0]
+	if human_played and not me.is_empty():
+		CareerRecords.apply_human_event(data, e, me, season, int(rank_a.get(PLAYER, 0)))
+		CareerRecords.update_head_to_head(data, e, lb)
+		var pay := int(me.get("payout", 0))
+		if pay > 0:
+			CareerRecords.ledger_add(data, "prize:%s" % String(e["id"]), "prize", "%s prize money" % String(e["name"]), pay, String(e["id"]), season)
+	else:
+		CareerRecords.note_world_rank(data, int(rank_a.get(PLAYER, 0)))
+	# the biggest climbers in the world ranking this event
+	var movers: Array = []
+	for id in rank_a:
+		if rank_b.has(id) and id != PLAYER:
+			var d := int(rank_b[id]) - int(rank_a[id])
+			if d > 0:
+				movers.append({"id": id, "delta": d})
+	movers.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return a["delta"] > b["delta"] or (a["delta"] == b["delta"] and String(a["id"]) < String(b["id"])))
+	var by := golfers_by_id()
+	var mover_rows: Array = []
+	for m in movers.slice(0, 3):
+		mover_rows.append({"id": m["id"], "name": String((by.get(m["id"], {}) as Dictionary).get("name", m["id"])), "delta": m["delta"],
+			"rank": int(rank_a[m["id"]])})
+	var ids_keep := {}
+	var report: Array = []
+	var rivals_ids: Array = []
+	for rv in CareerRecords.featured_rivals(data):
+		rivals_ids.append(String(rv["id"]))
+	for i in lb.size():
+		var r: Dictionary = lb[i]
+		var keep: bool = i < CareerConfig.REPORT_TOP_ROWS or bool(r["is_human"]) or rivals_ids.has(String(r["id"]))
+		if keep and not ids_keep.has(String(r["id"])):
+			ids_keep[String(r["id"])] = true
+			report.append({"id": String(r["id"]), "name": String(r["name"]), "pos": String(r["position_label"]), "position": int(r["position"]),
+				"status": String(r["status"]), "total": int(r["total"]), "to_par": int(r["to_par"]), "payout": int(r["payout"]),
+				"rounds": (r["rounds"] as Array).duplicate(), "is_human": bool(r["is_human"])})
+	var rival_lines: Array = []
+	if human_played:
+		for rid in rivals_ids:
+			for r in lb:
+				if String(r["id"]) == rid:
+					var ahead := 0
+					if not me.is_empty():
+						ahead = signi(int(me["position"]) - int(r["position"]))  # +1 = the rival finished ahead of you
+					rival_lines.append({"id": rid, "name": String(r["name"]), "pos": String(r["position_label"]), "total": int(r["total"]),
+						"to_par": int(r["to_par"]), "status": String(r["status"]), "rival_ahead": ahead})
+	var po: Dictionary = res["playoff"]
+	var out := {
+		"winner_id": String(winner.get("id", "")), "winner_name": String(winner.get("name", "?")), "winner_total": int(winner.get("total", 0)),
+		"winner_to_par": int(winner.get("to_par", 0)),
+		"human_played": human_played and not me.is_empty(), "human_place": int(me.get("position", 0)), "human_place_label": String(me.get("position_label", "")),
+		"human_total": int(me.get("total", 0)), "human_rel": int(me.get("to_par", 0)),
+		"human_missed_cut": not me.is_empty() and String(me.get("status", "")) == "cut",
+		"human_won": human_played and not me.is_empty() and String(winner.get("id", "")) == PLAYER,
+		"human_earnings": int(me.get("payout", 0)), "human_points": int(round(float(me.get("season_points", 0.0)))),
+		"human_world_points": float(me.get("world_points", 0.0)), "field": lb.size(), "rounds": (me.get("rounds", []) as Array).duplicate(),
+		"world_rank_before": int(rank_b.get(PLAYER, 0)), "world_rank_after": int(rank_a.get(PLAYER, 0)),
+		"season_rank_before": int(srank_b.get(PLAYER, 0)), "season_rank_after": int(srank_a.get(PLAYER, 0)),
+		"playoff": {"needed": bool(po["needed"]), "human_involved": bool(po["human_involved"]), "holes": (po.get("holes", []) as Array).size()},
+		"cut": (res["cut"] as Dictionary).duplicate(), "par_per_round": int(res.get("par_per_round", 0)),
+		"movers": mover_rows, "report": report, "rivals": rival_lines,
 	}
+	return out
 
 
-## Skip the next event: the world still plays it (simulated), standings update.
+## Skip the next event: the world still plays it (simulated), World Ranking and Season Standings update.
 func skip_event(serial: int) -> bool:
 	if has_active_tournament():
 		return false
@@ -319,30 +509,56 @@ func skip_event(serial: int) -> bool:
 	var snap := CourseSnapshot.capture(load_course(String(e["course_id"])))
 	if snap.is_empty():
 		return false
-	var t := TournamentManager.create(e, snap, _field_for(e), int((data["simulation_state"] as Dictionary)["seed"]) + int(e["serial"]) * 7919)
-	TournamentManager.simulate_all(t, golfers_by_id(), sim)
-	var rows := TournamentManager.leaderboard(t, golfers_by_id(), player_name(), "")
-	var pts := TournamentManager.season_points(int((e["points"] as Dictionary)["winner"]), rows)
-	var sd: Dictionary = data["season_standings"]
-	for id in pts:
-		sd[id] = int(sd.get(id, 0)) + int(pts[id])
+	var ctx := qual_ctx()
+	var se := sim_event(e)
+	var ais: Array = (data["golfers"] as Array).filter(func(g: Dictionary) -> bool: return not bool(g.get("is_human", false)))
+	var bf := QualificationManager.build_field(se, ais, ctx)
+	var ci := {"holes": (snap["holes"] as Array).size(), "par": CourseSnapshot.total_par(snap), "difficulty": 0.0}
+	var res := OpponentSimulation.simulate_event_field(bf["field"], se, ci, event_seed(e))
+	var result := _settle(e, res, false)
 	e["status"] = "skipped"
-	e["result"] = {"winner_id": String(rows[0]["id"]), "winner_name": String(rows[0]["name"]), "winner_total": int(rows[0]["total"]),
-		"human_played": false, "human_place": 0, "human_earnings": 0, "human_won": false}
+	e["result"] = result
 	return store.commit(data)
 
 
-## Starts the next season: new calendar, standings reset, a fresh season footballer pool (new season id).
-## (The proper off-season sequence is a later phase.)
+## Starts the next season: archives the finished standings, ages / retires golfers and adds entrants
+## (WorldEvolution.advance_season), prunes the World Ranking window, new calendar and standings, a fresh season
+## footballer pool (new season id). (The proper off-season sequence is a later phase.)
 func start_next_season() -> bool:
 	if not season_finished() or has_active_tournament():
 		return false
 	var s: Dictionary = data["season"]
-	var n := int(s["number"]) + 1
+	var old_n := int(s["number"])
+	# archive the season that just ended
+	var st := standings_table()
+	var champion: Dictionary = st[0] if not st.is_empty() else {}
+	var me := {}
+	for r in st:
+		if bool(r["is_human"]):
+			me = r
+	var finale := {}
+	for e in data["calendar"]:
+		if String(e["category"]) == "finale" and String(e["status"]) in ["complete", "skipped"]:
+			finale = e["result"]
+	(data["season_history"] as Array).append({"season": old_n, "standings_champion": String(champion.get("name", "")),
+		"standings_champion_id": String(champion.get("id", "")), "human_rank": int(me.get("rank", 0)), "human_points": float(me.get("points", 0.0)),
+		"tour_champion": String(finale.get("winner_name", "")), "earnings": int((data["economy"] as Dictionary)["season_earnings"])})
+	if not me.is_empty() and int(me["rank"]) == 1 and float(me["points"]) > 0.0:
+		CareerRecords.trophy_add(data, "title:season_%d" % old_n, "season_title", "Season %d Standings champion" % old_n, old_n, "")
+	var prev := {}
+	for r in st:
+		if int(r["rank"]) <= CareerConfig.PREV_STANDINGS_KEEP:
+			prev[String(r["id"])] = int(r["rank"])
+	data["prev_standings_rank"] = prev
+	var n := old_n + 1
 	s["number"] = n
 	s["id"] = "season_%d" % n
+	WorldEvolution.advance_season(data["golfers"], n, career_seed(), world())
+	RankingManager.prune_world(world(), n)
 	data["calendar"] = CalendarManager.build(String(s["length"]), n)
-	data["season_standings"] = {}
+	data["season_standings"] = RankingManager.new_season_standings(n)
 	(data["economy"] as Dictionary)["season_earnings"] = 0
 	(data["season_footballers"] as Dictionary)[String(s["id"])] = []
+	CareerRecords.refresh_rivalries(data)
+	(data["world_rankings"] as Dictionary)["player_rank"] = world_rank()
 	return store.commit(data)

@@ -10,7 +10,7 @@ extends RefCounted
 ## Items marked [A: <section>] cite the Appendix. Items marked [INVENTED] are the implementer's provisional
 ## choice where the Appendix gives no figure (they are equally unapproved).
 
-const SCHEMA_VERSION := 1
+const SCHEMA_VERSION := 2  # v2: world ranking + standings tables, human golfer entity, ledger, trophies, rivals
 
 # --- start state [A: section 3 Career setup; section 8 item 1]
 const START_WORLD_RANK := 180
@@ -116,6 +116,15 @@ const ENTRANT_RATING_MEAN := 54.0
 const ENTRANT_RATING_SD := 6.0
 const ENTRANT_RATING_MIN := 42.0
 const ENTRANT_RATING_MAX := 70.0
+
+# --- rivals / report / ledger (PROPOSED DEFAULT - OWNER APPROVAL REQUIRED; all [INVENTED], Appendix A gives no numbers)
+const RIVAL_CLOSE_STROKES := 2        # a "close finish": both finished the event and the totals are within this many strokes
+const RIVAL_MIN_CLOSE := 2            # close finishes against the same golfer before they count as a rival
+const RIVAL_MAX_FEATURED := 3         # rivals shown on the Hub
+const RIVAL_MAX_LISTED := 8           # rivals kept in the save / shown on the Rivals screen
+const REPORT_TOP_ROWS := 10           # leaderboard rows kept per event report (plus you and your rivals)
+const PREV_STANDINGS_KEEP := 60       # last season's standings ranks kept for the exemption check
+const LEDGER_HUB_ROWS := 4
 
 # --- save [A: Save/resume]
 const KEEP_BACKUPS := 1

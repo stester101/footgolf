@@ -36,6 +36,11 @@ static func build(length: String, season_number: int) -> Array:
 	return events
 
 
+## Monotonic event counter across seasons (injuries are measured in it).
+static func order_of(season_number: int, serial: int) -> int:
+	return (season_number - 1) * 100 + serial
+
+
 ## Put `cat` at `pos`, or at the nearest free slot.
 static func _place(slots: Array, pos: int, cat: String) -> void:
 	pos = clampi(pos, 0, slots.size() - 1)
@@ -82,7 +87,7 @@ static func _make_event(season_number: int, serial: int, cat: String, idx: int) 
 		_:
 			title = FINALE_NAME
 	return {
-		"id": "s%d_e%02d" % [season_number, serial], "serial": serial, "category": cat, "name": title,
+		"id": "s%d_e%02d" % [season_number, serial], "serial": serial, "order": order_of(season_number, serial), "category": cat, "name": title,
 		"course_id": course_id, "rounds": int(CareerConfig.ROUNDS[cat]), "cut": cut_for(cat, idx),
 		"purse": int(CareerConfig.PURSE[cat]), "field_size": int(CareerConfig.FIELD_SIZE[cat]),
 		"points": {"winner": int(CareerConfig.SEASON_WINNER_POINTS[cat])},
