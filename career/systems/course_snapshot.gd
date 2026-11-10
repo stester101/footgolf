@@ -11,6 +11,8 @@ static func capture(course: Dictionary) -> Dictionary:
 		return {}
 	var snap := {"course_id": String(course["id"]), "name": String(course["name"]),
 		"holes": (course["holes"] as Array).duplicate(true)}
+	# normalise exactly as a save/load round trip would (ints become floats) so the hash stays stable
+	snap = JSON.parse_string(JSON.stringify(snap))
 	snap["hash"] = hash_of(snap)
 	return snap
 
