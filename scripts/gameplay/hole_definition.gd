@@ -167,6 +167,14 @@ static func load_from_file(path: String) -> HoleDefinition:
 	return h
 
 
+## Builds a hole from an already-parsed JSON dictionary (career course snapshots).
+static func load_from_dict(d: Dictionary, source: String = "snapshot") -> HoleDefinition:
+	var h := HoleDefinition.new()
+	h.source_path = source
+	h._parse(d)
+	return h
+
+
 ## A flat, unbounded, obstacle-free neutral reference plane at height 0.
 static func make_flat(surface_type: int) -> HoleDefinition:
 	var h := HoleDefinition.new()

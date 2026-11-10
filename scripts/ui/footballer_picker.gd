@@ -242,6 +242,8 @@ func _build_main_panel() -> PanelContainer:
 	head.add_child(_icon_button("close", 64, func() -> void: closed.emit(), "picker_close"))
 	v.add_child(head)
 	v.add_child(_rule())
+	if session.pool.season_rule_active():
+		v.add_child(UiKit.text("Career rule: each footballer can be used once per season.", 17, UiKit.C_CYAN))
 	if show_stats:
 		v.add_child(UiKit.text("TEST MODE: caps & goals shown; stat sorting/filters unlocked (off in Settings)", 17, UiKit.C_WARN))
 	# search (fixed)
