@@ -178,3 +178,10 @@ The pit rim, wall and floor use the SAME bounce/roll model as the green (speed-d
 - The live Career uses the real opponent simulation (QualificationManager fields, OpponentSimulation scores, RankingManager tables, WorldEvolution form/injuries/ageing). Every unapproved number stays in `CareerConfig` (PROPOSED DEFAULT - OWNER APPROVAL REQUIRED), including the new rival/report/ledger constants.
 - Ties for first that include the player are settled by a seeded simulated sudden-death playoff (the player counts as an average member of the tied group); an interactive playoff is a documented TODO. AI-only ties use the same simulated playoff.
 - Ledger/trophies/rivals/records are step-5 extras in schema v2 (migration from v1 fills defaults and rebuilds ledger/trophies from history). Sponsors, shop, off-season, Q-School, tour-card retention and adaptive difficulty are NOT started.
+
+## 2026-11-10: small behaviour changes from the polish pass (no gameplay rules touched)
+- Settings > Audio / Visual: frame-rate cap (device default / 30 / 60) and "Keep screen awake during a round" (default on, as before).
+- Round Setup remembers the last mulligan and player-count choices across launches.
+- Android Back on the home screen needs a second press within 2 s to exit.
+- Settings > Developer > "Reset footballer database" needs a second tap to confirm.
+- Export data has "Save diagnostic log" (recent engine log lines plus build info).
