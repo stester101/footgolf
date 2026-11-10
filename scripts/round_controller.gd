@@ -81,6 +81,12 @@ func _ready() -> void:
 	bm.emission = Color(0.25, 0.25, 0.25)
 	ball_mesh.material_override = bm
 	_ball_mat = bm
+	if career_run != null and CareerManager.active != null:  # Career shop cosmetic: ball colour (visual only)
+		var bc := ShopManager.equipped_color(CareerManager.active.data, "ball_color")
+		if bc.a > 0.0:
+			bm.albedo_color = bc
+			bm.emission = bc * 0.25
+		course.flag_tint = ShopManager.equipped_color(CareerManager.active.data, "flag")
 	_ball_pit_mat = ShaderMaterial.new()
 	_ball_pit_mat.shader = load("res://assets/shaders/hole_ball.gdshader")
 	_ball_pit_mat.render_priority = 3  # after the hole mask (1) and the pit (2)

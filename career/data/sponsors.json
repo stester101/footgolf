@@ -1,0 +1,355 @@
+{
+ "_note": "PROPOSED DEFAULT - OWNER APPROVAL REQUIRED. All brands are fictional. Money in career currency.",
+ "sponsors": [
+  {
+   "id": "fernbank_hardware",
+   "name": "Fernbank Hardware",
+   "tier": "local",
+   "tagline": "Tools for every fairway.",
+   "color": "#C98A3C",
+   "unlock_rank": 999,
+   "signing_bonus": 4000,
+   "appearance_fee": 1000,
+   "objectives": [
+    {
+     "id": "cuts",
+     "type": "cuts",
+     "label": "Make 3 cuts",
+     "bonus": 3000,
+     "n": 3
+    },
+    {
+     "id": "top10",
+     "type": "top10",
+     "label": "Finish top 10 once",
+     "bonus": 5000,
+     "n": 1
+    },
+    {
+     "id": "no_last",
+     "type": "no_last",
+     "label": "Never finish last",
+     "bonus": 2000
+    }
+   ]
+  },
+  {
+   "id": "gullwing_cafe",
+   "name": "Gullwing Cafe",
+   "tier": "local",
+   "tagline": "Coffee and clubhouse cake.",
+   "color": "#E8D9B0",
+   "unlock_rank": 999,
+   "signing_bonus": 3000,
+   "appearance_fee": 1200,
+   "objectives": [
+    {
+     "id": "cuts",
+     "type": "cuts",
+     "label": "Make 4 cuts",
+     "bonus": 4000,
+     "n": 4
+    },
+    {
+     "id": "no_last",
+     "type": "no_last",
+     "label": "Never finish last",
+     "bonus": 2500
+    },
+    {
+     "id": "rank",
+     "type": "rank",
+     "label": "Reach world rank 150",
+     "bonus": 6000,
+     "x": 150
+    }
+   ]
+  },
+  {
+   "id": "tarn_valley_dairy",
+   "name": "Tarn Valley Dairy",
+   "tier": "local",
+   "tagline": "Fresh from the valley.",
+   "color": "#F2F5F8",
+   "unlock_rank": 999,
+   "signing_bonus": 5000,
+   "appearance_fee": 800,
+   "objectives": [
+    {
+     "id": "top10",
+     "type": "top10",
+     "label": "Finish top 10 twice",
+     "bonus": 8000,
+     "n": 2
+    },
+    {
+     "id": "cuts",
+     "type": "cuts",
+     "label": "Make 2 cuts",
+     "bonus": 2000,
+     "n": 2
+    }
+   ]
+  },
+  {
+   "id": "halcyon_greens",
+   "name": "Halcyon Greens Shop",
+   "tier": "local",
+   "tagline": "Your local pro shop.",
+   "color": "#4FB06D",
+   "unlock_rank": 999,
+   "signing_bonus": 3500,
+   "appearance_fee": 1000,
+   "objectives": [
+    {
+     "id": "win",
+     "type": "win",
+     "label": "Win an event",
+     "bonus": 15000,
+     "n": 1
+    },
+    {
+     "id": "cuts",
+     "type": "cuts",
+     "label": "Make 3 cuts",
+     "bonus": 3000,
+     "n": 3
+    }
+   ]
+  },
+  {
+   "id": "copperleaf_insurance",
+   "name": "Copperleaf Insurance",
+   "tier": "regional",
+   "tagline": "Cover for the long game.",
+   "color": "#B5651D",
+   "unlock_rank": 120,
+   "signing_bonus": 25000,
+   "appearance_fee": 6000,
+   "objectives": [
+    {
+     "id": "cuts",
+     "type": "cuts",
+     "label": "Make 6 cuts",
+     "bonus": 20000,
+     "n": 6
+    },
+    {
+     "id": "top10",
+     "type": "top10",
+     "label": "Finish top 10 three times",
+     "bonus": 35000,
+     "n": 3
+    },
+    {
+     "id": "rank",
+     "type": "rank",
+     "label": "Reach world rank 80",
+     "bonus": 30000,
+     "x": 80
+    }
+   ]
+  },
+  {
+   "id": "northspire_telecom",
+   "name": "Northspire Telecom",
+   "tier": "regional",
+   "tagline": "Always in range.",
+   "color": "#3C8DD9",
+   "unlock_rank": 120,
+   "signing_bonus": 30000,
+   "appearance_fee": 5000,
+   "objectives": [
+    {
+     "id": "win",
+     "type": "win",
+     "label": "Win an event",
+     "bonus": 60000,
+     "n": 1
+    },
+    {
+     "id": "no_last",
+     "type": "no_last",
+     "label": "Never finish last",
+     "bonus": 10000
+    },
+    {
+     "id": "cuts",
+     "type": "cuts",
+     "label": "Make 5 cuts",
+     "bonus": 15000,
+     "n": 5
+    }
+   ]
+  },
+  {
+   "id": "saltmarsh_credit",
+   "name": "Saltmarsh Credit Union",
+   "tier": "regional",
+   "tagline": "Steady returns.",
+   "color": "#2F7F86",
+   "unlock_rank": 120,
+   "signing_bonus": 20000,
+   "appearance_fee": 7000,
+   "objectives": [
+    {
+     "id": "top10",
+     "type": "top10",
+     "label": "Finish top 10 twice",
+     "bonus": 25000,
+     "n": 2
+    },
+    {
+     "id": "rank",
+     "type": "rank",
+     "label": "Reach world rank 60",
+     "bonus": 40000,
+     "x": 60
+    }
+   ]
+  },
+  {
+   "id": "vantor_watches",
+   "name": "Vantor Watches",
+   "tier": "regional",
+   "tagline": "Time well spent.",
+   "color": "#C0C6CF",
+   "unlock_rank": 120,
+   "signing_bonus": 28000,
+   "appearance_fee": 5500,
+   "objectives": [
+    {
+     "id": "cuts",
+     "type": "cuts",
+     "label": "Make 7 cuts",
+     "bonus": 25000,
+     "n": 7
+    },
+    {
+     "id": "win",
+     "type": "win",
+     "label": "Win an event",
+     "bonus": 50000,
+     "n": 1
+    }
+   ]
+  },
+  {
+   "id": "aurelian_airways",
+   "name": "Aurelian Airways",
+   "tier": "global",
+   "tagline": "Fly the world tour.",
+   "color": "#D8B04A",
+   "unlock_rank": 40,
+   "signing_bonus": 120000,
+   "appearance_fee": 30000,
+   "objectives": [
+    {
+     "id": "top10",
+     "type": "top10",
+     "label": "Finish top 10 five times",
+     "bonus": 150000,
+     "n": 5
+    },
+    {
+     "id": "win",
+     "type": "win",
+     "label": "Win two events",
+     "bonus": 250000,
+     "n": 2
+    },
+    {
+     "id": "rank",
+     "type": "rank",
+     "label": "Reach world rank 20",
+     "bonus": 200000,
+     "x": 20
+    }
+   ]
+  },
+  {
+   "id": "zenvolt_energy",
+   "name": "Zenvolt Energy",
+   "tier": "global",
+   "tagline": "Power your round.",
+   "color": "#7AE04A",
+   "unlock_rank": 40,
+   "signing_bonus": 150000,
+   "appearance_fee": 25000,
+   "objectives": [
+    {
+     "id": "win",
+     "type": "win",
+     "label": "Win an event",
+     "bonus": 200000,
+     "n": 1
+    },
+    {
+     "id": "cuts",
+     "type": "cuts",
+     "label": "Make 8 cuts",
+     "bonus": 100000,
+     "n": 8
+    },
+    {
+     "id": "no_last",
+     "type": "no_last",
+     "label": "Never finish last",
+     "bonus": 40000
+    }
+   ]
+  },
+  {
+   "id": "kestrel_global",
+   "name": "Kestrel Global Partners",
+   "tier": "global",
+   "tagline": "Precision investing.",
+   "color": "#A6B7C9",
+   "unlock_rank": 40,
+   "signing_bonus": 100000,
+   "appearance_fee": 35000,
+   "objectives": [
+    {
+     "id": "top10",
+     "type": "top10",
+     "label": "Finish top 10 four times",
+     "bonus": 160000,
+     "n": 4
+    },
+    {
+     "id": "rank",
+     "type": "rank",
+     "label": "Reach world rank 10",
+     "bonus": 300000,
+     "x": 10
+    }
+   ]
+  },
+  {
+   "id": "orbiquity_systems",
+   "name": "Orbiquity Systems",
+   "tier": "global",
+   "tagline": "Data for champions.",
+   "color": "#9B6BF2",
+   "unlock_rank": 40,
+   "signing_bonus": 130000,
+   "appearance_fee": 28000,
+   "objectives": [
+    {
+     "id": "win",
+     "type": "win",
+     "label": "Win an event",
+     "bonus": 220000,
+     "n": 1
+    },
+    {
+     "id": "top10",
+     "type": "top10",
+     "label": "Finish top 10 three times",
+     "bonus": 120000,
+     "n": 3
+    }
+   ]
+  }
+ ]
+}

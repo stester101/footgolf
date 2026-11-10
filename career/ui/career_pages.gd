@@ -198,8 +198,11 @@ static func open_hub(menu: MainMenu) -> void:
 	body.add_child(menu._nav_row("list", "Season Standings", "Top %d reach the finale" % CareerConfig.FINALE_QUALIFIERS, func() -> void: CareerWorldPages.open_standings(menu), "career_standings"))
 	body.add_child(menu._nav_row("people", "Rivals", "Head-to-head records", func() -> void: CareerWorldPages.open_rivals(menu), "career_rivals"))
 	body.add_child(menu._nav_row("star", "Trophy Cabinet", "%d trophies" % (c.data["trophies"] as Array).size(), func() -> void: CareerWorldPages.open_trophies(menu), "career_trophies"))
+	CareerSponsorPages.hub_refresh(c)
+	body.add_child(menu._nav_row("trophy", "Sponsors", CareerSponsorPages.hub_subtitle(c), func() -> void: CareerSponsorPages.open_sponsor_review(menu), "career_sponsors"))
+	body.add_child(menu._nav_row("flag", "Shop", CareerShopPages.hub_subtitle(c), func() -> void: CareerShopPages.open_shop(menu), "career_shop"))
 	body.add_child(menu._nav_row("gear", "Career Settings", "Footballer rule, export, import, reset", func() -> void: open_settings(menu), "career_settings"))
-	body.add_child(menu._note("Sponsors, the shop, Q-School and the full off-season arrive in later phases."))
+	body.add_child(menu._note("The full off-season arrives in a later phase."))
 	if c.store.is_blocked():
 		body.add_child(UiKit.text("Last save failed: " + c.store.last_error, 21, UiKit.C_WARN))
 		body.add_child(menu._secondary_button("Retry Save", func() -> void:

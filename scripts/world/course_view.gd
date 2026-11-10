@@ -11,6 +11,8 @@ const GRASS_MAX_DENSITY := 7.0  # tufts per m² in full rough
 const CLOUD_SHADOW_AMT := 0.18  # High graphics: darkening under a drifting cloud shadow
 
 var hole: HoleDefinition
+## Career shop flag colour (Color.TRANSPARENT = the default red flag). Visual only.
+var flag_tint := Color.TRANSPARENT
 ## Where the flag/cup are drawn now (see sync_pin).
 var shown_pin := Vector3.INF
 var pin_label: Label3D
@@ -517,6 +519,8 @@ func _build_pin() -> void:
 	flag.mesh = qm
 	var fmat := ShaderMaterial.new()
 	fmat.shader = _flag_shader
+	if flag_tint.a > 0.0:
+		fmat.set_shader_parameter("color", Vector3(flag_tint.r, flag_tint.g, flag_tint.b))
 	flag.material_override = fmat
 	_flag_mat = fmat
 	flag.position = Vector3(0.37, 0, 0)
