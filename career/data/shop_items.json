@@ -1,0 +1,280 @@
+{
+ "_note": "PROPOSED DEFAULT - OWNER APPROVAL REQUIRED. Cosmetics only: no item has any gameplay effect.",
+ "slots": {
+  "ball_color": "Ball colour",
+  "ball_trail": "Ball trail",
+  "flag": "Flag",
+  "outfit": "Outfit",
+  "scorecard": "Scorecard",
+  "celebration": "Celebration"
+ },
+ "items": [
+  {
+   "id": "ball_lime",
+   "name": "Lime ball",
+   "slot": "ball_color",
+   "price": 2000,
+   "desc": "Ball colour",
+   "color": "#B6FF3C"
+  },
+  {
+   "id": "ball_sunset_orange",
+   "name": "Sunset Orange ball",
+   "slot": "ball_color",
+   "price": 3000,
+   "desc": "Ball colour",
+   "color": "#FF8A2A"
+  },
+  {
+   "id": "ball_sky_blue",
+   "name": "Sky Blue ball",
+   "slot": "ball_color",
+   "price": 4000,
+   "desc": "Ball colour",
+   "color": "#4FC3FF"
+  },
+  {
+   "id": "ball_hot_pink",
+   "name": "Hot Pink ball",
+   "slot": "ball_color",
+   "price": 5000,
+   "desc": "Ball colour",
+   "color": "#FF4FA8"
+  },
+  {
+   "id": "ball_gold",
+   "name": "Gold ball",
+   "slot": "ball_color",
+   "price": 6000,
+   "desc": "Ball colour",
+   "color": "#FFD24A"
+  },
+  {
+   "id": "ball_midnight",
+   "name": "Midnight ball",
+   "slot": "ball_color",
+   "price": 30000,
+   "desc": "Ball colour",
+   "color": "#2B2F66",
+   "lock": {
+    "type": "trophies",
+    "n": 1,
+    "label": "Win a trophy"
+   }
+  },
+  {
+   "id": "trail_comet",
+   "name": "Comet trail",
+   "slot": "ball_trail",
+   "price": 8000,
+   "desc": "Ball trail",
+   "color": "#9BE7FF"
+  },
+  {
+   "id": "trail_ember",
+   "name": "Ember trail",
+   "slot": "ball_trail",
+   "price": 10000,
+   "desc": "Ball trail",
+   "color": "#FF7A3C"
+  },
+  {
+   "id": "trail_mint",
+   "name": "Mint trail",
+   "slot": "ball_trail",
+   "price": 9000,
+   "desc": "Ball trail",
+   "color": "#7CFFC4"
+  },
+  {
+   "id": "trail_aurelian",
+   "name": "Aurelian gold trail",
+   "slot": "ball_trail",
+   "price": 15000,
+   "desc": "Ball trail",
+   "color": "#FFD24A",
+   "lock": {
+    "type": "sponsor",
+    "id": "aurelian_airways",
+    "label": "Sign Aurelian Airways"
+   }
+  },
+  {
+   "id": "flag_red",
+   "name": "Red flag",
+   "slot": "flag",
+   "price": 2500,
+   "desc": "Flag colour",
+   "color": "#E0301E"
+  },
+  {
+   "id": "flag_royal_blue",
+   "name": "Royal Blue flag",
+   "slot": "flag",
+   "price": 3000,
+   "desc": "Flag colour",
+   "color": "#2A4FD6"
+  },
+  {
+   "id": "flag_black_and_white",
+   "name": "Black and White flag",
+   "slot": "flag",
+   "price": 3500,
+   "desc": "Flag colour",
+   "color": "#222222"
+  },
+  {
+   "id": "flag_purple",
+   "name": "Purple flag",
+   "slot": "flag",
+   "price": 4000,
+   "desc": "Flag colour",
+   "color": "#8A3FD1"
+  },
+  {
+   "id": "flag_teal",
+   "name": "Teal flag",
+   "slot": "flag",
+   "price": 4500,
+   "desc": "Flag colour",
+   "color": "#1FB5A8"
+  },
+  {
+   "id": "flag_tour_gold",
+   "name": "Tour gold flag",
+   "slot": "flag",
+   "price": 25000,
+   "desc": "Flag colour",
+   "color": "#E8B923",
+   "lock": {
+    "type": "best_world_rank",
+    "x": 100,
+    "label": "Reach world rank 100"
+   }
+  },
+  {
+   "id": "outfit_navy",
+   "name": "Navy kit",
+   "slot": "outfit",
+   "price": 5000,
+   "desc": "Outfit colour",
+   "color": "#1C2B5A"
+  },
+  {
+   "id": "outfit_forest",
+   "name": "Forest kit",
+   "slot": "outfit",
+   "price": 5000,
+   "desc": "Outfit colour",
+   "color": "#1E5A34"
+  },
+  {
+   "id": "outfit_crimson",
+   "name": "Crimson kit",
+   "slot": "outfit",
+   "price": 6000,
+   "desc": "Outfit colour",
+   "color": "#9E1B32"
+  },
+  {
+   "id": "outfit_white",
+   "name": "White kit",
+   "slot": "outfit",
+   "price": 6000,
+   "desc": "Outfit colour",
+   "color": "#EEF2F5"
+  },
+  {
+   "id": "outfit_sunburst",
+   "name": "Sunburst kit",
+   "slot": "outfit",
+   "price": 12000,
+   "desc": "Outfit colour",
+   "color": "#FFB020"
+  },
+  {
+   "id": "outfit_copperleaf",
+   "name": "Copperleaf kit",
+   "slot": "outfit",
+   "price": 20000,
+   "desc": "Outfit colour",
+   "color": "#B5651D",
+   "lock": {
+    "type": "sponsor",
+    "id": "copperleaf_insurance",
+    "label": "Sign Copperleaf Insurance"
+   }
+  },
+  {
+   "id": "card_classic",
+   "name": "Classic card",
+   "slot": "scorecard",
+   "price": 4000,
+   "desc": "Scorecard theme"
+  },
+  {
+   "id": "card_parchment",
+   "name": "Parchment card",
+   "slot": "scorecard",
+   "price": 6000,
+   "desc": "Scorecard theme"
+  },
+  {
+   "id": "card_night",
+   "name": "Night card",
+   "slot": "scorecard",
+   "price": 8000,
+   "desc": "Scorecard theme"
+  },
+  {
+   "id": "card_champion",
+   "name": "Champion card",
+   "slot": "scorecard",
+   "price": 35000,
+   "desc": "Scorecard theme",
+   "lock": {
+    "type": "trophies",
+    "n": 3,
+    "label": "Win 3 trophies"
+   }
+  },
+  {
+   "id": "celeb_fist",
+   "name": "Fist pump",
+   "slot": "celebration",
+   "price": 8000,
+   "desc": "Celebration effect"
+  },
+  {
+   "id": "celeb_confetti",
+   "name": "Confetti burst",
+   "slot": "celebration",
+   "price": 14000,
+   "desc": "Celebration effect"
+  },
+  {
+   "id": "celeb_golden",
+   "name": "Golden shower",
+   "slot": "celebration",
+   "price": 40000,
+   "desc": "Celebration effect",
+   "lock": {
+    "type": "best_world_rank",
+    "x": 40,
+    "label": "Reach world rank 40"
+   }
+  },
+  {
+   "id": "celeb_trophy",
+   "name": "Trophy lift",
+   "slot": "celebration",
+   "price": 30000,
+   "desc": "Celebration effect",
+   "lock": {
+    "type": "trophies",
+    "n": 2,
+    "label": "Win 2 trophies"
+   }
+  }
+ ]
+}

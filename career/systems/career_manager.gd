@@ -95,6 +95,7 @@ func load_saved() -> Dictionary:
 	var r := store.load_career()
 	if bool(r.ok):
 		data = r.data
+		CareerDefaultsSponsorsShop.ensure_defaults(data)
 	return r
 
 
@@ -529,6 +530,7 @@ func _settle(e: Dictionary, res: Dictionary, human_played: bool) -> Dictionary:
 		"cut": (res["cut"] as Dictionary).duplicate(), "par_per_round": int(res.get("par_per_round", 0)),
 		"movers": mover_rows, "report": report, "rivals": rival_lines,
 	}
+	SponsorManager.apply_event(data, e, out, season_id(), season)  # sponsor fee + objectives, once per event id
 	return out
 
 

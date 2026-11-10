@@ -147,3 +147,12 @@ func _show_round_card(status: String, strokes: int, par: int) -> void:
 			return
 		finished.emit())
 	ui.push_overlay(card)
+
+
+## Career shop cosmetics applied to a round's visuals (ball colour, flag colour). Visual only: never touches physics.
+func apply_cosmetics(ball_mat: StandardMaterial3D, course_view: CourseView) -> void:
+	var bc := ShopManager.equipped_color(career.data, "ball_color")
+	if bc.a > 0.0:
+		ball_mat.albedo_color = bc
+		ball_mat.emission = bc * 0.25
+	course_view.flag_tint = ShopManager.equipped_color(career.data, "flag")

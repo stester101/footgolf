@@ -70,6 +70,14 @@ func _find_id(root: Node, ui_id: String) -> Button:
 	return null
 
 
+func _find_ui_prefix(prefix: String) -> Button:
+	for c in get_tree().root.find_children("*", "Button", true, false):
+		var b := c as Button
+		if b.is_visible_in_tree() and not b.disabled and b.has_meta("ui_id") and String(b.get_meta("ui_id")).begins_with(prefix):
+			return b
+	return null
+
+
 func _press_id(ui_id: String) -> bool:
 	var b := _find_id(get_tree().root, ui_id)
 	if b == null:
@@ -605,6 +613,28 @@ func _career_run() -> void:
 		await _shot(String(step[1]))
 		_press_id("back")
 		await _frames(3)
+	_scroll_down()
+	await _frames(3)
+	if not _press_id("career_sponsors"):
+		return _fail("no sponsors button")
+	await _frames(6)
+	await _shot("career_sponsors")
+	var sign_btn := _find_ui_prefix("sponsor_sign_")
+	if sign_btn == null:
+		return _fail("no sponsor offer to sign")
+	sign_btn.pressed.emit()
+	await _frames(6)
+	await _shot("career_sponsors_signed")
+	_press_id("back")
+	await _frames(3)
+	_scroll_down()
+	await _frames(3)
+	if not _press_id("career_shop"):
+		return _fail("no shop button")
+	await _frames(6)
+	await _shot("career_shop")
+	_press_id("back")
+	await _frames(3)
 	if not _press_id("career_calendar"):
 		return _fail("no calendar button")
 	await _frames(4)
