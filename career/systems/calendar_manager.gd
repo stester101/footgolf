@@ -6,7 +6,7 @@ extends RefCounted
 const REGULAR_SUFFIX := ["Open", "Invitational", "Classic", "Challenge", "Trophy"]
 const FLAGSHIP_NAMES := ["Aurora Championship", "Meridian Cup", "Harbour Players Championship", "Summit Invitational", "Crown Cup", "Cascade Championship", "Beacon Cup"]
 const MAJOR_NAMES := ["Highland Grand Championship", "Sovereign Open", "Heritage Classic Major", "Pinnacle Championship"]
-const FINALE_NAME := "Tour Championship"
+const FINALE_NAME := "LBT Championship"
 
 
 ## season_number: 1-based. Event ids are "s<season>_e<serial>".
@@ -119,11 +119,11 @@ static func eligibility(event: Dictionary, st: Dictionary) -> Dictionary:
 		"finale":
 			var sr := int(st.get("season_rank", 9999))
 			return {"eligible": sr <= CareerConfig.FINALE_QUALIFIERS, "requirement": "Top %d in the season standings (yours: %s)" % [CareerConfig.FINALE_QUALIFIERS, str(sr) if sr < 9999 else "unranked"]}
-	return {"eligible": true, "requirement": "Open to all tour-card holders"}
+	return {"eligible": true, "requirement": "Open to all LBT card holders"}
 
 
 static func category_label(cat: String) -> String:
-	return {"regular": "Regular", "flagship": "Flagship", "major": "Major", "finale": "Tour Championship"}.get(cat, cat)
+	return {"regular": "Regular", "flagship": "Flagship", "major": "Major", "finale": "LBT Championship"}.get(cat, cat)
 
 
 static func cut_text(cut: Dictionary) -> String:

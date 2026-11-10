@@ -16,7 +16,7 @@ static func build_context(world: Dictionary, standings: Dictionary, golfers: Arr
 static func requirement_text(category: String) -> String:
 	match category:
 		"regular":
-			return "Open to Main Tour card holders."
+			return "Open to LBT card holders."
 		"flagship":
 			return "Top %d in the World Ranking, or an exemption (%s)." % [CareerConfig.FLAGSHIP_MAX_WORLD_RANK, _exemption_summary("flagship")]
 		"major":
@@ -34,7 +34,7 @@ static func _exemption_summary(category: String) -> String:
 		"top %d of this season's standings" % CareerConfig.EXEMPT_CURRENT_STANDINGS_TOP,
 	]
 	if category == "flagship":
-		parts.append("tour event winner this or last season")
+		parts.append("LBT event winner this or last season")
 	else:
 		parts.append("flagship winner this or last season")
 	return ", ".join(parts)
@@ -61,13 +61,13 @@ static func check(golfer: Dictionary, event: Dictionary, ctx: Dictionary) -> Dic
 		out["reason"] = "Not eligible: injured, unavailable until event %d." % int(golfer["injured_until"])
 		return out
 	if category != "finale" and not bool(golfer.get("tour_card", true)):
-		out["reason"] = "Not eligible: no Main Tour card (regain it through Q-School). Requirement: %s" % out["requirement"]
+		out["reason"] = "Not eligible: no LBT card (use a sponsor wildcard, or earn the card back). Requirement: %s" % out["requirement"]
 		return out
 	match category:
 		"regular":
 			out["eligible"] = true
 			out["via"] = "open"
-			out["reason"] = "Eligible: Main Tour card holder."
+			out["reason"] = "Eligible: LBT card holder.""
 		"finale":
 			if sr > 0 and sr <= CareerConfig.FINALE_QUALIFIERS:
 				out["eligible"] = true
@@ -121,7 +121,7 @@ static func exemptions(golfer: Dictionary, category: String, ctx: Dictionary) ->
 	if bool(ctx.get("standings_started", false)) and cs > 0 and cs <= CareerConfig.EXEMPT_CURRENT_STANDINGS_TOP:
 		res.append("%s in this season's standings" % _ord(cs))
 	if win_year > -999 and season - win_year < CareerConfig.EXEMPT_WIN_SEASONS:
-		res.append("%s winner (%d)" % ["tour event" if category == "flagship" else "flagship", win_year])
+		res.append("%s winner (%d)" % ["LBT event" if category == "flagship" else "flagship", win_year])
 	return res
 
 

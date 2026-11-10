@@ -44,7 +44,11 @@ const FINALE_COURSE := "jizzy"
 # --- eligibility [A: Rankings and eligibility; section 8 item 6]
 const FLAGSHIP_MAX_WORLD_RANK := 100
 const MAJOR_MAX_WORLD_RANK := 75
-const TOUR_CARD_RETENTION_RANK := 125   # [A item 7] (retention review is a later phase)
+const TOUR_CARD_RETENTION_RANK := 125   # [A item 7] Season Standings rank at season end that keeps the LBT card
+# --- LBT tour card / sponsor wildcards (owner decision 2026-11-10; the NUMBERS below are PROPOSED DEFAULT - OWNER APPROVAL REQUIRED)
+const TOUR_NAME := "LBT"                # the tour's name in every user-facing string (Q-School is dropped)
+const WILDCARDS_PER_SEASON := 4         # sponsor wildcard entries to regular events granted when the card is lost
+const WILDCARD_CARD_PLACE := 10         # a finish this good (top N) in a wildcard event earns the card back
 
 # --- ranking [A: item 5] / points [INVENTED: decay shape and strength factor]
 const WORLD_WINDOW_SEASONS := 2
@@ -128,6 +132,16 @@ const LEDGER_HUB_ROWS := 4
 
 # --- save [A: Save/resume]
 const KEEP_BACKUPS := 1
+
+# --- adaptive difficulty (OPPONENTS ONLY; owner decision 2026-11-10) -- PROPOSED DEFAULT - OWNER APPROVAL REQUIRED
+const ADAPTIVE_WINDOW := 5              # last N events the player played
+const ADAPTIVE_STEP := 3.0              # opponent rating offset change per update (rating points)
+const ADAPTIVE_CAP := 8.0               # offset is clamped to +-this
+const ADAPTIVE_HOT_ABOVE := 0.15        # mean (expected - actual finish percentile) above this: you out-perform, rivals toughen
+const ADAPTIVE_COOL_BELOW := -0.15      # below this: you under-perform, rivals ease off
+const ADAPTIVE_HARD_LOCK_OFFSET := 5.0  # Hard-lock mode: constant opponent offset, never adapts
+const ADAPTIVE_MODES := ["off", "balanced", "hard"]
+const ADAPTIVE_HINT_AT := 3.0           # |offset| at/over this shows 'hot' / 'cooling'
 
 
 static func baseline_points(initial_rank: int) -> float:
