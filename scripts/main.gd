@@ -23,7 +23,7 @@ func _ready() -> void:
 		show_menu()
 		_menu._open_placeholder("Online round ended", reason))
 	show_menu()
-	if OS.get_cmdline_user_args().has("--smoke-test"):
+	if OS.get_cmdline_user_args().has("--smoke-test") or OS.get_cmdline_user_args().has("--smoke-career"):
 		var d := SmokeDriver.new()
 		d.main = self
 		add_child(d)

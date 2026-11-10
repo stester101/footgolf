@@ -165,8 +165,8 @@ static func open_hub(menu: MainMenu) -> void:
 	var sr := c.season_rank()
 	body.add_child(_card(String(p["name"]).to_upper(), [
 		"%s  ·  Season %d (%s)" % [p["nationality"], int((c.data["season"] as Dictionary)["number"]), CareerConfig.season_label(String((c.data["season"] as Dictionary)["length"]))],
-		"World ranking: %d" % int((c.data["world_rankings"] as Dictionary)["player_rank"]),
-		"Season standing: %s  ·  %d pts" % [("%d" % sr) if sr > 0 else "unranked", c.season_points()],
+		"World ranking: %d (of %d)" % [c.world_rank(), c.world_table().size()],
+		"Season standing: %s  ·  %d pts" % [(QualificationManager._ord(sr)) if sr > 0 else "no results yet", c.season_points()],
 		"Earnings: %s this season  ·  %s career" % [money(int(eco["season_earnings"])), money(int(eco["career_earnings"]))],
 	]))
 	# next event / active tournament
@@ -179,7 +179,7 @@ static func open_hub(menu: MainMenu) -> void:
 	else:
 		var e := c.next_event()
 		if e.is_empty():
-			body.add_child(_card("SEASON COMPLETE", ["All events are done. Start the next season when you are ready (the full off-season is a later phase)."]))
+			body.add_child(_card("SEASON COMPLETE", ["All events are done. Golfers age, some retire and new ones arrive when the next season starts (the full off-season is a later phase)."]))
 			body.add_child(menu._primary_button("Start next season", func() -> void:
 				if c.start_next_season():
 					_replace(menu, func() -> void: open_hub(menu))
@@ -189,11 +189,17 @@ static func open_hub(menu: MainMenu) -> void:
 			var el := c.eligibility(e)
 			body.add_child(_card("NEXT EVENT", ["%s  (%s)" % [e["name"], CalendarManager.category_label(String(e["category"]))],
 				"%s  ·  %d rounds  ·  purse %s" % [CourseSource.course_info(String(e["course_id"])).get("name", e["course_id"]), int(e["rounds"]), money(int(e["purse"]))],
-				"Ready to play" if bool(el["eligible"]) else "Not eligible: %s" % el["requirement"]]))
+				String(el["reason"])]))
 			body.add_child(menu._primary_button("View event", func() -> void: open_event(menu, int(e["serial"])), "career_next_event"))
+	body.add_child(CareerWorldPages.ledger_card(c))
+	body.add_child(CareerWorldPages.rivals_card(c))
 	body.add_child(menu._nav_row("course", "Calendar", "%d events this season" % (c.data["calendar"] as Array).size(), func() -> void: open_calendar(menu), "career_calendar"))
+	body.add_child(menu._nav_row("bars", "World Ranking", "You are %d" % c.world_rank(), func() -> void: CareerWorldPages.open_world_ranking(menu), "career_world_ranking"))
+	body.add_child(menu._nav_row("list", "Season Standings", "Top %d reach the finale" % CareerConfig.FINALE_QUALIFIERS, func() -> void: CareerWorldPages.open_standings(menu), "career_standings"))
+	body.add_child(menu._nav_row("people", "Rivals", "Head-to-head records", func() -> void: CareerWorldPages.open_rivals(menu), "career_rivals"))
+	body.add_child(menu._nav_row("star", "Trophy Cabinet", "%d trophies" % (c.data["trophies"] as Array).size(), func() -> void: CareerWorldPages.open_trophies(menu), "career_trophies"))
 	body.add_child(menu._nav_row("gear", "Career Settings", "Footballer rule, export, import, reset", func() -> void: open_settings(menu), "career_settings"))
-	body.add_child(menu._note("Rankings, rivals, sponsors, shop, trophies and the off-season arrive in later phases."))
+	body.add_child(menu._note("Sponsors, the shop, Q-School and the full off-season arrive in later phases."))
 	if c.store.is_blocked():
 		body.add_child(UiKit.text("Last save failed: " + c.store.last_error, 21, UiKit.C_WARN))
 		body.add_child(menu._secondary_button("Retry Save", func() -> void:
@@ -214,6 +220,7 @@ static func open_calendar(menu: MainMenu) -> void:
 	var pg: Dictionary = menu._page("Calendar")
 	var body: VBoxContainer = pg["body"]
 	var nxt := c.next_event()
+	var ctx := c.qual_ctx()
 	for e in c.data["calendar"]:
 		var status := String(e["status"])
 		var sub := ""
@@ -226,7 +233,7 @@ static func open_calendar(menu: MainMenu) -> void:
 			"in_progress":
 				sub = "In progress"
 			_:
-				var el := c.eligibility(e)
+				var el := c.eligibility(e, ctx)
 				sub = ("NEXT · " if e == nxt else "") + ("Eligible" if bool(el["eligible"]) else "Not eligible")
 		var title := "%d. %s" % [int(e["serial"]), e["name"]]
 		body.add_child(menu._nav_row("flag" if String(e["category"]) != "regular" else "course", title,
@@ -253,13 +260,19 @@ static func open_event(menu: MainMenu, serial: int) -> void:
 	var el := c.eligibility(e)
 	var frozen: Dictionary = (c.tournament().get("event", {}) as Dictionary).get("eligibility_frozen", {}) if snap_note != "" else {}
 	var shown: Dictionary = frozen if not frozen.is_empty() else el
-	body.add_child(_card("QUALIFICATION", [String(shown["requirement"]), "You: %s" % ("eligible" if bool(shown["eligible"]) else "not eligible")]))
-	body.add_child(menu._note("Past winners: none yet."))
+	var qlines: Array = [String(shown["requirement"]), String(shown["reason"])]
+	if String(e["category"]) == "finale":
+		qlines.append("The finale field is the top %d of the Season Standings." % CareerConfig.FINALE_QUALIFIERS)
+	body.add_child(_card("QUALIFICATION", qlines))
+	var past := _past_winners(c, e)
+	body.add_child(menu._note("Past winners: %s" % (past if past != "" else "none yet.")))
 	var status := String(e["status"])
 	if status == "complete" or status == "skipped":
 		var r: Dictionary = e["result"]
 		body.add_child(_card("RESULT", ["Winner: %s (%d)" % [r.get("winner_name", "?"), int(r.get("winner_total", 0))],
-			("Your finish: %d%s · %s" % [int(r.get("human_place", 0)), " (missed cut)" if bool(r.get("human_missed_cut", false)) else "", money(int(r.get("human_earnings", 0)))]) if bool(r.get("human_played", false)) else "You did not play this event."]))
+			("Your finish: %s%s · %s" % [r.get("human_place_label", str(int(r.get("human_place", 0)))), " (missed cut)" if bool(r.get("human_missed_cut", false)) else "", money(int(r.get("human_earnings", 0)))]) if bool(r.get("human_played", false)) else "You did not play this event."]))
+		if r.has("report"):
+			(pg["footer"] as VBoxContainer).add_child(menu._secondary_button("Tournament report", func() -> void: CareerWorldPages.open_report(menu, e, false), "career_event_report"))
 	elif c.has_active_tournament() and int(c.tournament()["event"]["serial"]) == serial:
 		(pg["footer"] as VBoxContainer).add_child(menu._primary_button("Continue tournament", func() -> void: open_tournament(menu), "career_event_continue"))
 	elif e == c.next_event() and not c.has_active_tournament():
@@ -349,23 +362,25 @@ static func _leaderboard(c: CareerManager, t: Dictionary) -> Control:
 	return box
 
 
+## The Tournament Report after finishing an event (winner, your finish, money, ranking movement, rivals).
 static func open_results(menu: MainMenu, res: Dictionary) -> void:
-	var pg: Dictionary = menu._page("Tournament Report")
-	var body: VBoxContainer = pg["body"]
-	body.add_child(_card("WINNER", ["%s  (%d strokes)" % [res.get("winner_name", "?"), int(res.get("winner_total", 0))]]))
-	if bool(res.get("human_played", false)):
-		var lines := ["Finish: %d%s  ·  %d strokes (%s)" % [int(res["human_place"]), "  (missed the cut)" if bool(res.get("human_missed_cut", false)) else "", int(res["human_total"]), RoundState.fmt_relative(int(res["human_rel"]))],
-			"Rounds: %s" % ", ".join(PackedStringArray((res.get("rounds", []) as Array).map(func(x) -> String: return str(int(x))))),
-			"Prize money: %s  ·  Season points: %d" % [money(int(res["human_earnings"])), int(res["human_points"])]]
-		if bool(res.get("human_won", false)):
-			lines.insert(0, "You won the tournament!")
-		body.add_child(_card("YOUR RESULT", lines))
-	body.add_child(menu._note("Full report ceremonies, ranking movement, sponsor progress and rivals arrive in later phases."))
-	(pg["footer"] as VBoxContainer).add_child(menu._primary_button("Back to Career Hub", func() -> void:
-		while menu._stack.size() > 1:
-			menu._pop()
-		open_hub(menu), "career_results_done"))
-	menu._push(pg["root"])
+	var c := CareerManager.active
+	var ev := {}
+	for e in c.data["calendar"]:
+		if (e["result"] as Dictionary) == res:
+			ev = e
+	if ev.is_empty():
+		ev = {"name": "Event", "category": "regular", "id": "", "result": res}
+	CareerWorldPages.open_report(menu, ev, true)
+
+
+static func _past_winners(c: CareerManager, e: Dictionary) -> String:
+	var out: Array = []
+	for g in c.data["golfers"]:
+		for h in g.get("honours", []):
+			if String(h.get("event_id", "")).get_slice("_e", 1) == String(e["id"]).get_slice("_e", 1) and String(h.get("event_id", "")) != String(e["id"]):
+				out.append("%s (season %d)" % [g.get("name", "?"), int(h["season"])])
+	return ", ".join(PackedStringArray(out))
 
 
 # ------------------------------------------------------------------ pre-round setup (Round Setup rules, frozen per round)

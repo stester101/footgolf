@@ -20,7 +20,7 @@ Source: `career/data/golfer_roster.json`; copied into the save (`golfers`) at ca
  status:"upcoming"|"in_progress"|"complete"|"skipped", eligible:bool, requirement:String, result:{}}
 ```
 
-## simulation call used by the tournament flow (stub: career/systems/sim_stub.gd, class `CareerSimStub`)
+## simulation call used by the tournament flow (live: career/systems/career_sim.gd `CareerSim` -> OpponentSimulation; tests may use `CareerSimStub`)
 ```
 simulate_round(field: Array[golfer Dictionary], event: Dictionary, round_index: int (0-based),
                course: {holes:int, par:int, difficulty:float (0 = neutral)}, seed: int, adaptive: float = 0.0)
@@ -47,3 +47,17 @@ season{number,id,length}, calendar[event], active_tournament, world_rankings{pla
 golfers[], rivalries[], sponsorships{}, economy{balance,currency,season_earnings,career_earnings}, cosmetics{}, achievements[],
 career_history[], simulation_state{seed}, season_footballers{season_id:[footballer ids]}, save_metadata{}`.
 Rivalries, sponsorships, cosmetics, achievements are reserved placeholders (later phases).
+
+
+## Schema v2 additions (save `schema_version` 2; v1 saves migrate in `CareerMigration.v1_to_v2`, filling defaults)
+- `golfers` also holds the human entity `{id:"player", is_human:true, initial_rank:180, tour_card:true, honours:[]}`; every golfer has `honours`.
+- `world_rankings = {player_rank, world:{season_points:{"<season>":{id:pts}}, applied:{event_id:true}}}` (RankingManager).
+- `season_standings = {season, points:{id:pts}, wins:{}, starts:{}, applied:{event_id:true}}` (v1 was a flat `{id:pts}`).
+- `prev_standings_rank {id:rank}` (last season's top 60, for exemptions); `season_history [{season, standings_champion(_id), human_rank, human_points, tour_champion, earnings}]`.
+- events carry `order` (monotonic counter, injuries are measured in it) and keep `points.winner` (season) / `world_points.winner`.
+- event `result` (calendar, written once per event, played or skipped): `{winner_id, winner_name, winner_total, winner_to_par, human_played, human_place(_label),
+  human_total, human_rel, human_missed_cut, human_won, human_earnings, human_points, human_world_points, field, rounds, world_rank_before/after,
+  season_rank_before/after, playoff{needed,human_involved,holes}, cut, movers[], report[top rows + you + rivals], rivals[]}`.
+- `ledger [{id:"prize:<event_id>", kind, label, amount, event_id, season, balance_after}]` (ids are stable: nothing pays twice; economy totals move only when an entry is new).
+- `trophies [{id:"win:<event_id>"|"title:season_N", kind:event_win|flagship|major|tour_championship|season_title, name, season, event_id}]`, `records {wins, majors, starts, cuts_made, top10s, best_finish, best_world_rank, biggest_cheque, applied}`.
+- `head_to_head {applied:{event_id:true}, records:{golfer_id:{w,l,t,close,last_event}}}`, `rivalries [{id,name,meetings,wins,losses,ties,close}]` (best first; a rival needs `RIVAL_MIN_CLOSE` close finishes within `RIVAL_CLOSE_STROKES`; the Hub features the first `RIVAL_MAX_FEATURED`).

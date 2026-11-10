@@ -87,6 +87,9 @@ func _press(text_prefix: String) -> bool:
 
 
 func _run() -> void:
+	if OS.get_cmdline_user_args().has("--smoke-career"):
+		await _career_run()
+		return
 	if OS.get_cmdline_user_args().has("--smoke-perf"):
 		await _perf_run()
 		return
@@ -548,4 +551,73 @@ func _perf_run() -> void:
 		if f != null:
 			f.store_string("\n".join(_perf_lines) + "\n")
 	_say("PERF DONE")
+	get_tree().quit(0)
+
+
+# ------------------------------------------------------------------ career pages (--smoke-career [--screenshots=<dir>])
+
+func _scroll_down() -> void:
+	for sc in get_tree().root.find_children("*", "ScrollContainer", true, false):
+		var s := sc as ScrollContainer
+		if s.is_visible_in_tree():
+			s.scroll_vertical = 100000
+
+
+## Seeds a career in a scratch folder (a few events played by a strong player, one skipped), then opens the
+## Career pages through the real menu and saves screenshots of them. Does not touch the player's own career.
+func _career_run() -> void:
+	await _frames(5)
+	var c := CareerManager.new(CareerSaveManager.new("user://smoke_career"))
+	c.store.delete_career()
+	CareerManager.course_source = func(id: String) -> Dictionary: return CourseSource.load_course(id, App.settings.par_overrides)
+	if not c.create("Sam Smoke", "England", "short", 31337):
+		return _fail("career create")
+	var played := 0
+	while played < 8 and not c.season_finished():
+		var e := c.next_event()
+		var serial := int(e["serial"])
+		if played == 1 or not bool(c.eligibility(e)["eligible"]):
+			c.skip_event(serial)
+		else:
+			c.enter_event(serial)
+			var t := c.tournament()
+			var par := TournamentManager.par_per_round(t)
+			var holes: int = ((t["snapshot"] as Dictionary)["holes"] as Array).size()
+			while String(c.tournament()["status"]) != "complete":
+				c.begin_round({}, 0)
+				c.complete_round(maxi(holes, par - 2 * holes + (played % 3)), par, holes)
+			c.finalize_tournament()
+		played += 1
+	CareerManager.active = c
+	_say("career seeded: %d events, world rank %d" % [played, c.world_rank()])
+	if not _press("Career Mode"):
+		return _fail("no Career Mode button")
+	await _frames(6)
+	await _shot("career_hub")
+	_scroll_down()
+	await _frames(3)
+	await _shot("career_hub_lower")
+	for step in [["career_world_ranking", "career_world_ranking"], ["career_standings", "career_standings"], ["career_rivals", "career_rivals"],
+			["career_trophies", "career_trophies"]]:
+		if not _press_id(String(step[0])):
+			return _fail("no career button %s" % step[0])
+		await _frames(6)
+		await _shot(String(step[1]))
+		_press_id("back")
+		await _frames(3)
+	if not _press_id("career_calendar"):
+		return _fail("no calendar button")
+	await _frames(4)
+	await _shot("career_calendar")
+	if not _press_id("career_event_1"):
+		return _fail("no event 1 button")
+	await _frames(4)
+	if not _press_id("career_event_report"):
+		return _fail("no report button (event 1 has no result?)")
+	await _frames(6)
+	await _shot("career_report")
+	_scroll_down()
+	await _frames(3)
+	await _shot("career_report_lower")
+	_say("PASS career pages")
 	get_tree().quit(0)
