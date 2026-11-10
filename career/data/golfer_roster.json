@@ -1,0 +1,2613 @@
+{
+"dataset": {
+"id": "sound_alike_v1",
+"version": 1,
+"placeholder": false,
+"fictional": true,
+"source": "Invented sound-alike names (not real people, no real statistics); a licensed real roster can replace this file later.",
+"snapshot_date": "2026-11-10",
+"ratings": "game-estimated (40-100)"
+},
+"golfers": [
+{
+"id": "g001",
+"name": "Scotty Sheffler",
+"nationality": "USA",
+"age": 26,
+"rating": 97.3,
+"consistency": 0.69,
+"initial_rank": 1,
+"kind": "sound_alike"
+},
+{
+"id": "g002",
+"name": "Rory McKillroy",
+"nationality": "Northern Ireland",
+"age": 36,
+"rating": 98.3,
+"consistency": 0.78,
+"initial_rank": 2,
+"kind": "sound_alike"
+},
+{
+"id": "g003",
+"name": "Jon Rahmos",
+"nationality": "Spain",
+"age": 26,
+"rating": 96.7,
+"consistency": 0.69,
+"initial_rank": 3,
+"kind": "sound_alike"
+},
+{
+"id": "g004",
+"name": "Xandre Shaufelle",
+"nationality": "USA",
+"age": 46,
+"rating": 98.5,
+"consistency": 0.57,
+"initial_rank": 4,
+"kind": "sound_alike"
+},
+{
+"id": "g005",
+"name": "Viktor Hoveland",
+"nationality": "Norway",
+"age": 38,
+"rating": 96.7,
+"consistency": 0.47,
+"initial_rank": 5,
+"kind": "sound_alike"
+},
+{
+"id": "g006",
+"name": "Colin Morrikawa",
+"nationality": "USA",
+"age": 43,
+"rating": 97.8,
+"consistency": 0.71,
+"initial_rank": 6,
+"kind": "sound_alike"
+},
+{
+"id": "g007",
+"name": "Ludwig Aaberg",
+"nationality": "Sweden",
+"age": 44,
+"rating": 96.7,
+"consistency": 0.52,
+"initial_rank": 7,
+"kind": "sound_alike"
+},
+{
+"id": "g008",
+"name": "Brysen De Chambeau",
+"nationality": "USA",
+"age": 36,
+"rating": 95.8,
+"consistency": 0.68,
+"initial_rank": 8,
+"kind": "sound_alike"
+},
+{
+"id": "g009",
+"name": "Tommy Fleetwude",
+"nationality": "England",
+"age": 26,
+"rating": 94.0,
+"consistency": 0.51,
+"initial_rank": 9,
+"kind": "sound_alike"
+},
+{
+"id": "g010",
+"name": "Mat Fitzpatrik",
+"nationality": "England",
+"age": 23,
+"rating": 95.9,
+"consistency": 0.44,
+"initial_rank": 10,
+"kind": "sound_alike"
+},
+{
+"id": "g011",
+"name": "Jordie Speith",
+"nationality": "USA",
+"age": 36,
+"rating": 94.0,
+"consistency": 0.43,
+"initial_rank": 11,
+"kind": "sound_alike"
+},
+{
+"id": "g012",
+"name": "Justin Thomaz",
+"nationality": "USA",
+"age": 45,
+"rating": 93.3,
+"consistency": 0.89,
+"initial_rank": 12,
+"kind": "sound_alike"
+},
+{
+"id": "g013",
+"name": "Patrik Cantley",
+"nationality": "USA",
+"age": 28,
+"rating": 93.8,
+"consistency": 0.65,
+"initial_rank": 13,
+"kind": "sound_alike"
+},
+{
+"id": "g014",
+"name": "Hideki Matsuyami",
+"nationality": "Japan",
+"age": 23,
+"rating": 95.4,
+"consistency": 0.51,
+"initial_rank": 14,
+"kind": "sound_alike"
+},
+{
+"id": "g015",
+"name": "Tyrel Hatten",
+"nationality": "England",
+"age": 34,
+"rating": 95.0,
+"consistency": 0.44,
+"initial_rank": 15,
+"kind": "sound_alike"
+},
+{
+"id": "g016",
+"name": "Shaun Lowrie",
+"nationality": "Ireland",
+"age": 46,
+"rating": 94.4,
+"consistency": 0.91,
+"initial_rank": 16,
+"kind": "sound_alike"
+},
+{
+"id": "g017",
+"name": "Sam Burnes",
+"nationality": "USA",
+"age": 32,
+"rating": 91.6,
+"consistency": 0.48,
+"initial_rank": 17,
+"kind": "sound_alike"
+},
+{
+"id": "g018",
+"name": "Windham Clarke",
+"nationality": "USA",
+"age": 46,
+"rating": 91.9,
+"consistency": 0.66,
+"initial_rank": 18,
+"kind": "sound_alike"
+},
+{
+"id": "g019",
+"name": "Toni Finnau",
+"nationality": "USA",
+"age": 27,
+"rating": 91.3,
+"consistency": 0.43,
+"initial_rank": 19,
+"kind": "sound_alike"
+},
+{
+"id": "g020",
+"name": "Max Homer",
+"nationality": "USA",
+"age": 39,
+"rating": 93.8,
+"consistency": 0.41,
+"initial_rank": 20,
+"kind": "sound_alike"
+},
+{
+"id": "g021",
+"name": "Dustin Jonson",
+"nationality": "USA",
+"age": 21,
+"rating": 92.5,
+"consistency": 0.86,
+"initial_rank": 21,
+"kind": "sound_alike"
+},
+{
+"id": "g022",
+"name": "Brooks Kepka",
+"nationality": "USA",
+"age": 28,
+"rating": 90.8,
+"consistency": 0.8,
+"initial_rank": 22,
+"kind": "sound_alike"
+},
+{
+"id": "g023",
+"name": "Cameron Youngs",
+"nationality": "USA",
+"age": 26,
+"rating": 91.5,
+"consistency": 0.81,
+"initial_rank": 23,
+"kind": "sound_alike"
+},
+{
+"id": "g024",
+"name": "Brian Harmon",
+"nationality": "USA",
+"age": 35,
+"rating": 91.2,
+"consistency": 0.41,
+"initial_rank": 24,
+"kind": "sound_alike"
+},
+{
+"id": "g025",
+"name": "Russel Hendley",
+"nationality": "USA",
+"age": 46,
+"rating": 90.3,
+"consistency": 0.55,
+"initial_rank": 25,
+"kind": "sound_alike"
+},
+{
+"id": "g026",
+"name": "Seb Strakka",
+"nationality": "Austria",
+"age": 37,
+"rating": 90.6,
+"consistency": 0.92,
+"initial_rank": 26,
+"kind": "sound_alike"
+},
+{
+"id": "g027",
+"name": "Robbie MacEntire",
+"nationality": "Scotland",
+"age": 22,
+"rating": 90.1,
+"consistency": 0.41,
+"initial_rank": 27,
+"kind": "sound_alike"
+},
+{
+"id": "g028",
+"name": "Tom Kimm",
+"nationality": "South Korea",
+"age": 25,
+"rating": 91.0,
+"consistency": 0.44,
+"initial_rank": 28,
+"kind": "sound_alike"
+},
+{
+"id": "g029",
+"name": "Sungjae Imm",
+"nationality": "South Korea",
+"age": 42,
+"rating": 88.6,
+"consistency": 0.41,
+"initial_rank": 29,
+"kind": "sound_alike"
+},
+{
+"id": "g030",
+"name": "Si Wu Kimm",
+"nationality": "South Korea",
+"age": 37,
+"rating": 91.6,
+"consistency": 0.7,
+"initial_rank": 30,
+"kind": "sound_alike"
+},
+{
+"id": "g031",
+"name": "Adam Scotts",
+"nationality": "Australia",
+"age": 33,
+"rating": 91.0,
+"consistency": 0.76,
+"initial_rank": 31,
+"kind": "sound_alike"
+},
+{
+"id": "g032",
+"name": "Cam Smyth",
+"nationality": "Australia",
+"age": 36,
+"rating": 90.0,
+"consistency": 0.69,
+"initial_rank": 32,
+"kind": "sound_alike"
+},
+{
+"id": "g033",
+"name": "Jayson Dey",
+"nationality": "Australia",
+"age": 28,
+"rating": 88.2,
+"consistency": 0.57,
+"initial_rank": 33,
+"kind": "sound_alike"
+},
+{
+"id": "g034",
+"name": "Min Wu Leigh",
+"nationality": "Australia",
+"age": 23,
+"rating": 88.6,
+"consistency": 0.63,
+"initial_rank": 34,
+"kind": "sound_alike"
+},
+{
+"id": "g035",
+"name": "Cory Connors",
+"nationality": "Canada",
+"age": 38,
+"rating": 87.1,
+"consistency": 0.61,
+"initial_rank": 35,
+"kind": "sound_alike"
+},
+{
+"id": "g036",
+"name": "Nick Tayler",
+"nationality": "Canada",
+"age": 42,
+"rating": 89.2,
+"consistency": 0.52,
+"initial_rank": 36,
+"kind": "sound_alike"
+},
+{
+"id": "g037",
+"name": "McKenzie Hughs",
+"nationality": "Canada",
+"age": 31,
+"rating": 87.4,
+"consistency": 0.45,
+"initial_rank": 37,
+"kind": "sound_alike"
+},
+{
+"id": "g038",
+"name": "Joaquin Nieman",
+"nationality": "Chile",
+"age": 42,
+"rating": 87.6,
+"consistency": 0.5,
+"initial_rank": 38,
+"kind": "sound_alike"
+},
+{
+"id": "g039",
+"name": "Keegen Bradly",
+"nationality": "USA",
+"age": 24,
+"rating": 89.0,
+"consistency": 0.82,
+"initial_rank": 39,
+"kind": "sound_alike"
+},
+{
+"id": "g040",
+"name": "Ricky Fowlor",
+"nationality": "USA",
+"age": 42,
+"rating": 88.6,
+"consistency": 0.92,
+"initial_rank": 40,
+"kind": "sound_alike"
+},
+{
+"id": "g041",
+"name": "Justin Rowse",
+"nationality": "England",
+"age": 43,
+"rating": 88.5,
+"consistency": 0.72,
+"initial_rank": 41,
+"kind": "sound_alike"
+},
+{
+"id": "g042",
+"name": "Sergio Garza",
+"nationality": "Spain",
+"age": 39,
+"rating": 87.3,
+"consistency": 0.87,
+"initial_rank": 42,
+"kind": "sound_alike"
+},
+{
+"id": "g043",
+"name": "Phil Mickelsen",
+"nationality": "USA",
+"age": 22,
+"rating": 85.8,
+"consistency": 0.5,
+"initial_rank": 43,
+"kind": "sound_alike"
+},
+{
+"id": "g044",
+"name": "Padraic Harringdon",
+"nationality": "Ireland",
+"age": 28,
+"rating": 86.7,
+"consistency": 0.42,
+"initial_rank": 44,
+"kind": "sound_alike"
+},
+{
+"id": "g045",
+"name": "Henrik Stenzon",
+"nationality": "Sweden",
+"age": 32,
+"rating": 86.0,
+"consistency": 0.56,
+"initial_rank": 45,
+"kind": "sound_alike"
+},
+{
+"id": "g046",
+"name": "Louis Oosthuisen",
+"nationality": "South Africa",
+"age": 39,
+"rating": 86.9,
+"consistency": 0.62,
+"initial_rank": 46,
+"kind": "sound_alike"
+},
+{
+"id": "g047",
+"name": "Branden Grayce",
+"nationality": "South Africa",
+"age": 25,
+"rating": 85.7,
+"consistency": 0.81,
+"initial_rank": 47,
+"kind": "sound_alike"
+},
+{
+"id": "g048",
+"name": "Charl Schwartsel",
+"nationality": "South Africa",
+"age": 37,
+"rating": 84.9,
+"consistency": 0.45,
+"initial_rank": 48,
+"kind": "sound_alike"
+},
+{
+"id": "g049",
+"name": "Ernie Ells",
+"nationality": "South Africa",
+"age": 38,
+"rating": 86.3,
+"consistency": 0.77,
+"initial_rank": 49,
+"kind": "sound_alike"
+},
+{
+"id": "g050",
+"name": "Retief Gooson",
+"nationality": "South Africa",
+"age": 22,
+"rating": 84.4,
+"consistency": 0.43,
+"initial_rank": 50,
+"kind": "sound_alike"
+},
+{
+"id": "g051",
+"name": "Christiaan Bezuidenhaut",
+"nationality": "South Africa",
+"age": 43,
+"rating": 85.2,
+"consistency": 0.82,
+"initial_rank": 51,
+"kind": "sound_alike"
+},
+{
+"id": "g052",
+"name": "Erik van Rooijen",
+"nationality": "South Africa",
+"age": 30,
+"rating": 85.0,
+"consistency": 0.58,
+"initial_rank": 52,
+"kind": "sound_alike"
+},
+{
+"id": "g053",
+"name": "Garrick Higgoh",
+"nationality": "South Africa",
+"age": 33,
+"rating": 83.8,
+"consistency": 0.9,
+"initial_rank": 53,
+"kind": "sound_alike"
+},
+{
+"id": "g054",
+"name": "Dean Burmeister",
+"nationality": "South Africa",
+"age": 44,
+"rating": 84.3,
+"consistency": 0.46,
+"initial_rank": 54,
+"kind": "sound_alike"
+},
+{
+"id": "g055",
+"name": "Thriston Lawrance",
+"nationality": "South Africa",
+"age": 30,
+"rating": 84.7,
+"consistency": 0.86,
+"initial_rank": 55,
+"kind": "sound_alike"
+},
+{
+"id": "g056",
+"name": "Emiliano Grilo",
+"nationality": "Argentina",
+"age": 23,
+"rating": 83.9,
+"consistency": 0.41,
+"initial_rank": 56,
+"kind": "sound_alike"
+},
+{
+"id": "g057",
+"name": "Angel Cabrerra",
+"nationality": "Argentina",
+"age": 44,
+"rating": 83.8,
+"consistency": 0.87,
+"initial_rank": 57,
+"kind": "sound_alike"
+},
+{
+"id": "g058",
+"name": "Abraham Anser",
+"nationality": "Mexico",
+"age": 28,
+"rating": 83.2,
+"consistency": 0.59,
+"initial_rank": 58,
+"kind": "sound_alike"
+},
+{
+"id": "g059",
+"name": "Carlos Ortis",
+"nationality": "Mexico",
+"age": 22,
+"rating": 84.3,
+"consistency": 0.79,
+"initial_rank": 59,
+"kind": "sound_alike"
+},
+{
+"id": "g060",
+"name": "Camilo Villegaz",
+"nationality": "Colombia",
+"age": 46,
+"rating": 84.3,
+"consistency": 0.61,
+"initial_rank": 60,
+"kind": "sound_alike"
+},
+{
+"id": "g061",
+"name": "Sebastian Munyoz",
+"nationality": "Colombia",
+"age": 39,
+"rating": 81.3,
+"consistency": 0.63,
+"initial_rank": 61,
+"kind": "sound_alike"
+},
+{
+"id": "g062",
+"name": "Jhonattan Vegaz",
+"nationality": "Venezuela",
+"age": 34,
+"rating": 81.7,
+"consistency": 0.48,
+"initial_rank": 62,
+"kind": "sound_alike"
+},
+{
+"id": "g063",
+"name": "Fabrizio Zanoti",
+"nationality": "Paraguay",
+"age": 29,
+"rating": 83.6,
+"consistency": 0.47,
+"initial_rank": 63,
+"kind": "sound_alike"
+},
+{
+"id": "g064",
+"name": "Alejandro Tosty",
+"nationality": "Argentina",
+"age": 34,
+"rating": 83.7,
+"consistency": 0.62,
+"initial_rank": 64,
+"kind": "sound_alike"
+},
+{
+"id": "g065",
+"name": "Takumi Kanaia",
+"nationality": "Japan",
+"age": 46,
+"rating": 83.5,
+"consistency": 0.48,
+"initial_rank": 65,
+"kind": "sound_alike"
+},
+{
+"id": "g066",
+"name": "Ryo Hisatsuni",
+"nationality": "Japan",
+"age": 28,
+"rating": 83.5,
+"consistency": 0.67,
+"initial_rank": 66,
+"kind": "sound_alike"
+},
+{
+"id": "g067",
+"name": "Keita Nakashima",
+"nationality": "Japan",
+"age": 33,
+"rating": 83.4,
+"consistency": 0.9,
+"initial_rank": 67,
+"kind": "sound_alike"
+},
+{
+"id": "g068",
+"name": "Rikuya Hoshina",
+"nationality": "Japan",
+"age": 33,
+"rating": 81.1,
+"consistency": 0.89,
+"initial_rank": 68,
+"kind": "sound_alike"
+},
+{
+"id": "g069",
+"name": "Shugo Imaheira",
+"nationality": "Japan",
+"age": 41,
+"rating": 79.9,
+"consistency": 0.79,
+"initial_rank": 69,
+"kind": "sound_alike"
+},
+{
+"id": "g070",
+"name": "K.H. Leigh",
+"nationality": "South Korea",
+"age": 24,
+"rating": 82.3,
+"consistency": 0.43,
+"initial_rank": 70,
+"kind": "sound_alike"
+},
+{
+"id": "g071",
+"name": "Byeong Hoon Ahn",
+"nationality": "South Korea",
+"age": 34,
+"rating": 81.5,
+"consistency": 0.78,
+"initial_rank": 71,
+"kind": "sound_alike"
+},
+{
+"id": "g072",
+"name": "Joo Hyung Kimm",
+"nationality": "South Korea",
+"age": 21,
+"rating": 79.9,
+"consistency": 0.5,
+"initial_rank": 72,
+"kind": "sound_alike"
+},
+{
+"id": "g073",
+"name": "Zecheng Doe",
+"nationality": "China",
+"age": 22,
+"rating": 79.3,
+"consistency": 0.67,
+"initial_rank": 73,
+"kind": "sound_alike"
+},
+{
+"id": "g074",
+"name": "Carl Yuen",
+"nationality": "China",
+"age": 35,
+"rating": 78.8,
+"consistency": 0.86,
+"initial_rank": 74,
+"kind": "sound_alike"
+},
+{
+"id": "g075",
+"name": "Hao Tong Lee",
+"nationality": "China",
+"age": 28,
+"rating": 80.5,
+"consistency": 0.42,
+"initial_rank": 75,
+"kind": "sound_alike"
+},
+{
+"id": "g076",
+"name": "Jazz Janewattanon",
+"nationality": "Thailand",
+"age": 38,
+"rating": 80.7,
+"consistency": 0.63,
+"initial_rank": 76,
+"kind": "sound_alike"
+},
+{
+"id": "g077",
+"name": "Kiradech Apibarnrat",
+"nationality": "Thailand",
+"age": 36,
+"rating": 79.3,
+"consistency": 0.71,
+"initial_rank": 77,
+"kind": "sound_alike"
+},
+{
+"id": "g078",
+"name": "Sadom Kaewkanjan",
+"nationality": "Thailand",
+"age": 27,
+"rating": 81.0,
+"consistency": 0.57,
+"initial_rank": 78,
+"kind": "sound_alike"
+},
+{
+"id": "g079",
+"name": "Anirban Lahari",
+"nationality": "India",
+"age": 24,
+"rating": 79.2,
+"consistency": 0.73,
+"initial_rank": 79,
+"kind": "sound_alike"
+},
+{
+"id": "g080",
+"name": "Shubankar Sharmah",
+"nationality": "India",
+"age": 39,
+"rating": 79.8,
+"consistency": 0.9,
+"initial_rank": 80,
+"kind": "sound_alike"
+},
+{
+"id": "g081",
+"name": "Marc Leishmun",
+"nationality": "Australia",
+"age": 43,
+"rating": 79.6,
+"consistency": 0.49,
+"initial_rank": 81,
+"kind": "sound_alike"
+},
+{
+"id": "g082",
+"name": "Cameron Davies",
+"nationality": "Australia",
+"age": 45,
+"rating": 78.8,
+"consistency": 0.47,
+"initial_rank": 82,
+"kind": "sound_alike"
+},
+{
+"id": "g083",
+"name": "Lukas Herbart",
+"nationality": "Australia",
+"age": 25,
+"rating": 80.2,
+"consistency": 0.58,
+"initial_rank": 83,
+"kind": "sound_alike"
+},
+{
+"id": "g084",
+"name": "Harrison Crow",
+"nationality": "Australia",
+"age": 31,
+"rating": 77.1,
+"consistency": 0.43,
+"initial_rank": 84,
+"kind": "sound_alike"
+},
+{
+"id": "g085",
+"name": "Ryan Foxx",
+"nationality": "New Zealand",
+"age": 38,
+"rating": 79.8,
+"consistency": 0.81,
+"initial_rank": 85,
+"kind": "sound_alike"
+},
+{
+"id": "g086",
+"name": "Danny Hillyer",
+"nationality": "New Zealand",
+"age": 43,
+"rating": 77.6,
+"consistency": 0.69,
+"initial_rank": 86,
+"kind": "sound_alike"
+},
+{
+"id": "g087",
+"name": "Martin Kaimer",
+"nationality": "Germany",
+"age": 46,
+"rating": 76.2,
+"consistency": 0.69,
+"initial_rank": 87,
+"kind": "sound_alike"
+},
+{
+"id": "g088",
+"name": "Bernard Langa",
+"nationality": "Germany",
+"age": 31,
+"rating": 78.8,
+"consistency": 0.55,
+"initial_rank": 88,
+"kind": "sound_alike"
+},
+{
+"id": "g089",
+"name": "Mattie Schmitt",
+"nationality": "Germany",
+"age": 36,
+"rating": 76.7,
+"consistency": 0.66,
+"initial_rank": 89,
+"kind": "sound_alike"
+},
+{
+"id": "g090",
+"name": "Yannick Paulus",
+"nationality": "Germany",
+"age": 24,
+"rating": 75.4,
+"consistency": 0.75,
+"initial_rank": 90,
+"kind": "sound_alike"
+},
+{
+"id": "g091",
+"name": "Viktor Perrez",
+"nationality": "France",
+"age": 33,
+"rating": 78.3,
+"consistency": 0.84,
+"initial_rank": 91,
+"kind": "sound_alike"
+},
+{
+"id": "g092",
+"name": "Matthieu Pavone",
+"nationality": "France",
+"age": 45,
+"rating": 75.3,
+"consistency": 0.82,
+"initial_rank": 92,
+"kind": "sound_alike"
+},
+{
+"id": "g093",
+"name": "Romain Langasc",
+"nationality": "France",
+"age": 30,
+"rating": 78.0,
+"consistency": 0.65,
+"initial_rank": 93,
+"kind": "sound_alike"
+},
+{
+"id": "g094",
+"name": "Antoine Rosner",
+"nationality": "France",
+"age": 29,
+"rating": 74.9,
+"consistency": 0.58,
+"initial_rank": 94,
+"kind": "sound_alike"
+},
+{
+"id": "g095",
+"name": "Francesco Molinary",
+"nationality": "Italy",
+"age": 29,
+"rating": 75.8,
+"consistency": 0.87,
+"initial_rank": 95,
+"kind": "sound_alike"
+},
+{
+"id": "g096",
+"name": "Guido Migliotzi",
+"nationality": "Italy",
+"age": 33,
+"rating": 74.9,
+"consistency": 0.83,
+"initial_rank": 96,
+"kind": "sound_alike"
+},
+{
+"id": "g097",
+"name": "Matteo Manasero",
+"nationality": "Italy",
+"age": 30,
+"rating": 75.4,
+"consistency": 0.65,
+"initial_rank": 97,
+"kind": "sound_alike"
+},
+{
+"id": "g098",
+"name": "Nino Bertasso",
+"nationality": "Italy",
+"age": 21,
+"rating": 76.7,
+"consistency": 0.5,
+"initial_rank": 98,
+"kind": "sound_alike"
+},
+{
+"id": "g099",
+"name": "Bernd Wiesburger",
+"nationality": "Austria",
+"age": 39,
+"rating": 75.5,
+"consistency": 0.7,
+"initial_rank": 99,
+"kind": "sound_alike"
+},
+{
+"id": "g100",
+"name": "Thomas Peeters",
+"nationality": "Belgium",
+"age": 36,
+"rating": 73.6,
+"consistency": 0.84,
+"initial_rank": 100,
+"kind": "sound_alike"
+},
+{
+"id": "g101",
+"name": "Tomas Detree",
+"nationality": "Belgium",
+"age": 23,
+"rating": 75.6,
+"consistency": 0.88,
+"initial_rank": 101,
+"kind": "sound_alike"
+},
+{
+"id": "g102",
+"name": "Joost Luitan",
+"nationality": "Netherlands",
+"age": 39,
+"rating": 74.3,
+"consistency": 0.81,
+"initial_rank": 102,
+"kind": "sound_alike"
+},
+{
+"id": "g103",
+"name": "Rasmus Hoygard",
+"nationality": "Denmark",
+"age": 21,
+"rating": 74.4,
+"consistency": 0.9,
+"initial_rank": 103,
+"kind": "sound_alike"
+},
+{
+"id": "g104",
+"name": "Nikolai Hoygaard",
+"nationality": "Denmark",
+"age": 42,
+"rating": 73.7,
+"consistency": 0.58,
+"initial_rank": 104,
+"kind": "sound_alike"
+},
+{
+"id": "g105",
+"name": "Thorbjorn Olsen",
+"nationality": "Denmark",
+"age": 46,
+"rating": 74.1,
+"consistency": 0.54,
+"initial_rank": 105,
+"kind": "sound_alike"
+},
+{
+"id": "g106",
+"name": "Joakim B. Hanssen",
+"nationality": "Denmark",
+"age": 34,
+"rating": 73.3,
+"consistency": 0.48,
+"initial_rank": 106,
+"kind": "sound_alike"
+},
+{
+"id": "g107",
+"name": "Alex Norren",
+"nationality": "Sweden",
+"age": 41,
+"rating": 75.0,
+"consistency": 0.87,
+"initial_rank": 107,
+"kind": "sound_alike"
+},
+{
+"id": "g108",
+"name": "Sebastian Soderburg",
+"nationality": "Sweden",
+"age": 36,
+"rating": 74.5,
+"consistency": 0.59,
+"initial_rank": 108,
+"kind": "sound_alike"
+},
+{
+"id": "g109",
+"name": "Joakim Lagergreen",
+"nationality": "Sweden",
+"age": 31,
+"rating": 74.4,
+"consistency": 0.74,
+"initial_rank": 109,
+"kind": "sound_alike"
+},
+{
+"id": "g110",
+"name": "Kristian Krog Johansen",
+"nationality": "Norway",
+"age": 24,
+"rating": 71.4,
+"consistency": 0.7,
+"initial_rank": 110,
+"kind": "sound_alike"
+},
+{
+"id": "g111",
+"name": "Samy Valmaki",
+"nationality": "Finland",
+"age": 32,
+"rating": 72.5,
+"consistency": 0.63,
+"initial_rank": 111,
+"kind": "sound_alike"
+},
+{
+"id": "g112",
+"name": "Tapio Pulkanen",
+"nationality": "Finland",
+"age": 40,
+"rating": 74.3,
+"consistency": 0.43,
+"initial_rank": 112,
+"kind": "sound_alike"
+},
+{
+"id": "g113",
+"name": "Rafa Cabrero Bellos",
+"nationality": "Spain",
+"age": 36,
+"rating": 71.8,
+"consistency": 0.66,
+"initial_rank": 113,
+"kind": "sound_alike"
+},
+{
+"id": "g114",
+"name": "Adrian Otaygui",
+"nationality": "Spain",
+"age": 25,
+"rating": 73.6,
+"consistency": 0.82,
+"initial_rank": 114,
+"kind": "sound_alike"
+},
+{
+"id": "g115",
+"name": "Jorge Campilo",
+"nationality": "Spain",
+"age": 41,
+"rating": 73.2,
+"consistency": 0.78,
+"initial_rank": 115,
+"kind": "sound_alike"
+},
+{
+"id": "g116",
+"name": "Pablo Larrazabel",
+"nationality": "Spain",
+"age": 32,
+"rating": 71.2,
+"consistency": 0.45,
+"initial_rank": 116,
+"kind": "sound_alike"
+},
+{
+"id": "g117",
+"name": "Alvaro Kiros",
+"nationality": "Spain",
+"age": 46,
+"rating": 72.9,
+"consistency": 0.45,
+"initial_rank": 117,
+"kind": "sound_alike"
+},
+{
+"id": "g118",
+"name": "Dani Willet",
+"nationality": "England",
+"age": 40,
+"rating": 73.0,
+"consistency": 0.44,
+"initial_rank": 118,
+"kind": "sound_alike"
+},
+{
+"id": "g119",
+"name": "Lee Westwod",
+"nationality": "England",
+"age": 45,
+"rating": 70.7,
+"consistency": 0.68,
+"initial_rank": 119,
+"kind": "sound_alike"
+},
+{
+"id": "g120",
+"name": "Ian Polter",
+"nationality": "England",
+"age": 36,
+"rating": 72.6,
+"consistency": 0.58,
+"initial_rank": 120,
+"kind": "sound_alike"
+},
+{
+"id": "g121",
+"name": "Paul Casy",
+"nationality": "England",
+"age": 29,
+"rating": 69.7,
+"consistency": 0.87,
+"initial_rank": 121,
+"kind": "sound_alike"
+},
+{
+"id": "g122",
+"name": "Aron Rye",
+"nationality": "England",
+"age": 22,
+"rating": 70.6,
+"consistency": 0.82,
+"initial_rank": 122,
+"kind": "sound_alike"
+},
+{
+"id": "g123",
+"name": "Calum Shinkwyn",
+"nationality": "England",
+"age": 21,
+"rating": 71.5,
+"consistency": 0.59,
+"initial_rank": 123,
+"kind": "sound_alike"
+},
+{
+"id": "g124",
+"name": "Richie Blandt",
+"nationality": "England",
+"age": 25,
+"rating": 71.6,
+"consistency": 0.48,
+"initial_rank": 124,
+"kind": "sound_alike"
+},
+{
+"id": "g125",
+"name": "Matt Southgait",
+"nationality": "England",
+"age": 45,
+"rating": 71.4,
+"consistency": 0.54,
+"initial_rank": 125,
+"kind": "sound_alike"
+},
+{
+"id": "g126",
+"name": "Jordon Smyth",
+"nationality": "England",
+"age": 39,
+"rating": 69.0,
+"consistency": 0.76,
+"initial_rank": 126,
+"kind": "sound_alike"
+},
+{
+"id": "g127",
+"name": "Lawrie Cantor",
+"nationality": "England",
+"age": 33,
+"rating": 68.3,
+"consistency": 0.63,
+"initial_rank": 127,
+"kind": "sound_alike"
+},
+{
+"id": "g128",
+"name": "Eddy Peperell",
+"nationality": "England",
+"age": 40,
+"rating": 69.5,
+"consistency": 0.46,
+"initial_rank": 128,
+"kind": "sound_alike"
+},
+{
+"id": "g129",
+"name": "Marcus Armitige",
+"nationality": "England",
+"age": 32,
+"rating": 69.2,
+"consistency": 0.5,
+"initial_rank": 129,
+"kind": "sound_alike"
+},
+{
+"id": "g130",
+"name": "Sam Horsfeld",
+"nationality": "England",
+"age": 32,
+"rating": 69.4,
+"consistency": 0.79,
+"initial_rank": 130,
+"kind": "sound_alike"
+},
+{
+"id": "g131",
+"name": "Dan Bradbery",
+"nationality": "England",
+"age": 24,
+"rating": 67.4,
+"consistency": 0.9,
+"initial_rank": 131,
+"kind": "sound_alike"
+},
+{
+"id": "g132",
+"name": "Olly Wilsen",
+"nationality": "England",
+"age": 36,
+"rating": 68.2,
+"consistency": 0.43,
+"initial_rank": 132,
+"kind": "sound_alike"
+},
+{
+"id": "g133",
+"name": "Martyn Layrd",
+"nationality": "Scotland",
+"age": 41,
+"rating": 68.1,
+"consistency": 0.91,
+"initial_rank": 133,
+"kind": "sound_alike"
+},
+{
+"id": "g134",
+"name": "Russel Knocks",
+"nationality": "Scotland",
+"age": 46,
+"rating": 67.0,
+"consistency": 0.48,
+"initial_rank": 134,
+"kind": "sound_alike"
+},
+{
+"id": "g135",
+"name": "Ewan Fergusson",
+"nationality": "Scotland",
+"age": 23,
+"rating": 70.0,
+"consistency": 0.84,
+"initial_rank": 135,
+"kind": "sound_alike"
+},
+{
+"id": "g136",
+"name": "Conor Symes",
+"nationality": "Scotland",
+"age": 35,
+"rating": 69.3,
+"consistency": 0.83,
+"initial_rank": 136,
+"kind": "sound_alike"
+},
+{
+"id": "g137",
+"name": "Shamus Pauer",
+"nationality": "Ireland",
+"age": 43,
+"rating": 67.7,
+"consistency": 0.82,
+"initial_rank": 137,
+"kind": "sound_alike"
+},
+{
+"id": "g138",
+"name": "Tom McKibbon",
+"nationality": "Northern Ireland",
+"age": 22,
+"rating": 66.2,
+"consistency": 0.44,
+"initial_rank": 138,
+"kind": "sound_alike"
+},
+{
+"id": "g139",
+"name": "Graham McDowall",
+"nationality": "Northern Ireland",
+"age": 31,
+"rating": 67.7,
+"consistency": 0.88,
+"initial_rank": 139,
+"kind": "sound_alike"
+},
+{
+"id": "g140",
+"name": "Darran Clark",
+"nationality": "Northern Ireland",
+"age": 25,
+"rating": 66.1,
+"consistency": 0.44,
+"initial_rank": 140,
+"kind": "sound_alike"
+},
+{
+"id": "g141",
+"name": "Rhys Enock",
+"nationality": "Wales",
+"age": 25,
+"rating": 66.1,
+"consistency": 0.63,
+"initial_rank": 141,
+"kind": "sound_alike"
+},
+{
+"id": "g142",
+"name": "Stewart Manly",
+"nationality": "Wales",
+"age": 36,
+"rating": 67.3,
+"consistency": 0.6,
+"initial_rank": 142,
+"kind": "sound_alike"
+},
+{
+"id": "g143",
+"name": "Jamie Donalson",
+"nationality": "Wales",
+"age": 39,
+"rating": 66.8,
+"consistency": 0.86,
+"initial_rank": 143,
+"kind": "sound_alike"
+},
+{
+"id": "g144",
+"name": "Zack Jonsen",
+"nationality": "USA",
+"age": 40,
+"rating": 67.4,
+"consistency": 0.5,
+"initial_rank": 144,
+"kind": "sound_alike"
+},
+{
+"id": "g145",
+"name": "Web Simpsen",
+"nationality": "USA",
+"age": 37,
+"rating": 65.9,
+"consistency": 0.77,
+"initial_rank": 145,
+"kind": "sound_alike"
+},
+{
+"id": "g146",
+"name": "Garry Woodlund",
+"nationality": "USA",
+"age": 37,
+"rating": 66.8,
+"consistency": 0.5,
+"initial_rank": 146,
+"kind": "sound_alike"
+},
+{
+"id": "g147",
+"name": "Kevin Kissner",
+"nationality": "USA",
+"age": 26,
+"rating": 64.8,
+"consistency": 0.81,
+"initial_rank": 147,
+"kind": "sound_alike"
+},
+{
+"id": "g148",
+"name": "Chris Kirke",
+"nationality": "USA",
+"age": 24,
+"rating": 66.0,
+"consistency": 0.66,
+"initial_rank": 148,
+"kind": "sound_alike"
+},
+{
+"id": "g149",
+"name": "Lukas Glovr",
+"nationality": "USA",
+"age": 23,
+"rating": 66.6,
+"consistency": 0.66,
+"initial_rank": 149,
+"kind": "sound_alike"
+},
+{
+"id": "g150",
+"name": "Billy Horshel",
+"nationality": "USA",
+"age": 23,
+"rating": 65.0,
+"consistency": 0.42,
+"initial_rank": 150,
+"kind": "sound_alike"
+},
+{
+"id": "g151",
+"name": "Harris Inglish",
+"nationality": "USA",
+"age": 32,
+"rating": 66.8,
+"consistency": 0.8,
+"initial_rank": 151,
+"kind": "sound_alike"
+},
+{
+"id": "g152",
+"name": "Denny McCarty",
+"nationality": "USA",
+"age": 42,
+"rating": 63.6,
+"consistency": 0.74,
+"initial_rank": 152,
+"kind": "sound_alike"
+},
+{
+"id": "g153",
+"name": "Akshay Batia",
+"nationality": "USA",
+"age": 31,
+"rating": 65.5,
+"consistency": 0.9,
+"initial_rank": 153,
+"kind": "sound_alike"
+},
+{
+"id": "g154",
+"name": "Nick Dunlop",
+"nationality": "USA",
+"age": 31,
+"rating": 64.0,
+"consistency": 0.7,
+"initial_rank": 154,
+"kind": "sound_alike"
+},
+{
+"id": "g155",
+"name": "Erik Coal",
+"nationality": "USA",
+"age": 32,
+"rating": 66.0,
+"consistency": 0.56,
+"initial_rank": 155,
+"kind": "sound_alike"
+},
+{
+"id": "g156",
+"name": "Tayler Moor",
+"nationality": "USA",
+"age": 40,
+"rating": 63.7,
+"consistency": 0.5,
+"initial_rank": 156,
+"kind": "sound_alike"
+},
+{
+"id": "g157",
+"name": "Davis Thomson",
+"nationality": "USA",
+"age": 42,
+"rating": 64.7,
+"consistency": 0.55,
+"initial_rank": 157,
+"kind": "sound_alike"
+},
+{
+"id": "g158",
+"name": "Jake Knapper",
+"nationality": "USA",
+"age": 33,
+"rating": 64.0,
+"consistency": 0.83,
+"initial_rank": 158,
+"kind": "sound_alike"
+},
+{
+"id": "g159",
+"name": "Matt Kucher",
+"nationality": "USA",
+"age": 43,
+"rating": 65.2,
+"consistency": 0.63,
+"initial_rank": 159,
+"kind": "sound_alike"
+},
+{
+"id": "g160",
+"name": "Patrik Reid",
+"nationality": "USA",
+"age": 36,
+"rating": 65.3,
+"consistency": 0.51,
+"initial_rank": 160,
+"kind": "sound_alike"
+},
+{
+"id": "g161",
+"name": "Bubbah Watsen",
+"nationality": "USA",
+"age": 28,
+"rating": 61.9,
+"consistency": 0.91,
+"initial_rank": 161,
+"kind": "sound_alike"
+},
+{
+"id": "g162",
+"name": "Jim Furyck",
+"nationality": "USA",
+"age": 21,
+"rating": 63.6,
+"consistency": 0.79,
+"initial_rank": 162,
+"kind": "sound_alike"
+},
+{
+"id": "g163",
+"name": "Stuart Sink",
+"nationality": "USA",
+"age": 40,
+"rating": 62.3,
+"consistency": 0.72,
+"initial_rank": 163,
+"kind": "sound_alike"
+},
+{
+"id": "g164",
+"name": "Marc Hubbart",
+"nationality": "USA",
+"age": 40,
+"rating": 63.1,
+"consistency": 0.85,
+"initial_rank": 164,
+"kind": "sound_alike"
+},
+{
+"id": "g165",
+"name": "Luke Liszt",
+"nationality": "USA",
+"age": 34,
+"rating": 63.5,
+"consistency": 0.89,
+"initial_rank": 165,
+"kind": "sound_alike"
+},
+{
+"id": "g166",
+"name": "Ryan Palmar",
+"nationality": "USA",
+"age": 30,
+"rating": 61.1,
+"consistency": 0.82,
+"initial_rank": 166,
+"kind": "sound_alike"
+},
+{
+"id": "g167",
+"name": "Cam Champs",
+"nationality": "USA",
+"age": 46,
+"rating": 63.2,
+"consistency": 0.67,
+"initial_rank": 167,
+"kind": "sound_alike"
+},
+{
+"id": "g168",
+"name": "Maverik McNeely",
+"nationality": "USA",
+"age": 24,
+"rating": 60.4,
+"consistency": 0.75,
+"initial_rank": 168,
+"kind": "sound_alike"
+},
+{
+"id": "g169",
+"name": "Sahith Thigala",
+"nationality": "USA",
+"age": 44,
+"rating": 61.4,
+"consistency": 0.84,
+"initial_rank": 169,
+"kind": "sound_alike"
+},
+{
+"id": "g170",
+"name": "Chandler Phillipps",
+"nationality": "USA",
+"age": 38,
+"rating": 61.7,
+"consistency": 0.88,
+"initial_rank": 170,
+"kind": "sound_alike"
+},
+{
+"id": "g171",
+"name": "Beau Hosler",
+"nationality": "USA",
+"age": 35,
+"rating": 60.8,
+"consistency": 0.69,
+"initial_rank": 171,
+"kind": "sound_alike"
+},
+{
+"id": "g172",
+"name": "Ben Griffen",
+"nationality": "USA",
+"age": 43,
+"rating": 60.7,
+"consistency": 0.74,
+"initial_rank": 172,
+"kind": "sound_alike"
+},
+{
+"id": "g173",
+"name": "Austen Ecroat",
+"nationality": "USA",
+"age": 30,
+"rating": 61.6,
+"consistency": 0.45,
+"initial_rank": 173,
+"kind": "sound_alike"
+},
+{
+"id": "g174",
+"name": "Andrew Puttnam",
+"nationality": "USA",
+"age": 45,
+"rating": 62.8,
+"consistency": 0.77,
+"initial_rank": 174,
+"kind": "sound_alike"
+},
+{
+"id": "g175",
+"name": "Brendan Todds",
+"nationality": "USA",
+"age": 26,
+"rating": 61.4,
+"consistency": 0.75,
+"initial_rank": 175,
+"kind": "sound_alike"
+},
+{
+"id": "g176",
+"name": "Mike Kimm",
+"nationality": "USA",
+"age": 36,
+"rating": 62.0,
+"consistency": 0.73,
+"initial_rank": 176,
+"kind": "sound_alike"
+},
+{
+"id": "g177",
+"name": "J.T. Posten",
+"nationality": "USA",
+"age": 24,
+"rating": 60.0,
+"consistency": 0.61,
+"initial_rank": 177,
+"kind": "sound_alike"
+},
+{
+"id": "g178",
+"name": "Kurt Kitiama",
+"nationality": "USA",
+"age": 44,
+"rating": 61.3,
+"consistency": 0.76,
+"initial_rank": 178,
+"kind": "sound_alike"
+},
+{
+"id": "g179",
+"name": "Jayson Kokrack",
+"nationality": "USA",
+"age": 27,
+"rating": 61.1,
+"consistency": 0.54,
+"initial_rank": 179,
+"kind": "sound_alike"
+},
+{
+"id": "g180",
+"name": "Mike Weirr",
+"nationality": "Canada",
+"age": 25,
+"rating": 58.5,
+"consistency": 0.72,
+"initial_rank": 180,
+"kind": "sound_alike"
+},
+{
+"id": "g181",
+"name": "Tayler Pendrit",
+"nationality": "Canada",
+"age": 40,
+"rating": 58.2,
+"consistency": 0.46,
+"initial_rank": 181,
+"kind": "sound_alike"
+},
+{
+"id": "g182",
+"name": "Adam Hadwen",
+"nationality": "Canada",
+"age": 35,
+"rating": 61.0,
+"consistency": 0.51,
+"initial_rank": 182,
+"kind": "sound_alike"
+},
+{
+"id": "g183",
+"name": "Ben Silvermann",
+"nationality": "Canada",
+"age": 25,
+"rating": 59.0,
+"consistency": 0.57,
+"initial_rank": 183,
+"kind": "sound_alike"
+},
+{
+"id": "g184",
+"name": "Jarek Eriksen",
+"nationality": "Canada",
+"age": 37,
+"rating": 59.7,
+"consistency": 0.5,
+"initial_rank": 184,
+"kind": "generic"
+},
+{
+"id": "g185",
+"name": "Nestor Yamada",
+"nationality": "Denmark",
+"age": 37,
+"rating": 58.1,
+"consistency": 0.52,
+"initial_rank": 185,
+"kind": "generic"
+},
+{
+"id": "g186",
+"name": "Wendel Lockhart",
+"nationality": "Ireland",
+"age": 35,
+"rating": 59.3,
+"consistency": 0.47,
+"initial_rank": 186,
+"kind": "generic"
+},
+{
+"id": "g187",
+"name": "Alden Thackeray",
+"nationality": "Wales",
+"age": 40,
+"rating": 60.2,
+"consistency": 0.8,
+"initial_rank": 187,
+"kind": "generic"
+},
+{
+"id": "g188",
+"name": "Emric Pettigrew",
+"nationality": "Sweden",
+"age": 23,
+"rating": 57.5,
+"consistency": 0.62,
+"initial_rank": 188,
+"kind": "generic"
+},
+{
+"id": "g189",
+"name": "Soren Sandoval",
+"nationality": "Spain",
+"age": 34,
+"rating": 58.9,
+"consistency": 0.88,
+"initial_rank": 189,
+"kind": "generic"
+},
+{
+"id": "g190",
+"name": "Ulric Ivanov",
+"nationality": "Chile",
+"age": 27,
+"rating": 59.5,
+"consistency": 0.87,
+"initial_rank": 190,
+"kind": "generic"
+},
+{
+"id": "g191",
+"name": "Joss Castellan",
+"nationality": "Spain",
+"age": 33,
+"rating": 56.7,
+"consistency": 0.66,
+"initial_rank": 191,
+"kind": "generic"
+},
+{
+"id": "g192",
+"name": "Bastian Pettigrew",
+"nationality": "Canada",
+"age": 34,
+"rating": 59.1,
+"consistency": 0.53,
+"initial_rank": 192,
+"kind": "generic"
+},
+{
+"id": "g193",
+"name": "Galen Kovac",
+"nationality": "Spain",
+"age": 43,
+"rating": 56.1,
+"consistency": 0.48,
+"initial_rank": 193,
+"kind": "generic"
+},
+{
+"id": "g194",
+"name": "Hollis Hargrove",
+"nationality": "Australia",
+"age": 24,
+"rating": 57.7,
+"consistency": 0.75,
+"initial_rank": 194,
+"kind": "generic"
+},
+{
+"id": "g195",
+"name": "Valen Kingsley",
+"nationality": "Japan",
+"age": 46,
+"rating": 57.1,
+"consistency": 0.88,
+"initial_rank": 195,
+"kind": "generic"
+},
+{
+"id": "g196",
+"name": "Galen Tanaka",
+"nationality": "Germany",
+"age": 42,
+"rating": 56.8,
+"consistency": 0.47,
+"initial_rank": 196,
+"kind": "generic"
+},
+{
+"id": "g197",
+"name": "Kellan Whitlock",
+"nationality": "Chile",
+"age": 42,
+"rating": 56.1,
+"consistency": 0.85,
+"initial_rank": 197,
+"kind": "generic"
+},
+{
+"id": "g198",
+"name": "Viggo Faulkner",
+"nationality": "New Zealand",
+"age": 40,
+"rating": 56.4,
+"consistency": 0.8,
+"initial_rank": 198,
+"kind": "generic"
+},
+{
+"id": "g199",
+"name": "Pavel Marchetti",
+"nationality": "Norway",
+"age": 32,
+"rating": 56.4,
+"consistency": 0.86,
+"initial_rank": 199,
+"kind": "generic"
+},
+{
+"id": "g200",
+"name": "Joss Ekstrom",
+"nationality": "Denmark",
+"age": 43,
+"rating": 57.8,
+"consistency": 0.52,
+"initial_rank": 200,
+"kind": "generic"
+},
+{
+"id": "g201",
+"name": "Milos Zielinski",
+"nationality": "Japan",
+"age": 33,
+"rating": 55.2,
+"consistency": 0.42,
+"initial_rank": 201,
+"kind": "generic"
+},
+{
+"id": "g202",
+"name": "Milos Ashdown",
+"nationality": "Denmark",
+"age": 28,
+"rating": 55.0,
+"consistency": 0.42,
+"initial_rank": 202,
+"kind": "generic"
+},
+{
+"id": "g203",
+"name": "Alden Northcott",
+"nationality": "South Korea",
+"age": 32,
+"rating": 55.0,
+"consistency": 0.73,
+"initial_rank": 203,
+"kind": "generic"
+},
+{
+"id": "g204",
+"name": "Zane Okafor",
+"nationality": "Sweden",
+"age": 28,
+"rating": 55.8,
+"consistency": 0.88,
+"initial_rank": 204,
+"kind": "generic"
+},
+{
+"id": "g205",
+"name": "Orsin Whitlock",
+"nationality": "Norway",
+"age": 30,
+"rating": 56.8,
+"consistency": 0.68,
+"initial_rank": 205,
+"kind": "generic"
+},
+{
+"id": "g206",
+"name": "Hadrian Yamada",
+"nationality": "Australia",
+"age": 34,
+"rating": 56.8,
+"consistency": 0.84,
+"initial_rank": 206,
+"kind": "generic"
+},
+{
+"id": "g207",
+"name": "Valen Kovac",
+"nationality": "Norway",
+"age": 41,
+"rating": 53.6,
+"consistency": 0.78,
+"initial_rank": 207,
+"kind": "generic"
+},
+{
+"id": "g208",
+"name": "Soren Pettigrew",
+"nationality": "Canada",
+"age": 31,
+"rating": 56.7,
+"consistency": 0.7,
+"initial_rank": 208,
+"kind": "generic"
+},
+{
+"id": "g209",
+"name": "Leif Fairweather",
+"nationality": "USA",
+"age": 42,
+"rating": 55.6,
+"consistency": 0.76,
+"initial_rank": 209,
+"kind": "generic"
+},
+{
+"id": "g210",
+"name": "Rafe Vasquez",
+"nationality": "USA",
+"age": 26,
+"rating": 53.6,
+"consistency": 0.43,
+"initial_rank": 210,
+"kind": "generic"
+},
+{
+"id": "g211",
+"name": "Kasper Okafor",
+"nationality": "Scotland",
+"age": 35,
+"rating": 53.1,
+"consistency": 0.67,
+"initial_rank": 211,
+"kind": "generic"
+},
+{
+"id": "g212",
+"name": "Tobin Fairweather",
+"nationality": "Australia",
+"age": 30,
+"rating": 53.1,
+"consistency": 0.62,
+"initial_rank": 212,
+"kind": "generic"
+},
+{
+"id": "g213",
+"name": "Orsin Montrose",
+"nationality": "France",
+"age": 25,
+"rating": 52.5,
+"consistency": 0.61,
+"initial_rank": 213,
+"kind": "generic"
+},
+{
+"id": "g214",
+"name": "Bastian Sandoval",
+"nationality": "France",
+"age": 33,
+"rating": 54.5,
+"consistency": 0.73,
+"initial_rank": 214,
+"kind": "generic"
+},
+{
+"id": "g215",
+"name": "Ulric Lemaire",
+"nationality": "Chile",
+"age": 36,
+"rating": 53.2,
+"consistency": 0.75,
+"initial_rank": 215,
+"kind": "generic"
+},
+{
+"id": "g216",
+"name": "Kasper Holm",
+"nationality": "New Zealand",
+"age": 21,
+"rating": 52.9,
+"consistency": 0.74,
+"initial_rank": 216,
+"kind": "generic"
+},
+{
+"id": "g217",
+"name": "Valen Haldane",
+"nationality": "Denmark",
+"age": 40,
+"rating": 54.8,
+"consistency": 0.62,
+"initial_rank": 217,
+"kind": "generic"
+},
+{
+"id": "g218",
+"name": "Leif Sandoval",
+"nationality": "Argentina",
+"age": 41,
+"rating": 52.3,
+"consistency": 0.6,
+"initial_rank": 218,
+"kind": "generic"
+},
+{
+"id": "g219",
+"name": "Ivo Castellan",
+"nationality": "Germany",
+"age": 30,
+"rating": 54.8,
+"consistency": 0.45,
+"initial_rank": 219,
+"kind": "generic"
+},
+{
+"id": "g220",
+"name": "Lorcan Eriksen",
+"nationality": "South Korea",
+"age": 46,
+"rating": 52.3,
+"consistency": 0.83,
+"initial_rank": 220,
+"kind": "generic"
+},
+{
+"id": "g221",
+"name": "Bastian Ostrander",
+"nationality": "Ireland",
+"age": 38,
+"rating": 54.0,
+"consistency": 0.89,
+"initial_rank": 221,
+"kind": "generic"
+},
+{
+"id": "g222",
+"name": "Niall Ivanov",
+"nationality": "Norway",
+"age": 26,
+"rating": 54.1,
+"consistency": 0.59,
+"initial_rank": 222,
+"kind": "generic"
+},
+{
+"id": "g223",
+"name": "Nestor Varga",
+"nationality": "Chile",
+"age": 42,
+"rating": 52.4,
+"consistency": 0.56,
+"initial_rank": 223,
+"kind": "generic"
+},
+{
+"id": "g224",
+"name": "Leif Vasquez",
+"nationality": "USA",
+"age": 29,
+"rating": 52.2,
+"consistency": 0.83,
+"initial_rank": 224,
+"kind": "generic"
+},
+{
+"id": "g225",
+"name": "Orsin Northcott",
+"nationality": "Denmark",
+"age": 26,
+"rating": 51.3,
+"consistency": 0.6,
+"initial_rank": 225,
+"kind": "generic"
+},
+{
+"id": "g226",
+"name": "Milos Lockhart",
+"nationality": "Italy",
+"age": 27,
+"rating": 52.0,
+"consistency": 0.86,
+"initial_rank": 226,
+"kind": "generic"
+},
+{
+"id": "g227",
+"name": "Marek Yamada",
+"nationality": "Ireland",
+"age": 35,
+"rating": 52.8,
+"consistency": 0.77,
+"initial_rank": 227,
+"kind": "generic"
+},
+{
+"id": "g228",
+"name": "Osric Hargrove",
+"nationality": "Spain",
+"age": 38,
+"rating": 49.8,
+"consistency": 0.61,
+"initial_rank": 228,
+"kind": "generic"
+},
+{
+"id": "g229",
+"name": "Hollis Dunmore",
+"nationality": "Australia",
+"age": 40,
+"rating": 49.6,
+"consistency": 0.86,
+"initial_rank": 229,
+"kind": "generic"
+},
+{
+"id": "g230",
+"name": "Cato Dunmore",
+"nationality": "Spain",
+"age": 32,
+"rating": 49.6,
+"consistency": 0.42,
+"initial_rank": 230,
+"kind": "generic"
+},
+{
+"id": "g231",
+"name": "Elio Castellan",
+"nationality": "Norway",
+"age": 45,
+"rating": 49.8,
+"consistency": 0.57,
+"initial_rank": 231,
+"kind": "generic"
+},
+{
+"id": "g232",
+"name": "Elio Haldane",
+"nationality": "France",
+"age": 42,
+"rating": 50.1,
+"consistency": 0.71,
+"initial_rank": 232,
+"kind": "generic"
+},
+{
+"id": "g233",
+"name": "Cato Haldane",
+"nationality": "Canada",
+"age": 35,
+"rating": 49.6,
+"consistency": 0.78,
+"initial_rank": 233,
+"kind": "generic"
+},
+{
+"id": "g234",
+"name": "Joss Quintero",
+"nationality": "Denmark",
+"age": 41,
+"rating": 51.5,
+"consistency": 0.74,
+"initial_rank": 234,
+"kind": "generic"
+},
+{
+"id": "g235",
+"name": "Lorcan Kovac",
+"nationality": "England",
+"age": 21,
+"rating": 49.3,
+"consistency": 0.57,
+"initial_rank": 235,
+"kind": "generic"
+},
+{
+"id": "g236",
+"name": "Elio Nakamura",
+"nationality": "Italy",
+"age": 24,
+"rating": 50.9,
+"consistency": 0.52,
+"initial_rank": 236,
+"kind": "generic"
+},
+{
+"id": "g237",
+"name": "Bastian Hargrove",
+"nationality": "Norway",
+"age": 36,
+"rating": 49.4,
+"consistency": 0.69,
+"initial_rank": 237,
+"kind": "generic"
+},
+{
+"id": "g238",
+"name": "Rafe Sandoval",
+"nationality": "Sweden",
+"age": 36,
+"rating": 48.8,
+"consistency": 0.7,
+"initial_rank": 238,
+"kind": "generic"
+},
+{
+"id": "g239",
+"name": "Dmitri Ekstrom",
+"nationality": "Argentina",
+"age": 26,
+"rating": 48.1,
+"consistency": 0.77,
+"initial_rank": 239,
+"kind": "generic"
+},
+{
+"id": "g240",
+"name": "Wystan Ostrander",
+"nationality": "Italy",
+"age": 23,
+"rating": 47.9,
+"consistency": 0.9,
+"initial_rank": 240,
+"kind": "generic"
+},
+{
+"id": "g241",
+"name": "Hadrian Brandt",
+"nationality": "Argentina",
+"age": 44,
+"rating": 50.2,
+"consistency": 0.65,
+"initial_rank": 241,
+"kind": "generic"
+},
+{
+"id": "g242",
+"name": "Hadrian Faulkner",
+"nationality": "Canada",
+"age": 39,
+"rating": 48.6,
+"consistency": 0.52,
+"initial_rank": 242,
+"kind": "generic"
+},
+{
+"id": "g243",
+"name": "Galen Zielinski",
+"nationality": "Spain",
+"age": 37,
+"rating": 50.3,
+"consistency": 0.54,
+"initial_rank": 243,
+"kind": "generic"
+},
+{
+"id": "g244",
+"name": "Bastian Brandt",
+"nationality": "Spain",
+"age": 35,
+"rating": 48.3,
+"consistency": 0.49,
+"initial_rank": 244,
+"kind": "generic"
+},
+{
+"id": "g245",
+"name": "Hadrian Delacroix",
+"nationality": "Scotland",
+"age": 35,
+"rating": 50.3,
+"consistency": 0.46,
+"initial_rank": 245,
+"kind": "generic"
+},
+{
+"id": "g246",
+"name": "Corin Northcott",
+"nationality": "France",
+"age": 39,
+"rating": 46.6,
+"consistency": 0.52,
+"initial_rank": 246,
+"kind": "generic"
+},
+{
+"id": "g247",
+"name": "Rafe Faulkner",
+"nationality": "Germany",
+"age": 42,
+"rating": 50.0,
+"consistency": 0.7,
+"initial_rank": 247,
+"kind": "generic"
+},
+{
+"id": "g248",
+"name": "Lorcan Jorgensen",
+"nationality": "Norway",
+"age": 38,
+"rating": 49.3,
+"consistency": 0.65,
+"initial_rank": 248,
+"kind": "generic"
+},
+{
+"id": "g249",
+"name": "Osric Okafor",
+"nationality": "Denmark",
+"age": 38,
+"rating": 47.6,
+"consistency": 0.41,
+"initial_rank": 249,
+"kind": "generic"
+},
+{
+"id": "g250",
+"name": "Osric Quintero",
+"nationality": "Germany",
+"age": 31,
+"rating": 46.8,
+"consistency": 0.68,
+"initial_rank": 250,
+"kind": "generic"
+},
+{
+"id": "g251",
+"name": "Gideon Moretti",
+"nationality": "USA",
+"age": 24,
+"rating": 49.2,
+"consistency": 0.67,
+"initial_rank": 251,
+"kind": "generic"
+},
+{
+"id": "g252",
+"name": "Bram Iversen",
+"nationality": "USA",
+"age": 24,
+"rating": 45.7,
+"consistency": 0.5,
+"initial_rank": 252,
+"kind": "generic"
+},
+{
+"id": "g253",
+"name": "Orsin Dunmore",
+"nationality": "Germany",
+"age": 35,
+"rating": 45.5,
+"consistency": 0.79,
+"initial_rank": 253,
+"kind": "generic"
+},
+{
+"id": "g254",
+"name": "Kellan Sandoval",
+"nationality": "Norway",
+"age": 35,
+"rating": 47.9,
+"consistency": 0.52,
+"initial_rank": 254,
+"kind": "generic"
+},
+{
+"id": "g255",
+"name": "Osric Iversen",
+"nationality": "Argentina",
+"age": 29,
+"rating": 46.8,
+"consistency": 0.6,
+"initial_rank": 255,
+"kind": "generic"
+},
+{
+"id": "g256",
+"name": "Ivo Montrose",
+"nationality": "Argentina",
+"age": 46,
+"rating": 48.4,
+"consistency": 0.85,
+"initial_rank": 256,
+"kind": "generic"
+},
+{
+"id": "g257",
+"name": "Rafe Kovac",
+"nationality": "Canada",
+"age": 38,
+"rating": 47.0,
+"consistency": 0.67,
+"initial_rank": 257,
+"kind": "generic"
+},
+{
+"id": "g258",
+"name": "Wystan Ekstrom",
+"nationality": "Scotland",
+"age": 28,
+"rating": 45.7,
+"consistency": 0.64,
+"initial_rank": 258,
+"kind": "generic"
+},
+{
+"id": "g259",
+"name": "Ivo Kovac",
+"nationality": "Ireland",
+"age": 28,
+"rating": 45.0,
+"consistency": 0.76,
+"initial_rank": 259,
+"kind": "generic"
+},
+{
+"id": "g260",
+"name": "Silas Jorgensen",
+"nationality": "England",
+"age": 44,
+"rating": 46.3,
+"consistency": 0.4,
+"initial_rank": 260,
+"kind": "generic"
+}
+]
+}
