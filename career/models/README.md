@@ -61,3 +61,12 @@ Rivalries, sponsorships, cosmetics, achievements are reserved placeholders (late
 - `ledger [{id:"prize:<event_id>", kind, label, amount, event_id, season, balance_after}]` (ids are stable: nothing pays twice; economy totals move only when an entry is new).
 - `trophies [{id:"win:<event_id>"|"title:season_N", kind:event_win|flagship|major|tour_championship|season_title, name, season, event_id}]`, `records {wins, majors, starts, cuts_made, top10s, best_finish, best_world_rank, biggest_cheque, applied}`.
 - `head_to_head {applied:{event_id:true}, records:{golfer_id:{w,l,t,close,last_event}}}`, `rivalries [{id,name,meetings,wins,losses,ties,close}]` (best first; a rival needs `RIVAL_MIN_CLOSE` close finishes within `RIVAL_CLOSE_STROKES`; the Hub features the first `RIVAL_MAX_FEATURED`).
+
+
+## LBT / off-season / adaptive additions (no schema bump; defaults filled by `CareerMigration.ensure_defaults` on every load and at creation)
+Other features add their own defaults in that function (one block each) instead of bumping `schema_version`.
+- The tour is the **LBT** (Q-School dropped). The human golfer's `tour_card` flag is the card; `tour_status {wildcards_left, wildcards_used[event ids], history[{season,event_id?,text}]}`.
+  Season end outside `TOUR_CARD_RETENTION_RANK` (Standings rank, 0 = no points) = card lost, `WILDCARDS_PER_SEASON` sponsor wildcards to REGULAR events next season (`eligibility().via == "wildcard"`, tournament event `wildcard:true`).
+  Top `WILDCARD_CARD_PLACE` in a wildcard event, or a Standings rank inside the line, earns the card back (`result.card_message`).
+- `off_season {active, season, step: review|sponsors|shop|news|start, review{}, card{status,standings_rank,line,wildcards_next}, news{aged,retired[],entrants[]}, evolved, archived, prev_rank{}}` (OffSeason). Hooks: `CareerManager.off_season_hook_sponsors()` / `off_season_hook_shop()` -> `{available, lines[]}`.
+- `adaptive {mode: off|balanced|hard, offset, window[{event_id,score}], applied{event_id:true}}` (AdaptiveDifficulty). The offset is added to AI ratings only, frozen into `tournament.adaptive_offset` at entry.
