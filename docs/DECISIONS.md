@@ -185,3 +185,10 @@ The pit rim, wall and floor use the SAME bounce/roll model as the green (speed-d
 - Android Back on the home screen needs a second press within 2 s to exit.
 - Settings > Developer > "Reset footballer database" needs a second tap to confirm.
 - Export data has "Save diagnostic log" (recent engine log lines plus build info).
+
+## 2026-11-10: polish round 2 behaviour changes (no gameplay rules touched)
+- New Settings > Audio / Visual toggles: Sound effects (stub, muted by default), Reduced motion, Larger text (Settings pages), Pause when backgrounded (default on).
+- Haptics: penalty shots and eagle-or-better hole-outs vibrate with their own strength; ordinary shots and hole-outs unchanged.
+- Android backgrounding mid-aim opens the Pause menu (offline only).
+- Result screen of a finished round has "Copy round summary" (plain text to the clipboard).
+- Tutorial: removed "all three holes" wording, added a Trajectory and spin page.

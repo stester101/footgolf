@@ -119,6 +119,7 @@ func _ready() -> void:
 	_marker.visible = false
 	add_child(_marker)
 	rig = CameraRig.new()
+	rig.reduced_motion = App.settings.reduced_motion
 	add_child(rig)
 	if App.online.started:
 		var net := OnlineSession.new(PhysicsConfig.new(), App.repo)
@@ -683,6 +684,11 @@ func _aim_at_marker() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		handle_back()
+	elif what == NOTIFICATION_APPLICATION_PAUSED:
+		var dev_open := dev_panel != null and is_instance_valid(dev_panel)
+		if session != null and ui != null and Feedback.should_auto_pause(App.settings.auto_pause, session is OnlineSession,
+				session.state, ui.has_overlay(), dev_open):
+			ui.show_pause()  # a returning player never resumes straight into an aim
 	elif what == NOTIFICATION_PREDELETE or what == NOTIFICATION_EXIT_TREE:
 		DisplayServer.screen_set_keep_on(false)
 
@@ -758,6 +764,8 @@ func _exit_tree() -> void:
 ## Gentle hole-out effect at the cup: a soft expanding ring plus a small burst of sparks (a few more
 ## for an eagle or better). Cheap CPU particles, a couple of seconds, then everything frees itself.
 func _cup_celebrate(cup: Vector3, hs: HoleState) -> void:
+	if App.settings.reduced_motion:
+		return  # accessibility: no ring pulse or spark burst
 	var big := hs.complete and (hs.score() == 1 or hs.relative_to_par() <= -2)
 	var k := clampf(rig.cam.global_position.distance_to(cup) / 15.0, 1.0, 6.0) if rig.mode == CameraRig.Mode.BEHIND else clampf(rig.cam.size * 0.02, 1.0, 8.0)
 	var root := Node3D.new()

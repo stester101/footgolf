@@ -87,21 +87,33 @@ func connect_room(address: String, nickname: String, room_code: String = "") -> 
 func _disconnected() -> void:
 	if not active: return
 	paused = true
-	status = "Connection lost — reconnecting…"
+	status = reconnect_status(0)
 	if token.is_empty():
 		active = false
-		status = "Could not connect to relay."
+		status = "Could not reach the host or relay. Check you are on the same Wi-Fi and the room code is right."
 		error.emit(status)
 	else:
 		if _lost_at == 0: _lost_at = Time.get_ticks_msec()
 		_retry_at = Time.get_ticks_msec() + 2000
 	changed.emit()
 
+const RECONNECT_LIMIT_MS := 60000
+
+## Status line while the connection is down: counts the seconds left before the round is abandoned.
+static func reconnect_status(elapsed_ms: int) -> String:
+	var left := maxi(0, int(ceil((RECONNECT_LIMIT_MS - elapsed_ms) / 1000.0)))
+	return "Connection lost. Reconnecting automatically (%d s left)..." % left
+
 func _process(_delta: float) -> void:
+	if active and _lost_at > 0 and not token.is_empty():
+		var txt := reconnect_status(Time.get_ticks_msec() - _lost_at)
+		if txt != status and status.begins_with("Connection lost"):
+			status = txt
+			changed.emit()
 	if _retry_at > 0 and Time.get_ticks_msec() >= _retry_at:
 		_retry_at = 0
-		if Time.get_ticks_msec() - _lost_at > 60000:
-			_finish("Reconnection timed out. Round ended.")
+		if Time.get_ticks_msec() - _lost_at > RECONNECT_LIMIT_MS:
+			_finish("Could not reconnect within 60 seconds, so the round ended. Check your Wi-Fi or the host phone and start again.")
 			return
 		_hello = {"type": "resume", "code": code, "token": token,
 			"protocol": 1, "name": player_name, "fingerprint": fingerprint}

@@ -7,6 +7,8 @@ enum Mode { BEHIND, OVERHEAD }
 var cam := Camera3D.new()
 var mode: int = Mode.BEHIND
 var hole: HoleDefinition
+## Accessibility: follow the ball tightly instead of sweeping behind it.
+var reduced_motion := false
 var _pos := Vector3.ZERO
 var _look := Vector3.ZERO
 var _initialised := false
@@ -152,8 +154,8 @@ func update_rig(delta: float, ball: Vector3, aim: Vector3, moving: bool, rolling
 		_look = desired_look
 		_initialised = true
 	else:
-		var kp := 1.0 - exp(-(10.0 if rolling or not moving else 3.0) * delta)
-		var kl := 1.0 - exp(-(14.0 if rolling or not moving else 6.0) * delta)
+		var kp := 1.0 - exp(-(10.0 if rolling or not moving or reduced_motion else 3.0) * delta)
+		var kl := 1.0 - exp(-(14.0 if rolling or not moving or reduced_motion else 6.0) * delta)
 		_pos = _pos.lerp(desired_pos, kp)
 		_look = _look.lerp(desired_look, kl)
 	if (_look - _pos).length() > 0.01:
