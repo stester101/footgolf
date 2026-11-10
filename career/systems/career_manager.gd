@@ -591,12 +591,12 @@ func advance_off_season() -> bool:
 ## HOOK for the sponsors work: called by the off-season 'sponsors' step page. Return {available: bool, lines: Array[String]}.
 ## The stub reports nothing; the sponsors implementation replaces the body (keep the name and signature).
 func off_season_hook_sponsors() -> Dictionary:
-	return {"available": false, "lines": ["Sponsor contracts are not available yet."]}
+	return {"available": true, "kind": "sponsors", "lines": ["Review your sponsor and sign next season's contract.", "Offers depend on your world rank."]}
 
 
 ## HOOK for the shop work: called by the off-season 'shop' step page. Same contract as off_season_hook_sponsors().
 func off_season_hook_shop() -> Dictionary:
-	return {"available": false, "lines": ["The shop is not available yet."]}
+	return {"available": true, "kind": "shop", "lines": ["Spend your prize money on cosmetics. No gameplay effect."]}
 
 
 func set_adaptive_mode(m: String) -> bool:

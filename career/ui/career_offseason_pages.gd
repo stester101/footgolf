@@ -86,7 +86,11 @@ static func _review(menu: MainMenu, body: VBoxContainer, c: CareerManager, os: D
 static func _hook(menu: MainMenu, body: VBoxContainer, title: String, h: Dictionary) -> void:
 	body.add_child(CareerPages._card(title, (h.get("lines", []) as Array)))
 	if not bool(h.get("available", false)):
-		body.add_child(menu._note("Nothing to do here yet. Continue."))
+		body.add_child(menu._note("Nothing to do here. Continue."))
+	elif String(h.get("kind", "")) == "sponsors":
+		body.add_child(menu._secondary_button("Open sponsors", func() -> void: CareerSponsorPages.open_sponsor_review(menu), "career_os_sponsors"))
+	elif String(h.get("kind", "")) == "shop":
+		body.add_child(menu._secondary_button("Open shop", func() -> void: CareerShopPages.open_shop(menu), "career_os_shop"))
 
 
 static func _news(menu: MainMenu, body: VBoxContainer, os: Dictionary) -> void:
