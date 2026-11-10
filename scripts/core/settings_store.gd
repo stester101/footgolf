@@ -82,6 +82,14 @@ var graphics_quality := 1
 var graphics_glow := false
 var lie_effect_exact := false  # spin-ball lie read-out: false = range (-10 to -20%), true = this shot's exact value
 var auto_continue := true  # result card continues by itself after a few seconds (progress bar); tap to skip
+## Battery / performance: frame-rate cap in fps (0 = device default) and keeping the screen awake during a round.
+const FPS_CHOICES := [0, 30, 60]
+var max_fps := 0
+var keep_awake := true
+## Last Round Setup choices (mulligans: 0 off, 1, 3, 5, -1 unlimited; players 1..4), restored on the next launch.
+const MULLIGAN_CHOICES := [0, 1, 3, 5, -1]
+var last_mulligans := 0
+var last_players := 1
 var drag_trajectory := true  # trial: drag up/down on the aim view to change trajectory
 ## Favourite footballer ids (starred in the picker). Global for now; per-profile later.
 ## LEGACY: only read once to migrate into the first profile (PlayerProfileStore); no longer used in play.
@@ -108,8 +116,12 @@ func load_settings() -> void:
 	var f := FileAccess.open(save_path, FileAccess.READ)
 	if f == null:
 		return
-	var d = JSON.parse_string(f.get_as_text())
+	var j := JSON.new()
+	var d = j.data if j.parse(f.get_as_text()) == OK else null
+	f.close()
 	if typeof(d) != TYPE_DICTIONARY:
+		# Corrupt file: keep a copy for diagnosis and start from defaults instead of failing silently.
+		DirAccess.copy_absolute(ProjectSettings.globalize_path(save_path), ProjectSettings.globalize_path(save_path + ".bad"))
 		return
 	holeout_radius_ft = ScoringService.clamp_radius_ft(float(d.get("holeout_radius_ft", holeout_radius_ft)))
 	wind_custom = bool(d.get("wind_custom", false))
@@ -122,6 +134,10 @@ func load_settings() -> void:
 	graphics_glow = bool(d.get("graphics_glow", false))
 	lie_effect_exact = bool(d.get("lie_effect_exact", false))
 	drag_trajectory = bool(d.get("drag_trajectory", true))
+	max_fps = sanitize_fps(int(d.get("max_fps", 0)))
+	keep_awake = bool(d.get("keep_awake", true))
+	last_mulligans = sanitize_mulligans(int(d.get("last_mulligans", 0)))
+	last_players = clampi(int(d.get("last_players", 1)), 1, 4)
 	auto_continue = bool(d.get("auto_continue", true))
 	favourites = (d.get("favourites", []) as Array).duplicate() if typeof(d.get("favourites")) == TYPE_ARRAY else []
 	show_stats = bool(d.get("show_stats", true))
@@ -168,7 +184,8 @@ func load_settings() -> void:
 
 
 func save() -> void:
-	var f := FileAccess.open(save_path, FileAccess.WRITE)
+	var tmp := save_path + ".tmp"
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
 	if f == null:
 		return
 	f.store_string(JSON.stringify({
@@ -186,6 +203,10 @@ func save() -> void:
 		"graphics_glow": graphics_glow,
 		"lie_effect_exact": lie_effect_exact,
 		"drag_trajectory": drag_trajectory,
+		"max_fps": max_fps,
+		"keep_awake": keep_awake,
+		"last_mulligans": last_mulligans,
+		"last_players": last_players,
 		"auto_continue": auto_continue,
 		"favourites": favourites,
 		"round_defaults": round_defaults,
@@ -197,6 +218,23 @@ func save() -> void:
 		"physics": physics.to_dict(),
 		"scenario": scenario,
 	}, "  "))
+	f.close()
+	# Write-then-rename: a crash or power loss mid-save can never leave a half-written settings file.
+	if DirAccess.rename_absolute(ProjectSettings.globalize_path(tmp), ProjectSettings.globalize_path(save_path)) != OK:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(tmp))
+
+
+static func sanitize_mulligans(v: int) -> int:
+	return v if MULLIGAN_CHOICES.has(v) else 0
+
+
+static func sanitize_fps(v: int) -> int:
+	return v if FPS_CHOICES.has(v) else 0
+
+
+## Applies the frame-rate cap (0 = engine default, uncapped by us).
+func apply_runtime() -> void:
+	Engine.max_fps = sanitize_fps(max_fps)
 
 
 func reset_physics() -> void:

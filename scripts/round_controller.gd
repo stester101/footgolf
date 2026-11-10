@@ -158,7 +158,7 @@ func _ready() -> void:
 		ui.round_end_override = _show_season_page
 	# after ui.setup(): the summary card exists before preloading reports progress into it
 	session.hole_completed.connect(func(_hs: HoleState) -> void: _start_preload())
-	DisplayServer.screen_set_keep_on(true)
+	DisplayServer.screen_set_keep_on(App.settings.keep_awake)
 	var defs := career_run.hole_defs() if career_run != null else App.load_holes(course_id)
 	var seed_value := -1
 	if App.online.started:

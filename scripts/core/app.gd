@@ -20,6 +20,7 @@ func _ready() -> void:
 	add_child(online)
 	add_child(local_relay)
 	settings.load_settings()
+	settings.apply_runtime()
 	profiles.load_profiles(settings.favourites)  # first run: migrates the old global favourites
 	load_dataset()
 	if FileAccess.file_exists("res://build_info.json"):

@@ -21,6 +21,7 @@ const WORD_GREEN := Color("#3AB52B")
 ## Remembered while the app runs, so Round Setup reopens with the previous choice.
 static var _last_mulligans := 0
 static var _last_players := 1
+static var _restored := false
 ## Names for pass-and-play players (edited in Round Setup).
 static var player_names: Array = ["Player 1", "Player 2", "Player 3", "Player 4"]
 ## Local profile per player slot ("" = guest; guests use the first profile's favourites).
@@ -35,6 +36,10 @@ var _overlay: Control
 
 func setup() -> void:
 	theme = UiKit.make_theme()
+	if not _restored:  # once per launch: restore the previous Round Setup choices
+		_restored = true
+		_last_mulligans = App.settings.last_mulligans
+		_last_players = App.settings.last_players
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_build_backdrop()
 	_pages = Control.new()
@@ -123,6 +128,20 @@ func _present(root: Control) -> void:
 			_overlay = null
 			if not _stack.is_empty():
 				_stack.back().visible = true)
+
+
+## "Press back again to exit" hint, shown after the first Back on the home screen.
+func show_exit_hint() -> void:
+	var l := UiKit.label("Press back again to exit", 24, Color.WHITE)
+	l.add_theme_stylebox_override("normal", UiKit.skin("recess", 6, 18, 10))
+	l.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 140)
+	l.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(l)
+	var tw := l.create_tween()
+	tw.tween_interval(1.4)
+	tw.tween_property(l, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(l.queue_free)
 
 
 ## Android Back: close a tutorial or overlay first, then go up one page. False = at the main menu.
@@ -972,6 +991,9 @@ func _open_round_setup(course_id: String, season_courses: Array = []) -> void:
 	_difficulty_controls(body, rc, Callable())
 	body.add_child(_note("These values are fixed for the whole round. Settings > Gameplay holds the defaults that fill this page."))
 	(pg["footer"] as VBoxContainer).add_child(_primary_button("Start round", func() -> void:
+		App.settings.last_mulligans = _last_mulligans
+		App.settings.last_players = _last_players
+		App.settings.save()
 		play_requested.emit(course_id, false, _last_mulligans, _last_players, rc), "start_round"))
 	_push(pg["root"])
 
@@ -1211,7 +1233,16 @@ func _open_settings_visual() -> void:
 	body.add_child(_toggle("Drag up/down to change trajectory (trial)", st.drag_trajectory, func(on: bool) -> void:
 		st.drag_trajectory = on
 		st.save()))
-	body.add_child(_note("Audio: none yet (silent). Sound is planned."))
+	body.add_child(_note("Battery and performance"))
+	var fps_labels := ["Device default", "30 fps (saves battery)", "60 fps"]
+	body.add_child(_choice_row(fps_labels, maxi(SettingsStore.FPS_CHOICES.find(st.max_fps), 0), func(i: int) -> void:
+		st.max_fps = int(SettingsStore.FPS_CHOICES[i])
+		st.apply_runtime()
+		st.save(), "fps"))
+	body.add_child(_toggle("Keep screen awake during a round", st.keep_awake, func(on: bool) -> void:
+		st.keep_awake = on
+		st.save()))
+	body.add_child(_note("Frame-rate cap applies at once. For the lowest battery use, also switch High graphics off (applies from the next round). Audio: none yet (silent)."))
 	_push(pg["root"])
 
 
@@ -1230,7 +1261,16 @@ func _open_settings_developer() -> void:
 		App.load_dataset()
 		ds_label.text = App.dataset_label()))
 	body.add_child(ds_label)
-	body.add_child(_nav_row("flag", "Reset footballer database", "Back to the bundled seed", func() -> void: App.repo.reset_to_seed()))
+	var reset_row := _nav_row("flag", "Reset footballer database", "Back to the bundled seed (tap twice to confirm)", func() -> void: pass)
+	reset_row.pressed.connect(func() -> void:
+		if not reset_row.has_meta("armed"):
+			reset_row.set_meta("armed", true)  # destructive: needs a second tap
+			reset_row.modulate = Color(1.0, 0.7, 0.7)
+			return
+		reset_row.remove_meta("armed")
+		reset_row.modulate = Color.WHITE
+		App.repo.reset_to_seed())
+	body.add_child(reset_row)
 	body.add_child(_nav_row("list", "Export data", "Copy a summary or save CSV / JSON files", _show_export))
 	body.add_child(_note("Foot Golf  ·  %s" % App.build_label()))
 	_push(pg["root"])
@@ -1307,13 +1347,14 @@ func _open_stats_overview() -> void:
 	HistoryPages.open_overview(self)
 
 
-func _open_placeholder(title: String, text: String) -> void:
+## heading: "Coming later" for planned features; callers showing a notice or error pass their own.
+func _open_placeholder(title: String, text: String, heading: String = "Coming later") -> void:
 	var pg := _page(title)
 	var body: VBoxContainer = pg["body"]
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", UiKit.skin("recess", 6, 20, 16))
 	var v := UiKit.vbox(6)
-	var t := UiKit.label("Coming later", 26, Color.WHITE)
+	var t := UiKit.label(heading, 26, Color.WHITE)
 	t.add_theme_font_override("font", UiKit.font_semi())
 	v.add_child(t)
 	v.add_child(_note(text))
@@ -1424,6 +1465,20 @@ func _show_export() -> void:
 		var txt := TelemetryLog.summary_text(tl.load_records())
 		DisplayServer.clipboard_set(txt)
 		status.text = "Summary copied to the clipboard (%d lines)." % txt.count("\n"), 70, 22))
+	v.add_child(UiKit.button("Save diagnostic log (to share)", func() -> void:
+		var header := "Foot Golf diagnostics\n%s\nOS: %s %s\nDevice: %s\nTime: %s" % [App.build_label(), OS.get_name(), OS.get_version(),
+			OS.get_model_name(), Time.get_datetime_string_from_system()]
+		var text := LogExport.read_log()
+		var res := {"ok": false, "error": "no writable folder"}
+		for d in TelemetryLog.export_dir_candidates():
+			res = LogExport.export_to(String(d), header, text)
+			if bool(res["ok"]):
+				break
+		if bool(res["ok"]):
+			DisplayServer.clipboard_set(LogExport.build_report(header, text, 60))
+			status.text = "Log saved to:\n%s\nThe last 60 lines are also copied to the clipboard." % res["path"]
+		else:
+			status.text = "Could not save the log (%s)." % res["error"], 70, 22))
 	v.add_child(UiKit.button("Save files", func() -> void:
 		var res := tl.export_files()
 		if bool(res["ok"]):

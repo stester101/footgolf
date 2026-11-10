@@ -11,6 +11,7 @@ var _season: Season
 var _keep_season := false
 ## Career round in progress / page to reopen when returning to the menu ("" = ordinary menu).
 var _career_return := ""
+var _last_back_ms := -100000
 
 
 func _ready() -> void:
@@ -21,7 +22,7 @@ func _ready() -> void:
 	App.online.event.connect(_on_online_event)
 	App.online.ended.connect(func(reason: String) -> void:
 		show_menu()
-		_menu._open_placeholder("Online round ended", reason))
+		_menu._open_placeholder("Online round ended", reason, "Notice"))
 	show_menu()
 	if OS.get_cmdline_user_args().has("--smoke-test") or OS.get_cmdline_user_args().has("--smoke-career"):
 		var d := SmokeDriver.new()
@@ -98,7 +99,7 @@ func _start_career_round() -> void:
 		return
 	var run := CareerRoundRun.new(career)
 	if run.hole_defs().is_empty():
-		_menu._open_placeholder("Career course unavailable", "This tournament's saved course could not be rebuilt. Your career data is untouched; nothing was replaced with newer course data.")
+		_menu._open_placeholder("Career course unavailable", "This tournament's saved course could not be rebuilt. Your career data is untouched; nothing was replaced with newer course data.", "Notice")
 		return
 	_career_return = "hub"
 	run.finished.connect(func() -> void:
@@ -142,4 +143,13 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST and _round == null:
 		if _menu != null and _menu.has_method("handle_back") and _menu.handle_back():
 			return
-		get_tree().quit()
+		# Home screen: the first Back asks for confirmation, a second one within 2 s exits (avoids accidental exits).
+		var now := Time.get_ticks_msec()
+		if now - _last_back_ms <= 2000:
+			get_tree().quit()
+		else:
+			_last_back_ms = now
+			if _menu != null and _menu.has_method("show_exit_hint"):
+				_menu.show_exit_hint()
+	elif what == NOTIFICATION_APPLICATION_PAUSED:
+		App.settings.save()  # the OS may kill a backgrounded app

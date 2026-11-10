@@ -112,11 +112,18 @@ func save() -> bool:
 	var list: Array = []
 	for fb in all_sorted():
 		list.append(fb.to_dict())
-	var f := FileAccess.open(save_path, FileAccess.WRITE)
+	var tmp := save_path + ".tmp"
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
 	if f == null:
 		last_error = "cannot write %s" % save_path
 		return false
 	f.store_string(JSON.stringify({"version": 1, "dataset": dataset_id, "footballers": list}))
+	f.close()
+	# Write-then-rename keeps the previous file intact if the app dies mid-save.
+	if DirAccess.rename_absolute(ProjectSettings.globalize_path(tmp), ProjectSettings.globalize_path(save_path)) != OK:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(tmp))
+		last_error = "cannot replace %s" % save_path
+		return false
 	return true
 
 
