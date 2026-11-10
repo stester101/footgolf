@@ -169,3 +169,7 @@ The pit rim, wall and floor use the SAME bounce/roll model as the green (speed-d
 - **TV (Q-M3):** the Chromebook browser draws its own broadcast view from the host's authoritative, redacted state (no video streaming, no web build of the game in V1).
 - **TV (Q-M4):** clean broadcast style for V1: leaderboard, player bar (name, colour, footballer name), distance to pin, ball tracer, hole graphics, lead-change banner; no replays, no sound.
 - **Workflow (owner, 9 Nov):** commits and pushes are allowed freely; **APK builds only when the owner says**.
+
+## 2026-11-10: Career footballer-per-season and Q-School (OWNER-CONFIRMED)
+- Career footballer rule: a footballer can be used once per SEASON (option, default on). The pool resets at the start of each season. A mulliganed shot still counts as used.
+- Q-School: if the player fails it, they try again the next season. The same once-per-season footballer rule applies in Q-School (Q-School rounds draw from the same season pool; reading: Q-School is part of the upcoming season's pool; owner to correct if Q-School should have its own pool).
