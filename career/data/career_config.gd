@@ -73,6 +73,50 @@ const PURSE := {"regular": 400000, "flagship": 900000, "major": 2000000, "finale
 const PAYOUT_DECAY := 0.88              # share(place) proportional to decay^(place-1) among players who made the cut
 const MAX_SAVED_ACTIVE_SHOTS_INFO := 0
 
+# --- opponent world / simulation additions (PROPOSED DEFAULT - OWNER APPROVAL REQUIRED; all [INVENTED])
+const FIELD_STRENGTH_SCORE_EFFECT := 0.10   # per-hole score offset = effect * (field strength - REFERENCE) / REFERENCE
+const MIN_STROKES_PER_HOLE := 1.0           # a simulated round never scores fewer than 1 stroke per hole
+const MAX_OVER_PAR_PER_HOLE := 3.0          # ... nor more than par + 3 per hole
+const CUT_PLAYER_PERFORMANCE := -0.6        # form performance signal for a golfer who misses the cut
+const PLAYOFF_MAX_HOLES := 12               # sudden-death holes before a seeded draw settles it
+const PLAYOFF_HOLE_PAR := 4
+# exemptions (flagship/major entry besides the world-rank threshold)
+const EXEMPT_MAJOR_WIN_SEASONS := 5         # major champion: exempt for flagships and majors this many seasons (incl. current)
+const EXEMPT_WIN_SEASONS := 2               # flagship/regular winner: exempt for flagships (flagship winner also majors), this + last season
+const EXEMPT_PREV_STANDINGS_TOP := 30       # last season's top N in Season Standings
+const EXEMPT_CURRENT_STANDINGS_TOP := 10    # current season's top N in Season Standings (once the season has results)
+const FIELD_FORM_RANK_BONUS := 15.0         # field priority = world rank - bonus * form (form in [-1, 1])
+# injuries (rolled per start, after each event)
+const INJURY_CHANCE_PER_START := 0.008
+const INJURY_MIN_EVENTS := 1
+const INJURY_MAX_EVENTS := 6
+# ageing at season boundaries
+const AGE_GROWTH_MAX := 25                  # up to this age ratings tend to rise
+const AGE_DECLINE_FROM := 34                # from this age ratings tend to fall
+const RATING_GROWTH_MEAN := 1.2
+const RATING_DECLINE_MEAN := 0.9
+const RATING_DECLINE_PER_YEAR_OVER := 0.12  # extra mean decline per year beyond AGE_DECLINE_FROM
+const RATING_SEASON_NOISE := 0.8
+const CONSISTENCY_MIN := 0.3
+const CONSISTENCY_MAX := 0.95
+const FORM_SEASON_REGRESSION := 0.5         # form is multiplied by this at a new season
+# retirement: p = BASE + PER_YEAR * (age - FROM), x LOW_RATING_FACTOR if rating < LOW_RATING; forced at MAX_AGE
+const RETIRE_FROM_AGE := 38
+const RETIRE_BASE := 0.04
+const RETIRE_PER_YEAR := 0.07
+const RETIRE_LOW_RATING := 55.0
+const RETIRE_LOW_RATING_FACTOR := 1.5
+const RETIRE_MAX_AGE := 52
+# new entrants (fictional, kind = "generated")
+const WORLD_ACTIVE_TARGET := 260            # entrants top the active population back up to this
+const MAX_ENTRANTS_PER_SEASON := 40
+const ENTRANT_AGE_MIN := 18
+const ENTRANT_AGE_MAX := 24
+const ENTRANT_RATING_MEAN := 54.0
+const ENTRANT_RATING_SD := 6.0
+const ENTRANT_RATING_MIN := 42.0
+const ENTRANT_RATING_MAX := 70.0
+
 # --- save [A: Save/resume]
 const KEEP_BACKUPS := 1
 
