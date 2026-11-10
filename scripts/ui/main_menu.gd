@@ -143,6 +143,12 @@ func show_exit_hint() -> void:
 	tw.tween_property(l, "modulate:a", 0.0, 0.5)
 	tw.tween_callback(l.queue_free)
 
+## Escape behaves like Android Back on every page (Career pages included) while the menu is showing.
+func _unhandled_key_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE and is_visible_in_tree():
+		if handle_back():
+			get_viewport().set_input_as_handled()
+
 
 ## Android Back: close a tutorial or overlay first, then go up one page. False = at the main menu.
 func handle_back() -> bool:
@@ -150,6 +156,8 @@ func handle_back() -> bool:
 		_tutorial.finished.emit()
 		return true
 	if _overlay != null and is_instance_valid(_overlay):
+		if bool(_overlay.get_meta("save_error", false)):
+			return true  # fail-closed: the Career Save Error overlay only closes through Retry Save
 		_overlay.queue_free()
 		return true
 	if _stack.size() > 1:

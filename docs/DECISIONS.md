@@ -185,3 +185,11 @@ The pit rim, wall and floor use the SAME bounce/roll model as the green (speed-d
 - Android Back on the home screen needs a second press within 2 s to exit.
 - Settings > Developer > "Reset footballer database" needs a second tap to confirm.
 - Export data has "Save diagnostic log" (recent engine log lines plus build info).
+
+## 2026-11-10: Career LBT, tour card, off-season, adaptive difficulty (OWNER-CONFIRMED decisions; every NUMBER is a PROPOSED DEFAULT - OWNER APPROVAL REQUIRED in `CareerConfig`)
+- Q-School is dropped. The tour is named "LBT" in all user-facing text. A new career starts on the LBT with a tour card and a world rank of about 180.
+- Tour card retention: a Season Standings finish outside `TOUR_CARD_RETENTION_RANK` (125) loses the card for the next season, and the player receives `WILDCARDS_PER_SEASON` (4) sponsor wildcard entries to regular events (renewed every season while the card is missing). A top-`WILDCARD_CARD_PLACE` (10) finish in a wildcard event, or a Standings rank inside the line, earns the card back. No dead end, no career-ending. Shown on the Hub (LBT status) and in the off-season review.
+- Pace: the real calendar stays. Any event can be skipped (event screen "Skip event", Hub "Skip to next event"); the world simulates it and rankings, ledger and footballer lock stay consistent.
+- Off-season: after the final event a guided, resumable phase stored in the save: season review, sponsor hook (`off_season_hook_sponsors`), shop hook (`off_season_hook_shop`), ageing / retirement / new-entrant news (WorldEvolution, applied once), then "Start next season". The footballer-per-season lock survives it and resets only when the new season starts.
+- Adaptive difficulty (OPPONENTS ONLY; never the player's physics, footballer stats or shots): the last 5 played events' finish percentile vs the world-rank-expected percentile moves a rating offset on the AI field by +-3 per event, capped at +-8. Shown as "Rivals form: hot / steady / cooling". Career setting Off / Balanced / Hard-lock (Hard-lock = constant +5). Deterministic (no RNG), applied once per event id, frozen into the tournament at entry.
+- Save: new fields are filled by `CareerMigration.ensure_defaults` on load (no schema bump). Android Back / Escape go back one page; the Save Error overlay only closes through Retry Save.

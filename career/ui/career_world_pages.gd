@@ -153,15 +153,15 @@ static func open_standings(menu: MainMenu) -> void:
 			me = r
 	var started := not (c.standings()["applied"] as Dictionary).is_empty()
 	var lines: Array = [
-		{"after_rank": CareerConfig.FINALE_QUALIFIERS, "text": "finale line: top %d qualify for the Tour Championship" % CareerConfig.FINALE_QUALIFIERS},
-		{"after_rank": CareerConfig.TOUR_CARD_RETENTION_RANK, "text": "tour card line: top %d keep their card" % CareerConfig.TOUR_CARD_RETENTION_RANK},
+		{"after_rank": CareerConfig.FINALE_QUALIFIERS, "text": "finale line: top %d qualify for the LBT Championship" % CareerConfig.FINALE_QUALIFIERS},
+		{"after_rank": CareerConfig.TOUR_CARD_RETENTION_RANK, "text": "LBT card line: top %d keep their card" % CareerConfig.TOUR_CARD_RETENTION_RANK},
 	]
 	var status := "Not ranked until the season has results." if not started else \
 		("You are %s: %s the finale line." % [_ord(int(me.get("rank", 0))), "inside" if int(me.get("rank", 0)) <= CareerConfig.FINALE_QUALIFIERS else "outside"])
 	var head := CareerPages._card("SEASON STANDINGS", [
 		"Season %d  ·  %d points  ·  %d wins  ·  %d starts" % [c.season_number(), int(round(float(me.get("points", 0.0)))), int(me.get("wins", 0)), int(me.get("starts", 0))],
 		status,
-		"The Tour Championship does not add season points. Tour card retention is a later phase."])
+		"The LBT Championship does not add season points. Finish inside the card line to keep your LBT card."])
 	_ranking_page(menu, "Season Standings", head, rows,
 		func(r: Dictionary) -> String: return str(int(round(float(r["points"])))),
 		func(r: Dictionary) -> String: return ("%dW" % int(r["wins"])) if int(r["wins"]) > 0 else "",
@@ -264,8 +264,8 @@ static func open_trophies(menu: MainMenu) -> void:
 		("Best world ranking: %d" % int(rec["best_world_rank"])) if int(rec["best_world_rank"]) > 0 else "Best world ranking: none yet",
 		("Biggest cheque: %s (%s)" % [CareerPages.money(int(cheque["amount"])), cheque["event"]]) if not cheque.is_empty() else "Biggest cheque: none yet",
 		"Career earnings: %s" % CareerPages.money(int((c.data["economy"] as Dictionary)["career_earnings"]))]))
-	var groups := [["major", "MAJOR CHAMPIONSHIPS"], ["tour_championship", "TOUR CHAMPIONSHIPS"], ["season_title", "SEASON TITLES"],
-		["flagship", "FLAGSHIP WINS"], ["event_win", "TOUR EVENT WINS"]]
+	var groups := [["major", "MAJOR CHAMPIONSHIPS"], ["tour_championship", "LBT CHAMPIONSHIPS"], ["season_title", "SEASON TITLES"],
+		["flagship", "FLAGSHIP WINS"], ["event_win", "LBT EVENT WINS"]]
 	var any := false
 	for g in groups:
 		var list := CareerRecords.trophies_of(c.data, String(g[0]))
@@ -277,7 +277,7 @@ static func open_trophies(menu: MainMenu) -> void:
 			lines.append("%s  (season %d)" % [t["name"], int(t["season"])])
 		body.add_child(CareerPages._card("%s  ·  %d" % [g[1], list.size()], lines))
 	if not any:
-		body.add_child(menu._note("The cabinet is empty. Win a tournament, a major or the Tour Championship, or finish a season top of the Season Standings, to fill it."))
+		body.add_child(menu._note("The cabinet is empty. Win a tournament, a major or the LBT Championship, or finish a season top of the Season Standings, to fill it."))
 	menu._push(pg["root"])
 
 
