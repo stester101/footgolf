@@ -7,9 +7,10 @@ extends RefCounted
 ## The opponent world is the real simulation (career/simulation/*): fields come from QualificationManager, scores
 ## from OpponentSimulation, World Ranking / Season Standings from RankingManager, form / injuries / ageing from
 ## WorldEvolution. Extras (ledger, trophies, rivals) live in CareerRecords.
-## TODO (later phases, documented only, NOT approved by the owner): sponsors / shop / wider economy, the proper
-## off-season sequence, Q-School and tour-card retention (uses the same season footballer pool: season_id key),
-## adaptive difficulty, an interactive sudden-death playoff (ties for first are settled by a seeded simulated
+## The tour is the "LBT" (Q-School is dropped): tour card + sponsor wildcards + the resumable off-season live in
+## OffSeason; opponent-only adaptive difficulty in AdaptiveDifficulty (see docs/DECISIONS.md).
+## TODO (later phases, documented only, NOT approved by the owner): sponsors / shop / wider economy (hooks:
+## off_season_hook_sponsors / off_season_hook_shop), an interactive sudden-death playoff (ties for first are settled by a seeded simulated
 ## playoff in which the human plays as an average member of the tied group; see docs/DECISIONS.md).
 
 const ROSTER_PATH := "res://career/data/golfer_roster.json"
@@ -57,7 +58,7 @@ static func new_data(p_name: String, nationality: String, length: String, p_seed
 	var golfers := load_roster()
 	golfers.append(CareerMigration.new_human({"name": p_name.strip_edges(), "nationality": nationality}))
 	var world := RankingManager.init_world(golfers, 1)
-	return {
+	return CareerMigration.ensure_defaults({
 		"schema_version": CareerConfig.SCHEMA_VERSION, "career_id": career_id,
 		"player": {"name": p_name.strip_edges(), "nationality": nationality},
 		"options": {"footballer_once_per_season": true},
@@ -76,7 +77,7 @@ static func new_data(p_name: String, nationality: String, length: String, p_seed
 		"simulation_state": {"seed": p_seed},
 		"season_footballers": {"season_1": []},
 		"save_metadata": {"created_at": int(Time.get_unix_time_from_system())},
-	}
+	})
 
 
 ## Starts a brand new career (replaces `data`; the caller warns about overwriting first).
@@ -221,7 +222,7 @@ func _prev_standings() -> Dictionary:
 func eligibility(event: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	if ctx.is_empty():
 		ctx = qual_ctx()
-	return QualificationManager.check(human(), sim_event(event), ctx)
+	return OffSeason.apply_wildcard(self, event, QualificationManager.check(human(), sim_event(event), ctx), ctx)
 
 
 ## The first event not yet played or skipped (the only one that can be entered), or {}.
@@ -287,18 +288,30 @@ func enter_event(serial: int) -> bool:
 		return false
 	var ctx := qual_ctx()
 	var se := sim_event(e)
-	var chk := QualificationManager.check(human(), se, ctx)
+	var chk := eligibility(e, ctx)
 	if not bool(chk["eligible"]):
 		return false
 	var snap := CourseSnapshot.capture(load_course(String(e["course_id"])))
 	if snap.is_empty():
 		return false
+	var wildcard := String(chk.get("via", "")) == "wildcard"
+	var card_before := OffSeason.has_card(self)
+	if wildcard:
+		human()["tour_card"] = true  # only for building the field below; restored right after
 	var bf := QualificationManager.build_field(se, data["golfers"], ctx)
+	human()["tour_card"] = card_before
 	var ids: Array = (bf["ids"] as Array).filter(func(id) -> bool: return String(id) != PLAYER)
-	se["field_strength"] = OpponentSimulation.field_strength(bf["field"])
+	# adaptive difficulty: the opponents' rating offset is frozen for this event when it is entered
+	var offset := AdaptiveDifficulty.current_offset(data)
+	var shifted_field: Array = (bf["field"] as Array).map(func(g: Dictionary) -> Dictionary: return AdaptiveDifficulty.shifted({"x": g}, offset)["x"])
+	se["field_strength"] = OpponentSimulation.field_strength(shifted_field)
 	var t := TournamentManager.create(se, snap, ids, event_seed(e))
 	t["event"]["eligibility_frozen"] = chk
 	t["invited"] = bf["invited"]
+	t["adaptive_offset"] = offset
+	if wildcard:
+		t["event"]["wildcard"] = true
+		OffSeason.consume_wildcard(self, String(e["id"]))
 	e["status"] = "in_progress"
 	data["active_tournament"] = t
 	return store.commit(data)
@@ -331,16 +344,21 @@ func complete_round(strokes: int, par: int, holes: int) -> String:
 	var t := tournament()
 	if t.is_empty() or String(t["status"]) != "in_round":
 		return ""
-	var st := TournamentManager.record_human_round(t, golfers_by_id(), strokes, par, holes, sim)
+	var st := TournamentManager.record_human_round(t, tournament_golfers(), strokes, par, holes, sim)
 	store.commit(data)
 	return st
+
+
+## golfer id -> golfer for the active tournament: AI ratings carry the adaptive offset frozen at entry.
+func tournament_golfers() -> Dictionary:
+	return AdaptiveDifficulty.shifted(golfers_by_id(), float(tournament().get("adaptive_offset", 0.0)))
 
 
 func leaderboard() -> Array:
 	var t := tournament()
 	if t.is_empty():
 		return []
-	return TournamentManager.leaderboard(t, golfers_by_id(), player_name(), String((data["player"] as Dictionary)["nationality"]))
+	return TournamentManager.leaderboard(t, tournament_golfers(), player_name(), String((data["player"] as Dictionary)["nationality"]))
 
 
 ## Idempotent: settles the event (official result, prize money into the ledger, Season Standings + World Ranking,
@@ -353,7 +371,13 @@ func finalize_tournament() -> Dictionary:
 	var ev: Dictionary = event_by_serial(int(t["event"]["serial"]))
 	if not bool(t.get("finalized", false)):
 		var res := _official_result(t)
+		var expected := _expected_percentile(t)
 		var result := _settle(ev, res, true)
+		if bool(result["human_played"]):
+			AdaptiveDifficulty.record(data, String(ev["id"]), AdaptiveDifficulty.score_of(expected, int(result["human_place"]), int(result["field"])))
+			var msg := OffSeason.review_card_after_event(self, ev, result, bool(t["event"].get("wildcard", false)))
+			if msg != "":
+				result["card_message"] = msg
 		t["finalized"] = true
 		ev["result"] = result
 		ev["status"] = "complete"
@@ -367,12 +391,21 @@ func finalize_tournament() -> Dictionary:
 	return res_out
 
 
+## Finish percentile expected from the player's world rank (before the event settles) against the opponents entered.
+func _expected_percentile(t: Dictionary) -> float:
+	var rm := RankingManager.rank_map(world_table())
+	var ranks: Array = []
+	for id in t["field"]:
+		ranks.append(int(rm.get(String(id), 9999)))
+	return AdaptiveDifficulty.expected_percentile(int(rm.get(PLAYER, 9999)), ranks)
+
+
 ## The official event result for a finished tournament: the same OpponentSimulation scores the leaderboard showed,
 ## with the cut, positions, payouts and points. A tie for first that includes the player is settled by a seeded
 ## sudden-death playoff (the player counts as an average member of the tied group).
 func _official_result(t: Dictionary) -> Dictionary:
 	var ev: Dictionary = t["event"]
-	var by := golfers_by_id()
+	var by := tournament_golfers()
 	var field: Array = []
 	for id in t["field"]:
 		field.append(by[String(id)])
@@ -521,44 +554,56 @@ func skip_event(serial: int) -> bool:
 	return store.commit(data)
 
 
-## Starts the next season: archives the finished standings, ages / retires golfers and adds entrants
-## (WorldEvolution.advance_season), prunes the World Ranking window, new calendar and standings, a fresh season
-## footballer pool (new season id). (The proper off-season sequence is a later phase.)
+## Starts the next season via the off-season state (begun implicitly when it was not): archives the finished
+## standings, applies the tour card review, ages / retires golfers and adds entrants (once), new calendar and
+## standings, a fresh season footballer pool (new season id), sponsor wildcards if the card was lost.
 func start_next_season() -> bool:
 	if not season_finished() or has_active_tournament():
 		return false
-	var s: Dictionary = data["season"]
-	var old_n := int(s["number"])
-	# archive the season that just ended
-	var st := standings_table()
-	var champion: Dictionary = st[0] if not st.is_empty() else {}
-	var me := {}
-	for r in st:
-		if bool(r["is_human"]):
-			me = r
-	var finale := {}
-	for e in data["calendar"]:
-		if String(e["category"]) == "finale" and String(e["status"]) in ["complete", "skipped"]:
-			finale = e["result"]
-	(data["season_history"] as Array).append({"season": old_n, "standings_champion": String(champion.get("name", "")),
-		"standings_champion_id": String(champion.get("id", "")), "human_rank": int(me.get("rank", 0)), "human_points": float(me.get("points", 0.0)),
-		"tour_champion": String(finale.get("winner_name", "")), "earnings": int((data["economy"] as Dictionary)["season_earnings"])})
-	if not me.is_empty() and int(me["rank"]) == 1 and float(me["points"]) > 0.0:
-		CareerRecords.trophy_add(data, "title:season_%d" % old_n, "season_title", "Season %d Standings champion" % old_n, old_n, "")
-	var prev := {}
-	for r in st:
-		if int(r["rank"]) <= CareerConfig.PREV_STANDINGS_KEEP:
-			prev[String(r["id"])] = int(r["rank"])
-	data["prev_standings_rank"] = prev
-	var n := old_n + 1
-	s["number"] = n
-	s["id"] = "season_%d" % n
-	WorldEvolution.advance_season(data["golfers"], n, career_seed(), world())
-	RankingManager.prune_world(world(), n)
-	data["calendar"] = CalendarManager.build(String(s["length"]), n)
-	data["season_standings"] = RankingManager.new_season_standings(n)
-	(data["economy"] as Dictionary)["season_earnings"] = 0
-	(data["season_footballers"] as Dictionary)[String(s["id"])] = []
-	CareerRecords.refresh_rivalries(data)
-	(data["world_rankings"] as Dictionary)["player_rank"] = world_rank()
+	if not OffSeason.begin(self):
+		return false
+	OffSeason.finish(self)
 	return store.commit(data)
+
+
+# ------------------------------------------------------------------ off-season (resumable; state in data.off_season)
+
+func off_season_active() -> bool:
+	return OffSeason.is_active(self)
+
+
+## Begins (or resumes) the off-season. False if the season is not finished. Commits; a failed save keeps the state in memory.
+func begin_off_season() -> bool:
+	if not OffSeason.begin(self):
+		return false
+	return store.commit(data)
+
+
+## Next off-season step (review -> sponsors -> shop -> news -> start).
+func advance_off_season() -> bool:
+	if not OffSeason.advance(self):
+		return false
+	return store.commit(data)
+
+
+## HOOK for the sponsors work: called by the off-season 'sponsors' step page. Return {available: bool, lines: Array[String]}.
+## The stub reports nothing; the sponsors implementation replaces the body (keep the name and signature).
+func off_season_hook_sponsors() -> Dictionary:
+	return {"available": false, "lines": ["Sponsor contracts are not available yet."]}
+
+
+## HOOK for the shop work: called by the off-season 'shop' step page. Same contract as off_season_hook_sponsors().
+func off_season_hook_shop() -> Dictionary:
+	return {"available": false, "lines": ["The shop is not available yet."]}
+
+
+func set_adaptive_mode(m: String) -> bool:
+	if not AdaptiveDifficulty.set_mode(data, m):
+		return false
+	return store.commit(data)
+
+
+## Skip whatever event is next (the Hub's 'Skip to next event').
+func skip_next_event() -> bool:
+	var e := next_event()
+	return not e.is_empty() and skip_event(int(e["serial"]))

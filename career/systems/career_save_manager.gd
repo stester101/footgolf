@@ -97,7 +97,7 @@ static func migrate(data: Dictionary, from_version: int) -> Dictionary:
 		d = CareerMigration.v1_to_v2(d)
 		v = 2
 	d["schema_version"] = CareerConfig.SCHEMA_VERSION
-	return d
+	return CareerMigration.ensure_defaults(d)
 
 
 ## "" when the data has the fields the rest of the code relies on.

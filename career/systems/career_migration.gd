@@ -89,3 +89,26 @@ static func new_human(player: Dictionary) -> Dictionary:
 	return {"id": CareerRecords.PLAYER, "name": String(player.get("name", "Player")), "nationality": String(player.get("nationality", "")),
 		"is_human": true, "age": 22, "form": 0.0, "injured_until": 0, "status": "active", "initial_rank": CareerConfig.START_WORLD_RANK,
 		"tour_card": true, "honours": [], "kind": "human"}
+
+
+## Fills every field that later features added WITHOUT bumping the schema version. Idempotent; runs on every load
+## (CareerSaveManager.migrate) and when a career is created. Other features add their defaults here, one block each.
+static func ensure_defaults(d: Dictionary) -> Dictionary:
+	_fill(d, "adaptive", AdaptiveDifficulty.default_state())
+	_fill(d, "tour_status", OffSeason.default_tour_status())
+	_fill(d, "off_season", OffSeason.default_state())
+	for g in d.get("golfers", []):
+		if bool(g.get("is_human", false)) and not g.has("tour_card"):
+			g["tour_card"] = true
+	return d
+
+
+## Sets `d[key]` to `default` when missing or of the wrong type, and adds missing top-level keys of a Dictionary default.
+static func _fill(d: Dictionary, key: String, default: Variant) -> void:
+	if not d.has(key) or typeof(d[key]) != typeof(default):
+		d[key] = default.duplicate(true) if (default is Dictionary or default is Array) else default
+		return
+	if default is Dictionary:
+		for k in default:
+			if not (d[key] as Dictionary).has(k):
+				d[key][k] = default[k].duplicate(true) if (default[k] is Dictionary or default[k] is Array) else default[k]
