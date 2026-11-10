@@ -72,6 +72,9 @@ var _hole_banner: Label
 var _skippable: Array = []  # reveal nodes to show at once when the player taps the card
 var _result_box: VBoxContainer
 var _reveal: Tween
+var _last_pin_key := -1
+var _last_pin_txt := ""
+var _last_wind_mph := -1
 var _result_distance_labels: Array[Dictionary] = []
 var _result_base_label: Label
 var _result_base_m := 0.0
@@ -524,7 +527,7 @@ func _build_shot_controls() -> VBoxContainer:
 	hdr.add_child(_turn_label)
 	# chosen footballer (tap to change); hidden until one is picked
 	_change_btn = Button.new()
-	_change_btn.custom_minimum_size = Vector2(220, 40)
+	_change_btn.custom_minimum_size = Vector2(220, 48)
 	_change_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	_change_btn.focus_mode = Control.FOCUS_ALL
 	_change_btn.set_meta("ui_id", "change_footballer")
@@ -780,13 +783,20 @@ func _process(delta: float) -> void:
 	if session == null or session.hole == null:
 		return
 	var pin_m := Units.horizontal_distance(session.ball_render_pos(), session.hole.cup_position())
-	var pin_txt := Units.fmt_len(pin_m)
 	markers.pin_world = session.hole.cup_position() + Vector3(0, 1.2, 0)
-	markers.pin_text = pin_txt
-	_pin_value.text = pin_txt
+	# Text is rebuilt only when the rounded distance changes (this runs every frame).
+	var pin_key := int(round(pin_m * 20.0)) * 2 + (1 if Units.show_feet else 0)
+	if pin_key != _last_pin_key:
+		_last_pin_key = pin_key
+		_last_pin_txt = Units.fmt_len(pin_m)
+		markers.pin_text = _last_pin_txt
+		_pin_value.text = _last_pin_txt
 	var wb := deg_to_rad(session.wind_bearing())
 	_wind_icon.set_rotation_rad(camera_yaw - wb)  # arrow shows where the wind blows TOWARD, as seen from the camera
-	_wind_label.text = "%d mph" % int(round(session.wind_speed() * Units.MPS_TO_MPH))
+	var wind_mph := int(round(session.wind_speed() * Units.MPS_TO_MPH))
+	if wind_mph != _last_wind_mph:
+		_last_wind_mph = wind_mph
+		_wind_label.text = "%d mph" % wind_mph
 
 
 func refresh() -> void:
@@ -1224,8 +1234,11 @@ func _stat_cell(caption: String, value: String) -> VBoxContainer:
 
 ## Shot summary card with an animated stat reveal (only shown after the ball has stopped).
 func _on_shot_resolved(r: ShotResult) -> void:
-	if App.settings.vibration:
-		Input.vibrate_handheld(90 if r.holed else 35)
+	var hs_now := session.current_hole_state()
+	var rel := hs_now.relative_to_par() if hs_now != null and hs_now.complete else 0
+	var cue := Feedback.haptic_for_result(r.holed, r.penalty, rel)
+	Feedback.haptic(cue, App.settings.vibration)
+	Feedback.sfx("holed" if r.holed else ("penalty" if r.penalty > 0 else "shot"), App.settings.sound_muted)
 	if _reveal != null and _reveal.is_valid():
 		_reveal.kill()
 	UiKit.clear(_result_box)
@@ -1367,6 +1380,8 @@ func _on_shot_resolved(r: ShotResult) -> void:
 	_result_box.modulate.a = 0.0
 	var tw := create_tween()
 	_reveal = tw
+	if App.settings.reduced_motion:
+		tw.set_speed_scale(100.0)  # finish the reveal at once instead of animating it
 	tw.tween_property(_result_box, "modulate:a", 1.0, 0.2)
 	if holed_done:
 		_show_hole_banner()
@@ -1688,6 +1703,14 @@ func _on_round_completed() -> void:
 	bv.add_child(UiKit.primary(UiKit.button("PLAY AGAIN", func() -> void:
 		_remove_overlay(root)
 		session.start_round(session.hole_defs, -1, session.pool.reuse_rule, session.round_state.mulligans_allowed, session.player_count()), 90, 32)))
+	var copy_b := UiKit.button("Copy round summary", Callable(), 64, 24)
+	copy_b.pressed.connect(func() -> void:
+		var slot := _board_slot if _board_slot >= 0 else _viewer_slot()
+		var who := String(session.player_names[slot]) if session.player_count() > 1 and slot < session.player_names.size() else ""
+		DisplayServer.clipboard_set(RoundText.build(_board_rs(), "%d-hole round" % rs.holes.size(), who))
+		copy_b.text = "Copied to clipboard")
+	copy_b.set_meta("ui_id", "copy_summary")
+	bv.add_child(copy_b)
 	bv.add_child(UiKit.button("Main menu", func() -> void: main_menu_requested.emit(), 76, 26))
 	bottom.add_child(bv)
 	col.add_child(bottom)

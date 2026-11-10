@@ -12,3 +12,16 @@ Ranked, concise. Implemented polish items are in the git log ("Polish: ..."); th
 8. Reduced-motion option (skip camera easing, spark bursts, cup pulse) for accessibility and low-end devices.
 9. Text-size / high-contrast setting; fonts are fixed at 19-30 px on the settings pages.
 10. Richer empty states on Statistics (a "play your first round" shortcut button).
+
+
+## Round 2 status
+Done (see git log "Polish round 2"):
+- 1 Auto-pause on backgrounding: offline rounds waiting to aim open the Pause menu (setting "Pause the round when the app goes to the background", default on). Online and in-flight shots are left alone.
+- 2 (partial) Change-footballer chip raised to 48 px high. Other chips/flags/dots still need a screenshot review.
+- 3 (partial) Sound hooks are stubbed in `Feedback.sfx` behind a muted-by-default setting; no audio assets yet.
+- 5 Haptic consistency: penalty and eagle-or-better now have their own cues (`Feedback`), all behind the Vibration toggle.
+- 8 Reduced motion: no camera sweep, cup celebration or result reveal animation.
+- 9 (partial) "Larger text" scales the Settings pages (x1.25); in-round HUD sizes are unchanged.
+- 10 Statistics empty state has a "Play your first round" button.
+- Extras: "Copy round summary" on the round-complete screen (`RoundText`), tutorial copy refreshed (no "three holes", new trajectory/spin page), online reconnect countdown and clearer disconnect/timeout messages, settings load tolerates wrong-typed values and `save()` reports failure, HUD distance/wind labels no longer rebuilt every frame.
+Still open: 4, 6, 7, audio assets, remaining touch targets.

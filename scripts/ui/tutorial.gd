@@ -5,9 +5,10 @@ extends Control
 signal finished
 
 const PAGES := [
-	["Pick a footballer, not a club", "Every shot is a real international footballer. Choose CAPS or GOALS, then pick a player. Each player can be used only once per round — across all three holes."],
+	["Pick a footballer, not a club", "Every shot is a real international footballer. Choose CAPS or GOALS, then pick a player. Each player can be used only once per round, across every hole."],
 	["Choose distance", "CAPS give 1 yard per cap. GOALS give 1 foot per goal. Either can be played as a flight or a roll."],
 	["Choose flight or roll", "A flight's distance is measured to its first landing; a roll's distance is measured when it stops. Wind and lies affect flight. Greens and slopes change the roll."],
+	["Trajectory and spin", "Four trajectories (Punch, Low, Standard, High) change the flight shape, not the carry. Caps shots can also take top or back spin. Spin and trajectory reset after every shot."],
 	["Aim and shoot", "Drag the course left or right to aim (full 360°). Use MAP for a top-down view: pinch to zoom, tap to measure. Then press TAKE SHOT."],
 	["Scoring", "Stroke play: fewest shots wins. Water or out of bounds costs +1. Stop within 5 ft of the hole and it's holed. There is no maximum score: keep going until you hole out."],
 ]

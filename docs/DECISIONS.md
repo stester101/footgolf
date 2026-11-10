@@ -200,3 +200,10 @@ The pit rim, wall and floor use the SAME bounce/roll model as the green (speed-d
 - Shop (`career/data/shop_items.json`, `ShopManager`): 30 COSMETIC items only (ball colour/trail, flag colour, outfit colour, scorecard theme, celebration). No gameplay effect. Prices 2k-40k. Locks: signed a given sponsor, best world rank, number of trophies. One item per slot can be equipped. Purchases are atomic and idempotent (ledger id `shop:<item>`; the balance never goes negative; an interrupted purchase is completed on retry without a second charge). Ball colour and flag colour are applied in Career rounds (visual only); the rest is stored and shown in the shop preview.
 - Save: no schema bump. `sponsorships {contracts, offers, patience, history, applied}` and `cosmetics {owned, equipped}` are filled by `CareerDefaultsSponsorsShop.ensure_defaults` (called on load).
 - Entry points for the off-season flow: `CareerSponsorPages.open_sponsor_review(menu)` and `CareerShopPages.open_shop(menu)` (also reachable from the Hub).
+
+## 2026-11-10: polish round 2 behaviour changes (no gameplay rules touched)
+- New Settings > Audio / Visual toggles: Sound effects (stub, muted by default), Reduced motion, Larger text (Settings pages), Pause when backgrounded (default on).
+- Haptics: penalty shots and eagle-or-better hole-outs vibrate with their own strength; ordinary shots and hole-outs unchanged.
+- Android backgrounding mid-aim opens the Pause menu (offline only).
+- Result screen of a finished round has "Copy round summary" (plain text to the clipboard).
+- Tutorial: removed "all three holes" wording, added a Trajectory and spin page.

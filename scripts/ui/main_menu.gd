@@ -316,7 +316,7 @@ func _primary_button(text: String, cb: Callable, ui_id: String) -> Button:
 
 
 func _note(text: String) -> Label:
-	var l := UiKit.text(text, 19, UiKit.C_MUTED)
+	var l := UiKit.text(text, int(round(19 * App.settings.text_scale())), UiKit.C_MUTED)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	return l
 
@@ -1165,9 +1165,10 @@ func _open_settings() -> void:
 func _setting_row(label: String, control: Control) -> Control:
 	var pc := PanelContainer.new()
 	pc.add_theme_stylebox_override("panel", UiKit.skin("recess", 6, 18, 10))
-	pc.custom_minimum_size = Vector2(0, 84)
+	var sc := App.settings.text_scale()
+	pc.custom_minimum_size = Vector2(0, 84 * sc)
 	var row := UiKit.hbox(12)
-	var l := UiKit.label(label, 23, Color.WHITE)
+	var l := UiKit.label(label, int(round(23 * sc)), Color.WHITE)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -1183,8 +1184,9 @@ func _toggle(text: String, on: bool, cb: Callable) -> CheckButton:
 	var c := CheckButton.new()
 	c.text = text
 	c.button_pressed = on
-	c.custom_minimum_size = Vector2(0, 84)
-	c.add_theme_font_size_override("font_size", 23)
+	var sc := App.settings.text_scale()
+	c.custom_minimum_size = Vector2(0, 84 * sc)
+	c.add_theme_font_size_override("font_size", int(round(23 * sc)))
 	c.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	c.toggled.connect(cb)
 	return c
@@ -1224,8 +1226,20 @@ func _open_settings_visual() -> void:
 	body.add_child(_toggle("Show ball trail", st.show_trail, func(on: bool) -> void:
 		st.show_trail = on
 		st.save()))
-	body.add_child(_toggle("Vibration on shots and hole-outs", st.vibration, func(on: bool) -> void:
+	body.add_child(_toggle("Vibration on shots, penalties and hole-outs", st.vibration, func(on: bool) -> void:
 		st.vibration = on
+		st.save()))
+	body.add_child(_toggle("Sound effects (muted: no sounds are bundled yet)", not st.sound_muted, func(on: bool) -> void:
+		st.sound_muted = not on
+		st.save()))
+	body.add_child(_toggle("Reduced motion (no camera sweep, celebration bursts or result animation)", st.reduced_motion, func(on: bool) -> void:
+		st.reduced_motion = on
+		st.save()))
+	body.add_child(_toggle("Larger text on Settings pages (reopen the page to apply)", st.large_text, func(on: bool) -> void:
+		st.large_text = on
+		st.save()))
+	body.add_child(_toggle("Pause the round when the app goes to the background", st.auto_pause, func(on: bool) -> void:
+		st.auto_pause = on
 		st.save()))
 	body.add_child(_toggle("High graphics (sky, hills, birds, cloud shadows, wind sway)", st.graphics_quality == 1, func(on: bool) -> void:
 		st.graphics_quality = 1 if on else 0
@@ -1250,7 +1264,7 @@ func _open_settings_visual() -> void:
 	body.add_child(_toggle("Keep screen awake during a round", st.keep_awake, func(on: bool) -> void:
 		st.keep_awake = on
 		st.save()))
-	body.add_child(_note("Frame-rate cap applies at once. For the lowest battery use, also switch High graphics off (applies from the next round). Audio: none yet (silent)."))
+	body.add_child(_note("Frame-rate cap applies at once. For the lowest battery use, also switch High graphics off (applies from the next round). Reduced motion applies from the next round."))
 	_push(pg["root"])
 
 

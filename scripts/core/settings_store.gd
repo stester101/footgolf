@@ -86,6 +86,13 @@ var auto_continue := true  # result card continues by itself after a few seconds
 const FPS_CHOICES := [0, 30, 60]
 var max_fps := 0
 var keep_awake := true
+## Accessibility / feel: reduced motion (no camera sweep, celebration bursts or reveal animation),
+## larger text on the Settings pages, and the sound mute (audio is a stub, so muted by default).
+var reduced_motion := false
+var large_text := false
+var sound_muted := true
+## Open the Pause menu when the app is sent to the background mid-round (offline rounds only).
+var auto_pause := true
 ## Last Round Setup choices (mulligans: 0 off, 1, 3, 5, -1 unlimited; players 1..4), restored on the next launch.
 const MULLIGAN_CHOICES := [0, 1, 3, 5, -1]
 var last_mulligans := 0
@@ -123,31 +130,35 @@ func load_settings() -> void:
 		# Corrupt file: keep a copy for diagnosis and start from defaults instead of failing silently.
 		DirAccess.copy_absolute(ProjectSettings.globalize_path(save_path), ProjectSettings.globalize_path(save_path + ".bad"))
 		return
-	holeout_radius_ft = ScoringService.clamp_radius_ft(float(d.get("holeout_radius_ft", holeout_radius_ft)))
+	holeout_radius_ft = ScoringService.clamp_radius_ft(_num(d, "holeout_radius_ft", holeout_radius_ft))
 	wind_custom = bool(d.get("wind_custom", false))
-	wind_speed = clampf(float(d.get("wind_speed", 0.0)), 0.0, 30.0)
-	wind_bearing = fposmod(float(d.get("wind_bearing", 0.0)), 360.0)
-	sim_speed = clampf(float(d.get("sim_speed", 1.0)), 0.25, 8.0)
+	wind_speed = clampf(_num(d, "wind_speed", 0.0), 0.0, 30.0)
+	wind_bearing = fposmod(_num(d, "wind_bearing", 0.0), 360.0)
+	sim_speed = clampf(_num(d, "sim_speed", 1.0), 0.25, 8.0)
 	show_trail = bool(d.get("show_trail", true))
 	vibration = bool(d.get("vibration", true))
-	graphics_quality = clampi(int(d.get("graphics_quality", 1)), 0, 1)
+	graphics_quality = clampi(int(_num(d, "graphics_quality", 1)), 0, 1)
 	graphics_glow = bool(d.get("graphics_glow", false))
 	lie_effect_exact = bool(d.get("lie_effect_exact", false))
 	drag_trajectory = bool(d.get("drag_trajectory", true))
-	max_fps = sanitize_fps(int(d.get("max_fps", 0)))
+	max_fps = sanitize_fps(int(_num(d, "max_fps", 0)))
 	keep_awake = bool(d.get("keep_awake", true))
-	last_mulligans = sanitize_mulligans(int(d.get("last_mulligans", 0)))
-	last_players = clampi(int(d.get("last_players", 1)), 1, 4)
+	reduced_motion = bool(d.get("reduced_motion", false))
+	large_text = bool(d.get("large_text", false))
+	sound_muted = bool(d.get("sound_muted", true))
+	auto_pause = bool(d.get("auto_pause", true))
+	last_mulligans = sanitize_mulligans(int(_num(d, "last_mulligans", 0)))
+	last_players = clampi(int(_num(d, "last_players", 1)), 1, 4)
 	auto_continue = bool(d.get("auto_continue", true))
 	favourites = (d.get("favourites", []) as Array).duplicate() if typeof(d.get("favourites")) == TYPE_ARRAY else []
 	show_stats = bool(d.get("show_stats", true))
 	if typeof(d.get("round_defaults")) == TYPE_DICTIONARY:
 		round_defaults = (d["round_defaults"] as Dictionary).duplicate()
-		if int(d.get("settings_version", 1)) < 5 and round_defaults.has("cup_diameter_ft") and is_equal_approx(float(round_defaults["cup_diameter_ft"]), 1.0):
+		if int(_num(d, "settings_version", 1)) < 5 and round_defaults.has("cup_diameter_ft") and is_equal_approx(float(round_defaults["cup_diameter_ft"]), 1.0):
 			round_defaults.erase("cup_diameter_ft")  # v5: old 1 ft default -> new default
-		if int(d.get("settings_version", 1)) < 6 and round_defaults.has("cup_diameter_ft") and is_equal_approx(float(round_defaults["cup_diameter_ft"]), 6.0):
+		if int(_num(d, "settings_version", 1)) < 6 and round_defaults.has("cup_diameter_ft") and is_equal_approx(float(round_defaults["cup_diameter_ft"]), 6.0):
 			round_defaults.erase("cup_diameter_ft")  # v6: untouched 6 ft default -> new 4 ft default
-		if int(d.get("settings_version", 1)) < 7 and round_defaults.has("cup_diameter_ft") and is_equal_approx(float(round_defaults["cup_diameter_ft"]), 4.0):
+		if int(_num(d, "settings_version", 1)) < 7 and round_defaults.has("cup_diameter_ft") and is_equal_approx(float(round_defaults["cup_diameter_ft"]), 4.0):
 			round_defaults.erase("cup_diameter_ft")  # v7: untouched 4 ft default -> new 12 in default
 	tutorial_seen = bool(d.get("tutorial_seen", false))
 	last_course = String(d.get("last_course", "starter"))
@@ -157,37 +168,47 @@ func load_settings() -> void:
 			if pv >= 2 and pv <= 8:
 				par_overrides[String(k)] = pv
 	dataset = "test" if String(d.get("dataset", "real")) == "test" else "real"
-	lie_override = int(d.get("lie_override", -1))
+	lie_override = int(_num(d, "lie_override", -1))
 	if not Surface.PLAYABLE.has(lie_override):
 		lie_override = -1
 	force_surface = bool(d.get("force_surface", false))
 	if typeof(d.get("physics")) == TYPE_DICTIONARY:
 		var phys: Dictionary = d["physics"]
-		if int(d.get("settings_version", 1)) < 3:
+		if int(_num(d, "settings_version", 1)) < 3:
 			phys = migrate_physics_v2(phys)  # untouched v2 defaults move to the v3 tuning
-		if int(d.get("settings_version", 1)) < 4:
+		if int(_num(d, "settings_version", 1)) < 4:
 			phys = migrate_physics_v3(phys)  # untouched v3 rough/bunker move to the v4 penalties
-		if int(d.get("settings_version", 1)) < 5 and phys.has("cup_radius") and is_equal_approx(float(phys["cup_radius"]), 12.0 * 0.0254 * 0.5):
+		if int(_num(d, "settings_version", 1)) < 5 and phys.has("cup_radius") and is_equal_approx(float(phys["cup_radius"]), 12.0 * 0.0254 * 0.5):
 			phys = phys.duplicate()
 			phys.erase("cup_radius")  # v5: the untouched old 1 ft default moves to the new default
-		if int(d.get("settings_version", 1)) < 6 and phys.has("cup_radius") and is_equal_approx(float(phys["cup_radius"]), 72.0 * 0.0254 * 0.5):
+		if int(_num(d, "settings_version", 1)) < 6 and phys.has("cup_radius") and is_equal_approx(float(phys["cup_radius"]), 72.0 * 0.0254 * 0.5):
 			phys = phys.duplicate()
 			phys.erase("cup_radius")  # v6: the untouched 6 ft default moves to the new 4 ft default
-		if int(d.get("settings_version", 1)) < 7 and phys.has("cup_radius") and is_equal_approx(float(phys["cup_radius"]), 48.0 * 0.0254 * 0.5):
+		if int(_num(d, "settings_version", 1)) < 7 and phys.has("cup_radius") and is_equal_approx(float(phys["cup_radius"]), 48.0 * 0.0254 * 0.5):
 			phys = phys.duplicate()
 			phys.erase("cup_radius")  # v7: the untouched 4 ft default moves to the new 12 in default
 		physics.apply_dict(phys)
-		if int(d.get("settings_version", 1)) < 2:
+		if int(_num(d, "settings_version", 1)) < 2:
 			physics.cup_radius = PhysicsConfig.new().cup_radius  # v2: larger default hole
 	if typeof(d.get("scenario")) == TYPE_DICTIONARY:
 		scenario = d["scenario"]
 
 
-func save() -> void:
+## Numeric field that survives a hand-edited or damaged file (wrong type -> default, NaN/inf -> default).
+static func _num(d: Dictionary, key: String, default: float) -> float:
+	var v = d.get(key, default)
+	if typeof(v) != TYPE_INT and typeof(v) != TYPE_FLOAT:
+		return default
+	var f := float(v)
+	return f if is_finite(f) else default
+
+
+func save() -> bool:
 	var tmp := save_path + ".tmp"
 	var f := FileAccess.open(tmp, FileAccess.WRITE)
 	if f == null:
-		return
+		push_warning("Settings not saved: cannot write %s" % tmp)
+		return false
 	f.store_string(JSON.stringify({
 		"settings_version": VERSION,
 		"last_course": last_course,
@@ -205,6 +226,10 @@ func save() -> void:
 		"drag_trajectory": drag_trajectory,
 		"max_fps": max_fps,
 		"keep_awake": keep_awake,
+		"reduced_motion": reduced_motion,
+		"large_text": large_text,
+		"sound_muted": sound_muted,
+		"auto_pause": auto_pause,
 		"last_mulligans": last_mulligans,
 		"last_players": last_players,
 		"auto_continue": auto_continue,
@@ -222,6 +247,14 @@ func save() -> void:
 	# Write-then-rename: a crash or power loss mid-save can never leave a half-written settings file.
 	if DirAccess.rename_absolute(ProjectSettings.globalize_path(tmp), ProjectSettings.globalize_path(save_path)) != OK:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(tmp))
+		push_warning("Settings not saved: cannot replace %s" % save_path)
+		return false
+	return true
+
+
+## Text size multiplier for the Settings pages (1.0 normal, 1.25 large).
+func text_scale() -> float:
+	return 1.25 if large_text else 1.0
 
 
 static func sanitize_mulligans(v: int) -> int:

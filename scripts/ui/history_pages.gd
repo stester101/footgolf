@@ -208,6 +208,9 @@ static func _fill_overview(menu: MainMenu, body: VBoxContainer) -> void:
 	body.add_child(_tiles([["ROUNDS", L["rounds"]], ["HOLES", L["holes"]], ["SHOTS", L["shots"]]]))
 	if ents.is_empty():
 		body.add_child(menu._note("No finished rounds for %s yet. Statistics appear after a round is completed." % profile_label(pid)))
+		var go := UiKit.primary(UiKit.button("Play your first round", func() -> void: menu._open_round_setup(App.settings.last_course), 72, 26))
+		go.set_meta("ui_id", "stats_play_first")
+		body.add_child(go)
 	else:
 		var to_par: Array = []
 		for e in ents:
