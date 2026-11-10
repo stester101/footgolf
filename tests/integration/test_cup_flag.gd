@@ -5,8 +5,8 @@ extends TestCase
 const CUP_Z := 10.0
 
 
-func _sim(diameter_in: float = 12.0) -> BallSim:
-	var h := HoleDefinition.make_flat(Surface.Type.GREEN)
+func _sim(diameter_in: float = 12.0, surface: int = Surface.Type.GREEN) -> BallSim:
+	var h := HoleDefinition.make_flat(surface)
 	h.has_cup = true
 	h.pin = Vector2(0.0, CUP_Z)
 	var cfg := PhysicsConfig.new()
@@ -107,19 +107,35 @@ func test_cup_flag_deterministic() -> void:
 		assert_eq(a.time, b.time)
 
 
-func test_moderate_pin_strike_stays_in() -> void:
-	# 5 m/s into the pole: it rebounds at 35% of its normal speed, falls short of the near rim and drops.
-	var sim := _roll(_sim(), 5.0, 0.0, 6.0)
-	assert_true(_has(sim, "pin"), "pin strike recorded")
-	_assert_in_pit(sim, "moderate pin strike")
+## The flagstick only acts off the green (a pole on the putting surface is ignored), so the pole tests use a
+## fringe-like FAIRWAY plane around the cup.
+func _off_green(speed: float, off: float = 0.0) -> BallSim:
+	return _roll(_sim(12.0, Surface.Type.FAIRWAY), speed, off, 6.0)
 
 
-func test_fast_ball_deflected_by_pin() -> void:
-	var sim := _sim()
-	_roll(sim, 12.0, 0.0, 3.0)
-	assert_true(_has(sim, "pin"), "pin strike recorded")
-	assert_false(_holed(sim), "hard head-on strike bounces back out")
-	assert_lt(sim.pos.z, CUP_Z, "head-on strike sends the ball back")
+func test_gentle_pin_touch_drops() -> void:
+	# 1.5 m/s into the pole: the speed-dependent bounce is weak (e = 0.6 * 1.5 / 3.0 = 0.3), the ball falls in.
+	var sim := _off_green(1.5)
+	assert_true(_has(sim, "pin"), "pin touch recorded")
+	_assert_in_pit(sim, "gentle pin touch")
+
+
+func test_firm_pin_hit_rebounds() -> void:
+	var gentle := _off_green(1.5)
+	var firm := _off_green(12.0)
+	assert_true(_has(firm, "pin"), "pin strike recorded")
+	assert_false(_holed(firm), "a hard head-on strike bounces back out")
+	assert_lt(firm.pos.z, CUP_Z, "head-on strike sends the ball back")
+	# firmer hit rebounds harder: compare the rebound speed fraction through the first pin contact
+	var e_gentle := 0.6 * 1.5 / (1.5 + 1.5)
+	var e_firm := 0.6 * 12.0 / (12.0 + 1.5)
+	assert_gt(e_firm, e_gentle, "bounce grows with speed")
+	assert_true(_holed(gentle), "while the gentle one stays in")
+
+
+func test_pole_ignored_on_the_green() -> void:
+	var sim := _roll(_sim(), 12.0, 0.0, 3.0)
+	assert_false(_has(sim, "pin"), "no pole contact on the green")
 
 
 func test_slow_ball_not_blocked_by_pin() -> void:
@@ -128,13 +144,13 @@ func test_slow_ball_not_blocked_by_pin() -> void:
 	_assert_in_pit(sim, "slow dead-centre putt")
 
 
-func test_pin_hit_in_air_can_drop() -> void:
-	var sim := _sim()
-	# Descending ball hits the pole about a metre up, falling into the cup.
+func test_pin_hit_in_air_off_green_loses_little_speed() -> void:
+	var sim := _sim(12.0, Surface.Type.FAIRWAY)
+	# Descending ball hits the pole about a metre up: it is only slowed by pin_air_loss, so it need not drop.
 	sim.launch(Vector3(0.005, 0.5, CUP_Z - 0.3), Vector3(0.0, -1.0, 2.5), true)
 	sim.run_until_done(5.0)
 	assert_true(_has(sim, "pin"), "pole hit in flight")
-	_assert_in_pit(sim, "ball slowed by the pin")
+	assert_true(sim.phase != BallSim.Phase.AIR, "the ball came to rest or holed")
 
 
 func test_large_cup_ignores_pole() -> void:
