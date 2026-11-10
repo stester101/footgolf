@@ -60,6 +60,8 @@ var _plan: Dictionary = {}
 ## True for the shot that replaces a mulliganed shot (it cannot be mulliganed itself).
 var _next_is_replacement := false
 var _accum := 0.0
+## Non-empty blocks Take Shot (career: set while a save has failed, see CareerRoundRun). "" = normal play.
+var shots_blocked_reason := ""
 var _hole_start_pool: Dictionary = {}
 
 
@@ -357,6 +359,8 @@ func is_ball_moving() -> bool:
 
 ## "" when a shot may be taken, otherwise a reason. Never mutates state.
 func can_take_shot() -> String:
+	if shots_blocked_reason != "":
+		return shots_blocked_reason
 	if state != ShotTypes.State.AIMING:
 		return "Not ready to shoot"
 	var hs := current_hole_state()

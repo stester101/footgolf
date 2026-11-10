@@ -10,6 +10,11 @@ enum ReuseRule { ONCE_PER_ROUND, ONCE_PER_MODE }
 var used_footballer_ids: Dictionary = {}
 var reuse_rule: int = ReuseRule.ONCE_PER_ROUND
 var _order := 0
+## Career "once per season" rule (opt-in, default off everywhere else): while season_id != "" the ids in
+## season_locked cannot be used, whatever the per-round / per-mode rule says. The caller owns the id list
+## (the career save keys it by season id) and re-applies it with set_season_lock(); it is not part of snapshot().
+var season_id := ""
+var season_locked: Dictionary = {}
 
 
 static func _mode_key(mode: int) -> String:
@@ -31,8 +36,29 @@ func set_reuse_rule(new_rule: int) -> bool:
 	return true
 
 
+## Activates the season rule for `p_season_id` with the ids already used that season ("" disables it).
+func set_season_lock(p_season_id: String, ids: Array) -> void:
+	season_id = p_season_id
+	season_locked.clear()
+	if p_season_id != "":
+		for i in ids:
+			season_locked[String(i)] = true
+	changed.emit()
+
+
+func lock_for_season(id: String) -> void:
+	if season_id != "" and id != "":
+		season_locked[id] = true
+
+
+func season_rule_active() -> bool:
+	return season_id != ""
+
+
 func is_available(id: String, mode: int = -1) -> bool:
 	if id == "":
+		return false
+	if season_locked.has(id):
 		return false
 	if not used_footballer_ids.has(id):
 		return true
