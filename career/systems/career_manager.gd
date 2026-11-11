@@ -609,3 +609,21 @@ func set_adaptive_mode(m: String) -> bool:
 func skip_next_event() -> bool:
 	var e := next_event()
 	return not e.is_empty() and skip_event(int(e["serial"]))
+
+
+# ------------------------------------------------------------------ live leaderboard (read-only; LiveProgress)
+# Kept as ONE block at the end of the file. Nothing here writes the save or changes a result.
+
+## Live progress of the round being played in the active tournament (null when there is none).
+## Opponent per-hole scores come from the same frozen simulation as the official result and sum exactly to it.
+func live_progress() -> LiveProgress:
+	var t := tournament()
+	if t.is_empty() or not String(t.get("status", "")) in ["in_round", "between_rounds", "setup"]:
+		return null
+	return LiveProgress.new(t, tournament_golfers(), player_name(), sim)
+
+
+## Live board after the player has completed `holes_done` holes at `round_rel` to par this round ({} when none).
+func live_board(holes_done: int, round_rel: int) -> Dictionary:
+	var lp := live_progress()
+	return {} if lp == null else lp.board(holes_done, round_rel)
