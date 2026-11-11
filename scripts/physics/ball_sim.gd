@@ -53,6 +53,9 @@ var _cup_floor := 0.0
 var _pin_hit_air := false
 ## The ball left rolling contact at the rim (it is not a flight shot coming down).
 var _lip_air := false
+## Grandstands of this hole (solid; see Grandstands) and whether the ball touched one last step.
+var _stands: Array = []
+var _stand_touch := false
 
 
 func _init(p_hole: HoleDefinition, p_cfg: PhysicsConfig) -> void:
@@ -91,6 +94,8 @@ func launch(start: Vector3, velocity: Vector3, airborne: bool, p_spin: float = 0
 	_in_canopy = {}
 	_pin_hit_air = false
 	_lip_air = false
+	_stands = hole.grandstands()
+	_stand_touch = false
 	if hole.has_cup:
 		_setup_cup()
 	if velocity.length() <= 0.0:
@@ -206,6 +211,10 @@ func _step_air(dt: float) -> void:
 		var res := _collide_trees(p1, v1, true, dt)
 		p1 = res[0]
 		v1 = res[1]
+	if not _stands.is_empty():
+		var sr := _collide_stands(p0, p1, v1)
+		p1 = sr[0]
+		v1 = sr[1]
 	if hole.has_cup and not _pin_hit_air and cfg.pin_active() and not _on_green(p1):
 		var ph := _pin_strike(p0, p1, v1)
 		if not ph.is_empty():
@@ -354,6 +363,12 @@ func _step_roll(dt: float) -> void:
 			p_new = res[0]
 			vel = res[1]
 			p_new.y = hole.terrain_height(p_new.x, p_new.z) + r
+		if not _stands.is_empty():
+			var sr := _collide_stands(pos, p_new, vel)
+			if String(sr[2]) != "":
+				p_new = sr[0]
+				vel = sr[1]
+				p_new.y = hole.terrain_height(p_new.x, p_new.z) + r
 	else:
 		if cfg.pin_active() and vel.length() > cfg.pin_soft_speed and not _on_green(p_new):
 			var ph := _pin_strike(pos, p_new, vel)
@@ -608,6 +623,17 @@ func _pin_strike(a: Vector3, b: Vector3, v: Vector3) -> Array:
 	out.y = q.y
 	collisions.append({"type": "pin", "pos": out, "time": time})
 	return [out, nv]
+
+
+# ------------------------------------------------------------------ grandstands
+
+func _collide_stands(p0: Vector3, p: Vector3, v: Vector3) -> Array:
+	var res := Grandstands.collide(_stands, p0, p, v, cfg.ball_radius)
+	var kind := String(res[2])
+	if kind != "" and not _stand_touch:
+		collisions.append({"type": kind, "pos": res[0], "time": time})
+	_stand_touch = kind != ""
+	return res
 
 
 # ------------------------------------------------------------------ trees

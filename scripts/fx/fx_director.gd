@@ -148,6 +148,10 @@ func _on_collision(kind: String, p: Vector3) -> void:
 			_sfx("tree")
 		"canopy":
 			_sfx("tree", 0.5, 1.2)
+		"stand_side", "stand_top":
+			# hard knock off the grandstand, and the crowd reacts
+			_sfx("rim", 0.9, 0.55)
+			_sfx("groan", 0.5, 1.1)
 
 
 # ------------------------------------------------------------------ result (ball stopped)

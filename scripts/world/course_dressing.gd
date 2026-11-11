@@ -1,7 +1,7 @@
 class_name CourseDressing
 extends RefCounted
 ## Visual-only course dressing (no physics, never read by gameplay):
-##  - High graphics: up to two small grandstands near the green with seated spectators and
+##  - Every quality: up to two small grandstands (solid: see Grandstands; crowd and boards on High only) near the green with seated spectators and
 ##    FICTIONAL sponsor boards on the front hoarding. Placed only on rough/out-of-bounds ground,
 ##    clear of trees, water, sand and the putting surface; their footprint is baked into the terrain
 ##    AO map (see TerrainBuilder.bake_ao) so they sit on the ground.
@@ -28,10 +28,10 @@ const SHIRTS := [
 ## Yardage plates: yards -> colour (blue 200, white 150, red 100, yellow 50).
 const YARDAGES := [[200, Color(0.15, 0.35, 0.85)], [150, Color(0.96, 0.96, 0.96)], [100, Color(0.85, 0.12, 0.10)], [50, Color(0.98, 0.82, 0.10)]]
 
-const STAND_W := 15.0
-const STAND_D := 6.0
-const ROWS := 5
-const ROW_RISE := 0.55
+const STAND_W := Grandstands.STAND_W
+const STAND_D := Grandstands.STAND_D
+const ROWS := Grandstands.ROWS
+const ROW_RISE := Grandstands.ROW_RISE
 
 var hole: HoleDefinition
 var terrain: TerrainBuilder
@@ -62,66 +62,12 @@ static func target_green(p_hole: HoleDefinition) -> HoleDefinition.Ellipse:
 	return best
 
 
-## Chooses grandstand spots (call once the terrain heights exist).
+## Grandstand spots come from the hole (Grandstands.plan), the same solids the ball collides with.
 func plan() -> void:
-	stands.clear()
+	stands = hole.grandstands()
 	ao_blobs.clear()
-	var g := target_green(hole)
-	if g == null:
-		return
-	var gc := Vector2(g.cx, g.cz)
-	var play := (gc - hole.tee).normalized()
-	if play == Vector2.ZERO:
-		play = Vector2(0, 1)
-	var rad := maxf(g.a, g.b)
-	var used_angles: Array = []
-	for ang_deg in [0.0, 35.0, -35.0, 70.0, -70.0, 105.0, -105.0, 140.0, -140.0]:
-		if stands.size() >= 2:
-			break
-		var ang := deg_to_rad(ang_deg)
-		var clash := false
-		for u in used_angles:
-			if absf(ang - float(u)) < deg_to_rad(65.0):
-				clash = true
-		if clash:
-			continue
-		for extra in [14.0, 20.0, 27.0]:
-			var c: Vector2 = gc + play.rotated(ang) * (rad + float(extra))
-			var f: Vector2 = (gc - c).normalized()
-			var xf := Transform2D(Vector2(f.y, -f.x), f, c)
-			var fit := _fits(xf)
-			if fit.is_empty():
-				continue
-			stands.append({"xf": xf, "base": fit["min"], "top": fit["max"]})
-			ao_blobs.append({"xf": xf, "half": Vector2(STAND_W * 0.5, STAND_D * 0.5), "amt": 0.38})
-			used_angles.append(ang)
-			break
-
-
-## Footprint test: rough/OOB only, inside the rendered terrain, clear of trees, not too steep.
-func _fits(xf: Transform2D) -> Dictionary:
-	var lo := INF
-	var hi := -INF
-	var inner := hole.bounds.grow(-4.0)
-	for ix in 7:
-		for iz in 4:
-			var l := Vector2(lerpf(-STAND_W * 0.5 - 1.5, STAND_W * 0.5 + 1.5, ix / 6.0), lerpf(-STAND_D * 0.5 - 1.5, STAND_D * 0.5 + 2.5, iz / 3.0))
-			var w := xf * l
-			if not inner.has_point(w):
-				return {}
-			var s := hole.surface_at(w.x, w.y)
-			if s != Surface.Type.ROUGH and s != Surface.Type.OOB:
-				return {}
-			for ti in hole.trees_near(w.x, w.y):
-				var t: Dictionary = hole.trees[ti]
-				if Vector2(t["x"], t["z"]).distance_to(w) < float(t["canopy_r"]) + 1.5:
-					return {}
-			var h := _h(w.x, w.y)
-			lo = minf(lo, h)
-			hi = maxf(hi, h)
-	if hi - lo > 2.2:
-		return {}
-	return {"min": lo, "max": hi}
+	for st in stands:
+		ao_blobs.append({"xf": st["xf"], "half": Vector2(STAND_W * 0.5, STAND_D * 0.5), "amt": 0.38})
 
 
 # ------------------------------------------------------------------ geometry helpers
@@ -206,15 +152,13 @@ func build(view: Node3D) -> void:
 	var board_mesh := _Mesh.new()
 	for st in stands:
 		var xf: Transform2D = st["xf"]
-		var base: float = st["base"]
-		var top: float = st["top"]
 		var f := Vector3(xf.y.x, 0, xf.y.y)  # towards the green
 		var side := Vector3(xf.x.x, 0, xf.x.y)
 		# local basis: x along the stand, z = -f (the stand's back), y up
 		var b := Basis(-side, Vector3.UP, -f)
 		var o := Vector3(xf.origin.x, 0, xf.origin.y)
-		var floor_y := base - 0.6
-		var front_y := top + 0.25  # first deck clears the highest ground under the stand
+		var floor_y: float = st["floor_y"]
+		var front_y: float = st["front_y"]  # first deck clears the highest ground (shared with physics)
 		var row_d := STAND_D / ROWS
 		for r in ROWS:
 			var deck_y := front_y + r * ROW_RISE
@@ -236,7 +180,7 @@ func build(view: Node3D) -> void:
 				var yaw := Basis(Vector3.UP, rng.randf_range(-0.25, 0.25))
 				crowd_x.append(Transform3D(b * yaw * Basis.from_scale(Vector3.ONE * rng.randf_range(0.92, 1.08)), p))
 				crowd_c.append((SHIRTS[rng.randi() % SHIRTS.size()] as Color) * rng.randf_range(0.85, 1.05))
-		var back_top := front_y + ROWS * ROW_RISE + 1.6
+		var back_top: float = st["back_top"]
 		# side walls and back wall
 		for sgn in [-1.0, 1.0]:
 			var wc := o + b * Vector3(sgn * (STAND_W * 0.5 + 0.1), 0, 0)

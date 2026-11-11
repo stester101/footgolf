@@ -241,3 +241,9 @@ The pit rim, wall and floor use the SAME bounce/roll model as the green (speed-d
 - Grand Tour (`all`) and Full 9 are unchanged (as on 2026-11-08); custom combined rounds cover the rest.
 - Career: `CareerConfig` course rotations gained the new ids (appended, data only): regular +alpine/oasis/islands/stadium,
   flagship +stadium/islands, major +alpine. Finale stays Jizzy Nash Nash.
+
+## 2026-11-11: grandstands are solid (integration of the graphics, physics and course work)
+- Grandstand placement moved to `scripts/gameplay/grandstands.gd` (analytic terrain only, deterministic, cached per pin/tee) and is shared by physics, relief and rendering, so what you see is what the ball hits on every phone and quality.
+- Stands are now drawn on Low as well as High (they are in play); AO baking stays High only.
+- BallSim: stepped-block collision (hoarding, 5 decks, back wall). Side/riser hits bounce off (restitution 0.35, x0.8); a ball landing on the seats is nudged down the steps towards the green and never rests on a stand. Collision types `stand_side` / `stand_top`; FX plays a knock and a crowd groan.
+- Relief (`is_safe_spot`) never drops a ball inside a stand. The neutral calibration plane has no stands, so carry calibration is untouched. Tests: `tests/integration/test_grandstands.gd`.

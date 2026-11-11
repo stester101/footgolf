@@ -40,7 +40,7 @@ var _jobs: Array = []  # [{w: float, run: Callable(deadline) -> bool, part: Call
 var _job_i := 0
 var _tree_i := 0
 var _tree_x := {}
-## High graphics only: grandstands, crowds, sponsor boards (planned with the terrain so their shadows bake in).
+## Grandstands, crowds, sponsor boards (placement shared with physics; AO baked on High only).
 var _dressing: CourseDressing
 
 var _terrain_shader: Shader = preload("res://assets/shaders/terrain.gdshader")
@@ -124,7 +124,7 @@ func _job_details(_deadline: int) -> bool:
 	return true
 
 
-## Course dressing: yardage markers on every quality; grandstands, crowds and boards on High only.
+## Course dressing: yardage markers and grandstands (solid, shared with physics) on every quality.
 func _job_dressing(_deadline: int) -> bool:
 	CourseDressing.build_yardage_markers(self, hole, HoleAtmosphere.high_quality, terrain)
 	if _dressing != null:
@@ -169,9 +169,10 @@ func _build_terrain() -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = "Terrain"
 	mi.mesh = terrain.commit_mesh()
+	# grandstands are solid (the ball hits them), so they are drawn on every quality
+	_dressing = CourseDressing.new(hole, terrain)
+	_dressing.plan()
 	if HoleAtmosphere.high_quality:
-		_dressing = CourseDressing.new(hole, terrain)
-		_dressing.plan()
 		terrain.bake_ao(_dressing.ao_blobs)
 	_terrain_mat = ShaderMaterial.new()
 	_terrain_mat.shader = _terrain_shader

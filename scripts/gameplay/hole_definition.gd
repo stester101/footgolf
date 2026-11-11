@@ -142,6 +142,9 @@ const OOB_INSET_M := 25.0
 var oob_inset := OOB_INSET_M
 var play_area := Rect2(-75, -25, 150, 250)
 var trees: Array = []           # [{x,z,base_y,trunk_r,trunk_h,canopy_y,canopy_r,canopy_ry,kind}]
+var _stands: Array = []
+var _stands_pin := Vector2(INF, INF)
+var _stands_tee := Vector2(INF, INF)
 var _tree_grid: Dictionary = {}
 var _spacing_grid: Dictionary = {}  # 4.5 m cells -> tree indices (placement spacing check)
 var conifer_ratio := 0.5
@@ -528,6 +531,15 @@ func trees_near(x: float, z: float) -> Array:
 	return out
 
 
+## Grandstands beside the green (physics + rendering share them). Cached per pin position: varied pins move them.
+func grandstands() -> Array:
+	if _stands_pin != pin or _stands_tee != tee:
+		_stands_pin = pin
+		_stands_tee = tee
+		_stands = Grandstands.plan(self)
+	return _stands
+
+
 ## Is (x,z) a safe resting place: in bounds, dry, clear of tree trunks, with a margin.
 func is_safe_spot(x: float, z: float, margin: float) -> bool:
 	var offsets := [Vector2.ZERO]
@@ -543,6 +555,8 @@ func is_safe_spot(x: float, z: float, margin: float) -> bool:
 		var dz := z - float(tr["z"])
 		if sqrt(dx * dx + dz * dz) < float(tr["trunk_r"]) + 0.6:
 			return false
+	if Grandstands.covers(grandstands(), x, z, margin):
+		return false
 	var h := terrain_height(x, z)
 	return is_finite(h)
 
