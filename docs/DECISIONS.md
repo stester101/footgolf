@@ -207,3 +207,9 @@ The pit rim, wall and floor use the SAME bounce/roll model as the green (speed-d
 - Android backgrounding mid-aim opens the Pause menu (offline only).
 - Result screen of a finished round has "Copy round summary" (plain text to the clipboard).
 - Tutorial: removed "all three holes" wording, added a Trajectory and spin page.
+
+## 2026-11-11: Career UI redesign (IMPLEMENTER, presentation only; no rules or numbers changed)
+- Career home is a tabbed shell (Hub / Schedule / Rankings / Me) with a hero header and a bottom tab bar; design in `docs/career/CAREER_UI_DESIGN.md`, widgets in `scripts/ui/career_kit.gd`. Android Back from Schedule / Rankings / Me returns to the Hub; Back on the Hub leaves Career.
+- The Hub's "Play next event" enters the next event directly when eligible (same `enter_event` call as the event page's "Enter event"); otherwise it opens the event page.
+- Rank movement arrows for other golfers come from a UI-only cache `user://career_ui_ranks_<hash>.json` (previous table since the last view); it never feeds the career save. The player's own arrow is the movement from the last event.
+- Count-ups / fades are skipped under Settings > Reduced motion; Career text follows Settings > Larger text.

@@ -1,8 +1,8 @@
 class_name CareerPages
 extends RefCounted
-## Career Mode screens in the existing glass UI (UiKit), portrait, scrollable. Presentation only: all rules and
-## state live in CareerManager / TournamentManager. Pages are built on the MainMenu page stack (menu._page etc.);
-## the in-round overlays (Save Error, round done) are plain Controls pushed onto GameUI.
+## Career Mode screens (design: docs/career/CAREER_UI_DESIGN.md; widgets: CareerKit; home tabs: CareerShell).
+## Portrait, scrollable. Presentation only: all rules and state live in CareerManager / TournamentManager. Pages are
+## pushed on the MainMenu page stack; the in-round overlays (Save Error, round done) are plain Controls on GameUI.
 
 const TOURNAMENT_ROWS := 25
 
@@ -44,22 +44,13 @@ static func _replace(menu: MainMenu, builder: Callable) -> void:
 	builder.call()
 
 
+## Text card (kept for the other Career pages): caption title plus wrapped lines.
 static func _card(title: String, lines: Array) -> PanelContainer:
-	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", UiKit.skin("recess", 6, 20, 14))
-	var v := UiKit.vbox(4)
-	var t := UiKit.label(title, 20, UiKit.C_CYAN)
-	t.add_theme_font_override("font", UiKit.font_caps())
-	v.add_child(t)
-	for l in lines:
-		var lab := UiKit.text(String(l), 23, Color.WHITE)
-		lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		v.add_child(lab)
-	p.add_child(v)
-	return p
+	return CareerKit.info_card(title, lines)
 
 
-static func _choice_buttons(labels: Array, current: int, cb: Callable) -> Control:
+## Option pills (wrap onto several lines): the selected one lime. 96 px tall (48 dp).
+static func _choice_buttons(labels: Array, current: int, cb: Callable, id_prefix: String = "career_choice") -> Control:
 	var box := HFlowContainer.new()
 	box.add_theme_constant_override("h_separation", 10)
 	box.add_theme_constant_override("v_separation", 10)
@@ -67,17 +58,18 @@ static func _choice_buttons(labels: Array, current: int, cb: Callable) -> Contro
 	var refresh := func(cur: int) -> void:
 		for i in btns.size():
 			var on := i == cur
-			btns[i].add_theme_stylebox_override("normal", UiKit.skin("lime" if on else "recess", 6, 16, 8))
-			btns[i].add_theme_stylebox_override("hover", UiKit.skin("lime" if on else "btn", 6, 16, 8))
-			btns[i].add_theme_color_override("font_color", Color("#0E2A07") if on else Color.WHITE)
-			btns[i].add_theme_color_override("font_hover_color", Color("#0E2A07") if on else Color.WHITE)
+			var n: StyleBox = UiKit.skin("lime", 8, 22, 8) if on else CareerKit.flat(Color(0.10, 0.18, 0.32, 0.92), 18, 22.0, Color(0.7, 0.85, 1.0, 0.3), 1)
+			CareerKit._btn_styles(btns[i], n, n if on else CareerKit.flat(CareerKit.C_CARD_HOVER, 18, 22.0, Color(0.8, 0.92, 1.0, 0.45), 1), n)
+			for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+				btns[i].add_theme_color_override(c, CareerKit.C_LIME_TEXT if on else Color.WHITE)
 	for i in labels.size():
 		var b := Button.new()
 		b.text = String(labels[i])
-		b.custom_minimum_size = Vector2(0, 66)
-		b.focus_mode = Control.FOCUS_NONE
-		b.add_theme_font_size_override("font_size", 22)
+		b.custom_minimum_size = Vector2(0, CareerKit.TOUCH)
+		b.focus_mode = Control.FOCUS_ALL
+		b.add_theme_font_size_override("font_size", CareerKit.fs(22))
 		b.add_theme_font_override("font", UiKit.font_semi())
+		b.set_meta("ui_id", "%s_%d" % [id_prefix, i])
 		var idx := i
 		b.pressed.connect(func() -> void:
 			refresh.call(idx)
@@ -100,40 +92,47 @@ static func open_entry(menu: MainMenu) -> void:
 
 
 static func open_create(menu: MainMenu, replacing: bool) -> void:
-	var pg: Dictionary = menu._page("Create Career")
+	var pg: Dictionary = CareerKit.page(menu, "New Career", "The LBT awaits", CareerKit.C_MAJOR)
 	var body: VBoxContainer = pg["body"]
+	var intro := UiKit.vbox(8)
+	intro.add_child(CareerKit.caption("Your story starts here", CareerKit.C_MAJOR))
+	intro.add_child(CareerKit.text("From world #%d to the LBT Championship" % CareerConfig.START_WORLD_RANK, 32, Color.WHITE, "display", true))
+	intro.add_child(CareerKit.text("You start on the LBT with a tour card, no wins and %s. Opponents are simulated golfers; you play every shot yourself with your footballers." % money(CareerConfig.START_BALANCE), 20, CareerKit.C_MUTED, "", true))
+	body.add_child(CareerKit.card(intro, CareerKit.glass(Color(0.34, 0.27, 0.10, 0.92), Color(0.08, 0.08, 0.10, 0.96), 22.0, 24.0)))
 	var name_edit := LineEdit.new()
 	name_edit.placeholder_text = "Golfer name"
 	name_edit.max_length = 20
-	name_edit.custom_minimum_size = Vector2(0, 64)
-	name_edit.add_theme_font_size_override("font_size", 26)
+	name_edit.custom_minimum_size = Vector2(0, CareerKit.TOUCH)
+	name_edit.add_theme_font_size_override("font_size", CareerKit.fs(28))
+	name_edit.add_theme_stylebox_override("normal", CareerKit.flat(Color(0.03, 0.07, 0.14, 0.95), 16, 20.0, Color(0.6, 0.78, 1.0, 0.35), 1))
+	name_edit.add_theme_stylebox_override("focus", CareerKit.flat(Color(0.03, 0.07, 0.14, 0.95), 16, 20.0, CareerKit.C_LIME, 2))
 	name_edit.set_meta("ui_id", "career_name")
 	var nations := _nations()
 	var nat := OptionButton.new()
-	nat.custom_minimum_size = Vector2(0, 64)
-	nat.add_theme_font_size_override("font_size", 24)
+	nat.custom_minimum_size = Vector2(0, CareerKit.TOUCH)
+	nat.add_theme_font_size_override("font_size", CareerKit.fs(24))
 	for n in nations:
 		nat.add_item(String(n))
 	var gb := nations.find("England")
 	nat.select(maxi(gb, 0))
 	var state := {"length": 1}
-	body.add_child(menu._caption("GOLFER NAME"))
-	body.add_child(name_edit)
-	body.add_child(menu._caption("NATIONALITY"))
-	body.add_child(nat)
-	body.add_child(menu._caption("SEASON LENGTH"))
+	var form := UiKit.vbox(12)
+	form.add_child(CareerKit.caption("Golfer name"))
+	form.add_child(name_edit)
+	form.add_child(CareerKit.caption("Nationality"))
+	form.add_child(nat)
+	form.add_child(CareerKit.caption("Season length"))
 	var labels: Array = []
 	for l in CareerConfig.SEASON_LENGTHS:
 		labels.append("%s · %d events" % [CareerConfig.season_label(l), CareerConfig.total_events(l)])
-	body.add_child(_choice_buttons(labels, 1, func(i: int) -> void: state["length"] = i))
-	body.add_child(menu._note("You start on the LBT with a tour card, ranked %d in the world, with no wins and %s. Opponents are simulated golfers; you play every shot yourself with your footballers." % [CareerConfig.START_WORLD_RANK, money(CareerConfig.START_BALANCE)]))
-	var status := UiKit.label("", 22, UiKit.C_WARN)
-	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	form.add_child(_choice_buttons(labels, 1, func(i: int) -> void: state["length"] = i, "career_length"))
+	body.add_child(CareerKit.card(form))
+	var status := CareerKit.text("", 21, UiKit.C_WARN, "", true)
 	var confirm := {"armed": not replacing}
 	if replacing:
-		body.add_child(UiKit.text("A career already exists. Starting a new one replaces it permanently (export it first in Career Settings).", 21, UiKit.C_WARN))
+		body.add_child(CareerKit.info_card("Replacing a career", ["A career already exists. Starting a new one replaces it permanently (export it first in Career Settings)."], UiKit.C_WARN))
 	body.add_child(status)
-	var go: Button = menu._primary_button("Start career" if not replacing else "Replace career", func() -> void:
+	var go := CareerKit.cta("Start career" if not replacing else "Replace career", "", func() -> void:
 		if name_edit.text.strip_edges() == "":
 			status.text = "Enter a golfer name."
 			return
@@ -154,67 +153,10 @@ static func open_create(menu: MainMenu, replacing: bool) -> void:
 	menu._push(pg["root"])
 
 
-# ------------------------------------------------------------------ hub
+# ------------------------------------------------------------------ hub (tabbed shell: see CareerShell)
 
 static func open_hub(menu: MainMenu) -> void:
-	var c := CareerManager.active
-	var pg: Dictionary = menu._page("Career Hub")
-	var body: VBoxContainer = pg["body"]
-	var p: Dictionary = c.data["player"]
-	var eco: Dictionary = c.data["economy"]
-	var sr := c.season_rank()
-	body.add_child(_card(String(p["name"]).to_upper(), [
-		"%s  ·  Season %d (%s)" % [p["nationality"], int((c.data["season"] as Dictionary)["number"]), CareerConfig.season_label(String((c.data["season"] as Dictionary)["length"]))],
-		"World ranking: %d (of %d)" % [c.world_rank(), c.world_table().size()],
-		"Season standing: %s  ·  %d pts" % [(QualificationManager._ord(sr)) if sr > 0 else "no results yet", c.season_points()],
-		"Earnings: %s this season  ·  %s career" % [money(int(eco["season_earnings"])), money(int(eco["career_earnings"]))],
-	]))
-	# next event / active tournament
-	if c.has_active_tournament():
-		var t := c.tournament()
-		var ev: Dictionary = t["event"]
-		body.add_child(_card("TOURNAMENT IN PROGRESS", ["%s  (%s)" % [ev["name"], CalendarManager.category_label(String(ev["category"]))],
-			"Round %d of %d  ·  %s" % [mini(int(t["round_index"]) + 1, int(ev["rounds"])), int(ev["rounds"]), _status_text(String(t["status"]))]]))
-		body.add_child(menu._primary_button("Continue tournament", func() -> void: open_tournament(menu), "career_continue"))
-	else:
-		var e := c.next_event()
-		if e.is_empty():
-			body.add_child(_card("SEASON COMPLETE", ["All events are done. The off-season is next: season review, sponsors, shop, world news, then the new season."]))
-			body.add_child(menu._primary_button("Continue off-season" if c.off_season_active() else "Begin off-season", func() -> void:
-				if c.begin_off_season():
-					CareerOffSeasonPages.open(menu)
-				else:
-					_present_save_error(menu, c.store, func() -> void: CareerOffSeasonPages.open(menu)), "career_next_season"))
-		else:
-			var el := c.eligibility(e)
-			body.add_child(_card("NEXT EVENT", ["%s  (%s)" % [e["name"], CalendarManager.category_label(String(e["category"]))],
-				"%s  ·  %d rounds  ·  purse %s" % [CourseSource.course_info(String(e["course_id"])).get("name", e["course_id"]), int(e["rounds"]), money(int(e["purse"]))],
-				String(el["reason"])]))
-			body.add_child(menu._primary_button("View event", func() -> void: open_event(menu, int(e["serial"])), "career_next_event"))
-			body.add_child(menu._secondary_button("Skip to next event", func() -> void:
-				if c.skip_next_event():
-					_replace(menu, func() -> void: open_hub(menu))
-				elif c.store.is_blocked():
-					_present_save_error(menu, c.store, func() -> void: _replace(menu, func() -> void: open_hub(menu))), "career_hub_skip"))
-			body.add_child(menu._note("Skipping lets the world play the event without you: rankings, money for others and your footballer pool stay consistent."))
-	body.add_child(CareerOffSeasonPages.status_card(c))
-	body.add_child(CareerWorldPages.ledger_card(c))
-	body.add_child(CareerWorldPages.rivals_card(c))
-	body.add_child(menu._nav_row("course", "Calendar", "%d events this season" % (c.data["calendar"] as Array).size(), func() -> void: open_calendar(menu), "career_calendar"))
-	body.add_child(menu._nav_row("bars", "World Ranking", "You are %d" % c.world_rank(), func() -> void: CareerWorldPages.open_world_ranking(menu), "career_world_ranking"))
-	body.add_child(menu._nav_row("list", "Season Standings", "Top %d reach the finale" % CareerConfig.FINALE_QUALIFIERS, func() -> void: CareerWorldPages.open_standings(menu), "career_standings"))
-	body.add_child(menu._nav_row("people", "Rivals", "Head-to-head records", func() -> void: CareerWorldPages.open_rivals(menu), "career_rivals"))
-	body.add_child(menu._nav_row("star", "Trophy Cabinet", "%d trophies" % (c.data["trophies"] as Array).size(), func() -> void: CareerWorldPages.open_trophies(menu), "career_trophies"))
-	CareerSponsorPages.hub_refresh(c)
-	body.add_child(menu._nav_row("trophy", "Sponsors", CareerSponsorPages.hub_subtitle(c), func() -> void: CareerSponsorPages.open_sponsor_review(menu), "career_sponsors"))
-	body.add_child(menu._nav_row("flag", "Shop", CareerShopPages.hub_subtitle(c), func() -> void: CareerShopPages.open_shop(menu), "career_shop"))
-	body.add_child(menu._nav_row("gear", "Career Settings", "Footballer rule, export, import, reset", func() -> void: open_settings(menu), "career_settings"))
-	if c.store.is_blocked():
-		body.add_child(UiKit.text("Last save failed: " + c.store.last_error, 21, UiKit.C_WARN))
-		body.add_child(menu._secondary_button("Retry Save", func() -> void:
-			if c.store.retry():
-				_replace(menu, func() -> void: open_hub(menu)), "career_retry"))
-	menu._push(pg["root"])
+	CareerShell.open(menu, "hub")
 
 
 static func _status_text(s: String) -> String:
@@ -225,67 +167,76 @@ static func _status_text(s: String) -> String:
 # ------------------------------------------------------------------ calendar / event
 
 static func open_calendar(menu: MainMenu) -> void:
-	var c := CareerManager.active
-	var pg: Dictionary = menu._page("Calendar")
-	var body: VBoxContainer = pg["body"]
-	var nxt := c.next_event()
-	var ctx := c.qual_ctx()
-	for e in c.data["calendar"]:
-		var status := String(e["status"])
-		var sub := ""
-		match status:
-			"complete":
-				var r: Dictionary = e["result"]
-				sub = "Played: %s · %s" % [("won" if bool(r.get("human_won", false)) else "T/P%d" % int(r.get("human_place", 0))), money(int(r.get("human_earnings", 0)))]
-			"skipped":
-				sub = "Skipped · won by %s" % String((e["result"] as Dictionary).get("winner_name", "?"))
-			"in_progress":
-				sub = "In progress"
-			_:
-				var el := c.eligibility(e, ctx)
-				sub = ("NEXT · " if e == nxt else "") + ("Eligible" if bool(el["eligible"]) else "Not eligible")
-		var title := "%d. %s" % [int(e["serial"]), e["name"]]
-		body.add_child(menu._nav_row("flag" if String(e["category"]) != "regular" else "course", title,
-			"%s · %s · %d rounds · %s" % [CalendarManager.category_label(String(e["category"])), CourseSource.course_info(String(e["course_id"])).get("name", ""), int(e["rounds"]), sub],
-			func() -> void: open_event(menu, int(e["serial"])), "career_event_%d" % int(e["serial"])))
-	menu._push(pg["root"])
+	CareerShell.go(menu, "schedule")
+
+
+static func _tier_skin(col: Color) -> UiSkin:
+	var sk := CareerKit.glass(Color(col.r * 0.3 + 0.05, col.g * 0.3 + 0.08, col.b * 0.3 + 0.15, 0.95), Color(0.05, 0.09, 0.18, 0.97), 22.0, 24.0)
+	sk.border = Color(col.r, col.g, col.b, 0.6)
+	sk.rim = col
+	return sk
 
 
 static func open_event(menu: MainMenu, serial: int) -> void:
 	var c := CareerManager.active
 	var e := c.event_by_serial(serial)
-	var pg: Dictionary = menu._page(String(e["name"]))
+	var cat := String(e["category"])
+	var col := CareerKit.tier_color(cat)
+	var pg: Dictionary = CareerKit.page(menu, String(e["name"]), "Event %d · %s" % [serial, CalendarManager.category_label(cat)], col)
 	var body: VBoxContainer = pg["body"]
 	var info := CourseSource.course_info(String(e["course_id"]))
-	var snap_note := ""
-	if c.has_active_tournament() and int(c.tournament()["event"]["serial"]) == serial:
-		snap_note = "Course and pars are frozen for this tournament."
-	body.add_child(_card(CalendarManager.category_label(String(e["category"])).to_upper(), [
-		"Course: %s (%d holes per round)" % [info.get("name", ""), (info.get("holes", []) as Array).size()],
-		"Rounds: %d  ·  %s" % [int(e["rounds"]), CalendarManager.cut_text(e["cut"])],
-		"Field: %d players  ·  purse %s" % [int(e["field_size"]), money(int(e["purse"]))],
-		"Winner earns %d season points" % int((e["points"] as Dictionary)["winner"]),
-		snap_note]))
+	var active_here := c.has_active_tournament() and int(c.tournament()["event"]["serial"]) == serial
+	var hv := UiKit.vbox(10)
+	var hh := UiKit.hbox(10)
+	hh.add_child(CareerKit.tier_chip(cat))
+	var st := CareerShell.event_status(c, e, c.next_event())
+	hh.add_child(CareerKit.trim(CareerKit.text(String(st["text"]).to_upper(), 18, st["color"], "caps", false, HORIZONTAL_ALIGNMENT_RIGHT)))
+	hv.add_child(hh)
+	hv.add_child(CareerKit.text(String(info.get("name", "")), 30, Color.WHITE, "display", true))
+	hv.add_child(CareerKit.text("%d holes per round  ·  %s" % [(info.get("holes", []) as Array).size(), CalendarManager.cut_text(e["cut"])], 19, CareerKit.C_MUTED, "", true))
+	var stats := UiKit.hbox(10)
+	stats.add_child(CareerKit.stat("Rounds", str(int(e["rounds"])), "", Color.WHITE, 34))
+	stats.add_child(CareerKit.stat("Field", str(int(e["field_size"])), "", Color.WHITE, 34))
+	stats.add_child(CareerKit.stat("Purse", CareerKit.money_short(int(e["purse"])), "", CareerKit.C_UP, 34))
+	stats.add_child(CareerKit.stat("Win pts", str(int((e["points"] as Dictionary)["winner"])), "", col, 34))
+	hv.add_child(stats)
+	if active_here:
+		hv.add_child(CareerKit.text("Course and pars are frozen for this tournament.", 18, CareerKit.C_MUTED, "", true))
+	body.add_child(CareerKit.card(hv, _tier_skin(col)))
 	var el := c.eligibility(e)
-	var frozen: Dictionary = (c.tournament().get("event", {}) as Dictionary).get("eligibility_frozen", {}) if snap_note != "" else {}
+	var frozen: Dictionary = (c.tournament().get("event", {}) as Dictionary).get("eligibility_frozen", {}) if active_here else {}
 	var shown: Dictionary = frozen if not frozen.is_empty() else el
-	var qlines: Array = [String(shown["requirement"]), String(shown["reason"])]
-	if String(e["category"]) == "finale":
-		qlines.append("The finale field is the top %d of the Season Standings." % CareerConfig.FINALE_QUALIFIERS)
-	body.add_child(_card("QUALIFICATION", qlines))
-	var past := _past_winners(c, e)
-	body.add_child(menu._note("Past winners: %s" % (past if past != "" else "none yet.")))
+	var ok := bool(shown.get("eligible", true))
+	var qv := UiKit.vbox(8)
+	var qh := UiKit.hbox(10)
+	qh.add_child(CareerKit.trim(CareerKit.caption("Qualification")))
+	qh.add_child(CareerKit.chip("Eligible" if ok else "Not eligible", CareerKit.C_UP if ok else UiKit.C_WARN))
+	qv.add_child(qh)
+	qv.add_child(CareerKit.text(String(shown["requirement"]), 20, Color.WHITE, "", true))
+	qv.add_child(CareerKit.text(String(shown["reason"]), 20, CareerKit.C_UP if ok else UiKit.C_WARN, "", true))
+	if cat == "finale":
+		qv.add_child(CareerKit.text("The finale field is the top %d of the Season Standings." % CareerConfig.FINALE_QUALIFIERS, 19, CareerKit.C_MUTED, "", true))
+	body.add_child(CareerKit.card(qv))
 	var status := String(e["status"])
 	if status == "complete" or status == "skipped":
 		var r: Dictionary = e["result"]
-		body.add_child(_card("RESULT", ["Winner: %s (%d)" % [r.get("winner_name", "?"), int(r.get("winner_total", 0))],
-			("Your finish: %s%s · %s" % [r.get("human_place_label", str(int(r.get("human_place", 0)))), " (missed cut)" if bool(r.get("human_missed_cut", false)) else "", money(int(r.get("human_earnings", 0)))]) if bool(r.get("human_played", false)) else "You did not play this event."]))
+		var rv := UiKit.vbox(8)
+		rv.add_child(CareerKit.caption("Result", CareerKit.C_MAJOR))
+		var rh := UiKit.hbox(10)
+		rh.add_child(CareerKit.stat("Winner", String(r.get("winner_name", "?")), "%d strokes" % int(r.get("winner_total", 0)), Color.WHITE, 26))
+		if bool(r.get("human_played", false)):
+			rh.add_child(CareerKit.stat("You", CareerWorldPages.place_text(String(r.get("human_place_label", "")), int(r.get("human_place", 0))), "missed cut" if bool(r.get("human_missed_cut", false)) else money(int(r.get("human_earnings", 0))),
+				CareerKit.C_MAJOR if bool(r.get("human_won", false)) else CareerKit.C_LIME, 26))
+		rv.add_child(rh)
+		if not bool(r.get("human_played", false)):
+			rv.add_child(CareerKit.text("You did not play this event.", 19, CareerKit.C_MUTED))
+		body.add_child(CareerKit.card(rv))
 		if r.has("report"):
-			(pg["footer"] as VBoxContainer).add_child(menu._secondary_button("Tournament report", func() -> void: CareerWorldPages.open_report(menu, e, false), "career_event_report"))
-	elif c.has_active_tournament() and int(c.tournament()["event"]["serial"]) == serial:
-		(pg["footer"] as VBoxContainer).add_child(menu._primary_button("Continue tournament", func() -> void: open_tournament(menu), "career_event_continue"))
+			(pg["footer"] as VBoxContainer).add_child(CareerKit.ghost("Tournament report", func() -> void: CareerWorldPages.open_report(menu, e, false), "career_event_report"))
+	elif active_here:
+		(pg["footer"] as VBoxContainer).add_child(CareerKit.cta("Continue tournament", "", func() -> void: open_tournament(menu), "career_event_continue"))
 	elif e == c.next_event() and not c.has_active_tournament():
-		var enter: Button = menu._primary_button("Enter event", func() -> void:
+		var enter := CareerKit.cta("Enter event", "%d rounds · purse %s" % [int(e["rounds"]), CareerKit.money_short(int(e["purse"]))], func() -> void:
 			if c.enter_event(serial):
 				_replace(menu, func() -> void: open_tournament(menu))
 			elif c.store.is_blocked():
@@ -293,13 +244,15 @@ static func open_event(menu: MainMenu, serial: int) -> void:
 			, "career_enter")
 		enter.disabled = not bool(el["eligible"])
 		(pg["footer"] as VBoxContainer).add_child(enter)
-		(pg["footer"] as VBoxContainer).add_child(menu._secondary_button("Skip event", func() -> void:
+		(pg["footer"] as VBoxContainer).add_child(CareerKit.link("Skip event (the world plays it without you)", func() -> void:
 			if c.skip_event(serial):
 				_replace(menu, func() -> void: open_event(menu, serial))
 			elif c.store.is_blocked():
 				_present_save_error(menu, c.store, Callable()), "career_skip"))
 	else:
-		body.add_child(menu._note("Events are played in calendar order."))
+		body.add_child(CareerKit.text("Events are played in calendar order.", 19, CareerKit.C_MUTED, "", true))
+	var past := _past_winners(c, e)
+	body.add_child(CareerKit.info_card("Past winners", [past if past != "" else "None yet."]))
 	menu._push(pg["root"])
 
 
@@ -311,26 +264,48 @@ static func open_tournament(menu: MainMenu) -> void:
 	if t.is_empty():
 		return
 	var ev: Dictionary = t["event"]
-	var pg: Dictionary = menu._page(String(ev["name"]))
+	var cat := String(ev["category"])
+	var col := CareerKit.tier_color(cat)
+	var pg: Dictionary = CareerKit.page(menu, String(ev["name"]), CalendarManager.category_label(cat), col)
 	var body: VBoxContainer = pg["body"]
 	var status := String(t["status"])
 	var rounds_done := (t["human_rounds"] as Array).size()
-	body.add_child(_card(CalendarManager.category_label(String(ev["category"])).to_upper(), [
-		"%s  ·  par %d per round" % [(t["snapshot"] as Dictionary)["name"], TournamentManager.par_per_round(t)],
-		"%s" % CalendarManager.cut_text(ev["cut"]),
-		"Rounds played: %d of %d" % [rounds_done, int(ev["rounds"])],
-		"Status: %s" % _status_text(status) + ("  (missed the cut)" if bool(t.get("human_missed_cut", false)) else "")]))
+	var total := int(ev["rounds"])
+	var hv := UiKit.vbox(10)
+	var hh := UiKit.hbox(10)
+	hh.add_child(CareerKit.tier_chip(cat))
+	hh.add_child(CareerKit.trim(CareerKit.text(_status_text(status).to_upper() + ("  ·  MISSED THE CUT" if bool(t.get("human_missed_cut", false)) else ""), 16, CareerKit.C_MUTED, "caps", false, HORIZONTAL_ALIGNMENT_RIGHT)))
+	hv.add_child(hh)
+	hv.add_child(CareerKit.text("%s  ·  par %d per round" % [(t["snapshot"] as Dictionary)["name"], TournamentManager.par_per_round(t)], 24, Color.WHITE, "semi", true))
+	hv.add_child(CareerKit.text(CalendarManager.cut_text(ev["cut"]), 19, CareerKit.C_MUTED, "", true))
+	var pips := UiKit.hbox(8)
+	for i in total:
+		var pv := UiKit.vbox(4)
+		pv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pv.add_child(CareerKit.progress(1.0 if i < rounds_done else 0.0, col, 10))
+		var lbl := "R%d" % (i + 1)
+		if i < rounds_done:
+			var hr: Dictionary = (t["human_rounds"] as Array)[i]
+			lbl += "  %s" % RoundState.fmt_relative(int(hr.get("strokes", 0)) - int(hr.get("par", 0)))
+		pv.add_child(CareerKit.text(lbl, 16, Color.WHITE if i < rounds_done else (CareerKit.C_LIME if i == rounds_done else CareerKit.C_FAINT), "caps"))
+		pips.add_child(pv)
+	hv.add_child(pips)
+	body.add_child(CareerKit.card(hv, _tier_skin(col)))
 	if rounds_done > 0:
-		body.add_child(menu._caption("LEADERBOARD"))
-		body.add_child(_leaderboard(c, t))
+		var lb := UiKit.vbox(2)
+		lb.add_child(CareerKit.section("Leaderboard", "To par"))
+		lb.add_child(_leaderboard(c, t))
+		body.add_child(CareerKit.card(lb))
+	else:
+		body.add_child(CareerKit.info_card("Before you tee off", ["The leaderboard appears after your first round. The field plays alongside you, simulated."]))
 	var footer: VBoxContainer = pg["footer"]
 	match status:
 		"setup", "between_rounds":
-			footer.add_child(menu._primary_button("Set up round %d" % (int(t["round_index"]) + 1), func() -> void: open_round_setup(menu), "career_setup_round"))
+			footer.add_child(CareerKit.cta("Set up round %d" % (int(t["round_index"]) + 1), "", func() -> void: open_round_setup(menu), "career_setup_round"))
 		"in_round":
-			footer.add_child(menu._primary_button("Resume round %d" % (int(t["round_index"]) + 1), func() -> void: menu.career_round_requested.emit(), "career_resume_round"))
+			footer.add_child(CareerKit.cta("Resume round %d" % (int(t["round_index"]) + 1), "", func() -> void: menu.career_round_requested.emit(), "career_resume_round"))
 		"complete":
-			footer.add_child(menu._primary_button("Finish and see results", func() -> void:
+			footer.add_child(CareerKit.cta("Finish and see results", "", func() -> void:
 				var res := c.finalize_tournament()
 				if res.is_empty() and c.store.is_blocked():
 					_present_save_error(menu, c.store, Callable())
@@ -341,7 +316,7 @@ static func open_tournament(menu: MainMenu) -> void:
 
 static func _leaderboard(c: CareerManager, t: Dictionary) -> Control:
 	var rows := c.leaderboard()
-	var box := UiKit.vbox(4)
+	var box := UiKit.vbox(2)
 	var shown := 0
 	var line_drawn := false
 	var cs: Dictionary = t["cut"]
@@ -351,22 +326,9 @@ static func _leaderboard(c: CareerManager, t: Dictionary) -> Control:
 			continue
 		if bool(cs["applied"]) and bool(r["cut"]) and not line_drawn:
 			line_drawn = true
-			box.add_child(UiKit.label("— cut line (%d) —" % int(cs["line_total"]), 19, UiKit.C_WARN, HORIZONTAL_ALIGNMENT_CENTER))
-		var h := UiKit.hbox(8)
-		var col := UiKit.C_ACCENT if is_me else Color.WHITE
-		var pl := UiKit.label(("T%d" if r["tied"] else "%d") % int(r["place"]), 22, col)
-		pl.custom_minimum_size.x = 56
-		h.add_child(pl)
-		var nm := UiKit.label(String(r["name"]), 22, col)
-		nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		h.add_child(nm)
-		var rs := UiKit.label(" ".join(PackedStringArray((r["rounds"] as Array).map(func(x) -> String: return str(int(x))))), 20, UiKit.C_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
-		h.add_child(rs)
-		var tot := UiKit.label(RoundState.fmt_relative(int(r["rel"])), 22, col, HORIZONTAL_ALIGNMENT_RIGHT)
-		tot.custom_minimum_size.x = 64
-		h.add_child(tot)
-		box.add_child(h)
+			box.add_child(CareerKit.line_marker("Cut line %d" % int(cs["line_total"])))
+		var rs := " ".join(PackedStringArray((r["rounds"] as Array).map(func(x) -> String: return str(int(x)))))
+		box.add_child(CareerKit.rank_row(("T%d" if r["tied"] else "%d") % int(r["place"]), String(r["name"]), RoundState.fmt_relative(int(r["rel"])), 0, is_me, rs, false))
 		shown += 1
 	return box
 
@@ -397,19 +359,27 @@ static func _past_winners(c: CareerManager, e: Dictionary) -> String:
 static func open_round_setup(menu: MainMenu) -> void:
 	var c := CareerManager.active
 	var t := c.tournament()
-	var rc := RoundConfig.from_settings(App.settings)  # defaults (hole 12 in unless Settings says otherwise); frozen once the round starts
-	var pg: Dictionary = menu._page("Round %d Setup" % (int(t["round_index"]) + 1))
+	var rc := RoundConfig.from_settings(App.settings)  # defaults; frozen once the round starts
+	var ev: Dictionary = t["event"]
+	var pg: Dictionary = CareerKit.page(menu, "Round %d Setup" % (int(t["round_index"]) + 1), String(ev["name"]), CareerKit.tier_color(String(ev["category"])))
 	var body: VBoxContainer = pg["body"]
-	body.add_child(_card(String((t["snapshot"] as Dictionary)["name"]).to_upper(), [
-		"%d holes · par %d (frozen for this tournament)" % [((t["snapshot"] as Dictionary)["holes"] as Array).size(), TournamentManager.par_per_round(t)]]))
+	var hv := UiKit.vbox(6)
+	hv.add_child(CareerKit.caption("Course"))
+	hv.add_child(CareerKit.text(String((t["snapshot"] as Dictionary)["name"]), 28, Color.WHITE, "display", true))
+	hv.add_child(CareerKit.text("%d holes  ·  par %d (frozen for this tournament)" % [((t["snapshot"] as Dictionary)["holes"] as Array).size(), TournamentManager.par_per_round(t)], 19, CareerKit.C_MUTED, "", true))
 	if c.footballer_rule_on():
-		body.add_child(UiKit.text("Career rule: each footballer can be used once per season (%d used so far)." % c.season_used_footballers().size(), 21, UiKit.C_CYAN))
-	menu._mulligan_choices(body)
-	body.add_child(menu._note("Redo the last shot from its result screen. Fixed for this round."))
-	body.add_child(menu._caption("DIFFICULTY"))
-	menu._difficulty_controls(body, rc, Callable())
-	body.add_child(menu._note("These values are fixed for the whole round."))
-	(pg["footer"] as VBoxContainer).add_child(menu._primary_button("Start round", func() -> void:
+		hv.add_child(CareerKit.text("Career rule: each footballer can be used once per season (%d used so far)." % c.season_used_footballers().size(), 19, UiKit.C_CYAN, "", true))
+	body.add_child(CareerKit.card(hv))
+	var mv := UiKit.vbox(10)
+	menu._mulligan_choices(mv)
+	mv.add_child(CareerKit.text("Redo the last shot from its result screen. Fixed for this round.", 18, CareerKit.C_MUTED, "", true))
+	body.add_child(CareerKit.card(mv))
+	var dv := UiKit.vbox(10)
+	dv.add_child(CareerKit.caption("Difficulty"))
+	menu._difficulty_controls(dv, rc, Callable())
+	dv.add_child(CareerKit.text("These values are fixed for the whole round.", 18, CareerKit.C_MUTED, "", true))
+	body.add_child(CareerKit.card(dv))
+	(pg["footer"] as VBoxContainer).add_child(CareerKit.cta("Start round", "", func() -> void:
 		var start := func() -> void: menu.career_round_requested.emit()
 		if c.begin_round(rc.to_dict(), MainMenu._last_mulligans):
 			start.call()
@@ -422,27 +392,40 @@ static func open_round_setup(menu: MainMenu) -> void:
 
 static func open_settings(menu: MainMenu) -> void:
 	var c := CareerManager.active
-	var pg: Dictionary = menu._page("Career Settings")
+	var pg: Dictionary = CareerKit.page(menu, "Career Settings", c.player_name(), CareerKit.C_REGULAR)
 	var body: VBoxContainer = pg["body"]
 	var meta: Dictionary = c.data["save_metadata"]
-	body.add_child(_card("SAVE STATUS", [
-		"Career: %s (season %d)" % [c.player_name(), int((c.data["season"] as Dictionary)["number"])],
-		"Saved after every shot · %s" % ("SAVE FAILED: " + c.store.last_error if c.store.is_blocked() else "last save OK"),
-		"Created: %s" % Time.get_datetime_string_from_unix_time(int(meta.get("created_at", 0))).replace("T", " ")]))
-	body.add_child(menu._toggle("Each footballer once per season (career rule)", c.footballer_rule_on(), func(on: bool) -> void:
+	var sv := UiKit.vbox(8)
+	var sh := UiKit.hbox(10)
+	sh.add_child(CareerKit.trim(CareerKit.caption("Save status")))
+	sh.add_child(CareerKit.chip("Save failed" if c.store.is_blocked() else "Saved", UiKit.C_WARN if c.store.is_blocked() else CareerKit.C_UP))
+	sv.add_child(sh)
+	sv.add_child(CareerKit.text("Career: %s (season %d)" % [c.player_name(), int((c.data["season"] as Dictionary)["number"])], 21, Color.WHITE, "", true))
+	sv.add_child(CareerKit.text("Saved after every shot  ·  %s" % (("SAVE FAILED: " + c.store.last_error) if c.store.is_blocked() else "last save OK"), 19, CareerKit.C_MUTED, "", true))
+	sv.add_child(CareerKit.text("Created: %s" % Time.get_datetime_string_from_unix_time(int(meta.get("created_at", 0))).replace("T", " "), 19, CareerKit.C_MUTED, "", true))
+	body.add_child(CareerKit.card(sv))
+	var fv := UiKit.vbox(10)
+	fv.add_child(CareerKit.caption("Footballers"))
+	fv.add_child(menu._toggle("Each footballer once per season", c.footballer_rule_on(), func(on: bool) -> void:
 		c.set_footballer_rule(on)))
-	body.add_child(menu._note("Footballers used in any career round stay used until the next season starts. Mulliganed shots still count."))
-	body.add_child(menu._caption("RIVALS' FORM (OPPONENTS ONLY)"))
+	fv.add_child(CareerKit.text("Footballers used in any career round stay used until the next season starts. Mulliganed shots still count.", 18, CareerKit.C_MUTED, "", true))
+	body.add_child(CareerKit.card(fv))
+	var av := UiKit.vbox(10)
+	av.add_child(CareerKit.caption("Rivals' form (opponents only)"))
 	var modes := CareerConfig.ADAPTIVE_MODES
-	body.add_child(_choice_buttons(["Off", "Balanced", "Hard-lock"], maxi(0, modes.find(AdaptiveDifficulty.mode(c.data))), func(i: int) -> void: c.set_adaptive_mode(String(modes[i]))))
-	body.add_child(menu._note("Balanced nudges the opponents' ratings by a few points after each event you play, based on how you did against expectation. Hard-lock keeps rivals permanently tougher. It never changes your shots, physics or footballers. %s." % AdaptiveDifficulty.hint_text(c.data)))
+	av.add_child(CareerKit.segmented(["Off", "Balanced", "Hard-lock"], maxi(0, modes.find(AdaptiveDifficulty.mode(c.data))), func(i: int) -> void:
+		c.set_adaptive_mode(String(modes[i]))
+		_replace(menu, func() -> void: open_settings(menu)), "career_adaptive"))
+	av.add_child(CareerKit.text("Balanced nudges the opponents' ratings by a few points after each event you play, based on how you did against expectation. Hard-lock keeps rivals permanently tougher. It never changes your shots, physics or footballers. %s." % AdaptiveDifficulty.hint_text(c.data), 18, CareerKit.C_MUTED, "", true))
+	body.add_child(CareerKit.card(av))
 	var path := "user://exports/career_export.json"
-	var status := UiKit.label("", 21, UiKit.C_WARN)
-	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.add_child(menu._secondary_button("Export career", func() -> void:
+	var status := CareerKit.text("", 20, UiKit.C_WARN, "", true)
+	var dv := UiKit.vbox(10)
+	dv.add_child(CareerKit.caption("Data"))
+	dv.add_child(CareerKit.ghost("Export career", func() -> void:
 		status.text = "Exported to %s" % ProjectSettings.globalize_path(path) if c.store.export_to(path) else "Export failed.", "career_export"))
 	var imp_armed := {"v": false}
-	body.add_child(menu._secondary_button("Import career from the export file", func() -> void:
+	dv.add_child(CareerKit.ghost("Import career from the export file", func() -> void:
 		if not bool(imp_armed["v"]):
 			imp_armed["v"] = true
 			status.text = "Importing replaces the current career (a backup is kept). Tap again to confirm."
@@ -454,17 +437,18 @@ static func open_settings(menu: MainMenu) -> void:
 		else:
 			status.text = "Import refused: %s Your current career is unchanged." % String(r.get("error", "")), "career_import"))
 	var reset_armed := {"v": false}
-	body.add_child(menu._secondary_button("Reset career (deletes everything)", func() -> void:
+	dv.add_child(CareerKit.ghost("Reset career (deletes everything)", func() -> void:
 		if not bool(reset_armed["v"]):
 			reset_armed["v"] = true
 			status.text = "This permanently deletes the career. Tap again to confirm."
 			return
 		c.store.delete_career()
 		CareerManager.active = null
-		menu._pop()
-		menu._pop()
-		open_create(menu, false), "career_reset"))
-	body.add_child(status)
+		while menu._stack.size() > 1:
+			menu._pop()
+		open_create(menu, false), "career_reset", CareerKit.C_DOWN))
+	dv.add_child(status)
+	body.add_child(CareerKit.card(dv))
 	menu._push(pg["root"])
 
 
@@ -500,40 +484,33 @@ static func save_error_overlay(store: CareerSaveManager, on_ok: Callable) -> Con
 	var col: VBoxContainer = b["col"]
 	var root: Control = b["root"]
 	root.set_meta("save_error", true)
-	var t := UiKit.label(CareerRoundRun.SAVE_ERROR_TEXT, 40, UiKit.C_WARN)
-	t.add_theme_font_override("font", UiKit.font_semi())
-	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(t)
-	col.add_child(UiKit.text("Play is paused and shots are blocked until the save succeeds. Your latest progress is kept in memory. Free some storage space or check that the device storage is available, then tap Retry Save.", 24, Color.WHITE))
-	var why := UiKit.label(store.last_error, 20, UiKit.C_MUTED)
-	why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(why)
-	var btn := UiKit.button("Retry Save", func() -> void:
+	var v := UiKit.vbox(12)
+	v.add_child(CareerKit.caption("Career save", UiKit.C_WARN))
+	v.add_child(CareerKit.text(CareerRoundRun.SAVE_ERROR_TEXT, 36, UiKit.C_WARN, "display", true))
+	v.add_child(CareerKit.text("Play is paused and shots are blocked until the save succeeds. Your latest progress is kept in memory. Free some storage space or check that the device storage is available, then tap Retry Save.", 22, Color.WHITE, "", true))
+	var why := CareerKit.text(store.last_error, 19, CareerKit.C_MUTED, "", true)
+	v.add_child(why)
+	col.add_child(CareerKit.card(v, CareerKit.striped(Color(0.20, 0.11, 0.05, 0.97), UiKit.C_WARN, 18, 24.0)))
+	col.add_child(CareerKit.cta("Retry Save", "", func() -> void:
 		if store.retry():
 			if on_ok.is_valid():
 				on_ok.call()
 				root.queue_free()
 		else:
-			why.text = store.last_error, 88, 32)
-	UiKit.primary(btn)
-	btn.set_meta("ui_id", "career_retry_save")
-	col.add_child(btn)
+			why.text = store.last_error, "career_retry_save"))
 	return root
 
 
 static func round_done_overlay(text: String, sub: String, on_continue: Callable) -> Control:
 	var b := _overlay_base()
 	var col: VBoxContainer = b["col"]
-	var t := UiKit.label("Round complete", 40, Color.WHITE)
-	t.add_theme_font_override("font", UiKit.font_semi())
-	col.add_child(t)
-	col.add_child(UiKit.text(text, 30, UiKit.C_ACCENT))
+	var v := UiKit.vbox(10)
+	v.add_child(CareerKit.caption("Round complete", CareerKit.C_LIME))
+	v.add_child(CareerKit.text(text, 32, Color.WHITE, "display", true))
 	if sub != "":
-		col.add_child(UiKit.text(sub, 24, Color.WHITE))
-	var btn := UiKit.button("Continue", on_continue, 88, 32)
-	UiKit.primary(btn)
-	btn.set_meta("ui_id", "career_round_continue")
-	col.add_child(btn)
+		v.add_child(CareerKit.text(sub, 22, CareerKit.C_MUTED, "", true))
+	col.add_child(CareerKit.card(v, CareerKit.glass(Color(0.13, 0.28, 0.52, 0.95), Color(0.05, 0.11, 0.23, 0.97), 22.0, 24.0)))
+	col.add_child(CareerKit.cta("Continue", "", on_continue, "career_round_continue"))
 	return b["root"]
 
 
