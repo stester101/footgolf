@@ -1,13 +1,20 @@
 class_name Feedback
 extends RefCounted
 ## One place for haptic and sound cues so every screen behaves the same way.
-## Haptics respect Settings > vibration. Sound is a STUB: no audio assets exist yet, so cues are
-## only recorded behind the (default muted) sound setting; `cue_log` lets tests and a future
-## audio player hook in without touching call sites.
+## Haptics respect Settings > vibration. Sounds are synthesised at runtime (SfxSynth, no audio assets)
+## and played by the SfxPlayer registered in `player` (a round creates one); they respect the
+## sound mute and the SFX volume. `cue_log` records what would have played (tests read it).
 
 ## Haptic duration in ms per cue (0 = none). Shots and hole-outs keep their original values.
 const HAPTIC_MS := {"shot": 35, "holed": 90, "penalty": 60, "eagle": 120, "confirm": 15}
-const SFX_NAMES := ["shot", "holed", "penalty", "tap"]
+const SFX_NAMES := ["shot", "holed", "penalty", "tap", "kick_soft", "kick", "kick_hard", "putt",
+		"land_fairway", "land_rough", "land_green", "land_sand", "cup", "flag", "rim", "tree", "splash",
+		"cheer", "groan", "applause"]
+
+## The active SfxPlayer (or null: cues are only logged). Untyped so headless tests need no audio node.
+static var player: Object = null
+## Linear SFX volume 0..1 (Settings > Audio / Visual); applied to every cue.
+static var volume := 0.8
 
 ## Most recent cues that would have played (bounded); read by tests.
 static var cue_log: Array = []
@@ -34,13 +41,16 @@ static func haptic_for_result(holed: bool, penalty: int, relative_to_par: int) -
 	return "shot"
 
 
-## Sound hook. Muted by default (no assets yet); records the cue and returns true if it would play.
-static func sfx(cue: String, muted: bool = true) -> bool:
+## Sound hook: records the cue and plays it (gain = strength x volume) when a player exists.
+## Returns true if it would play (not muted, known cue).
+static func sfx(cue: String, muted: bool = true, strength: float = 1.0, pitch: float = 1.0) -> bool:
 	if muted or not SFX_NAMES.has(cue):
 		return false
 	cue_log.append(cue)
 	if cue_log.size() > CUE_LOG_MAX:
 		cue_log.pop_front()
+	if player != null and is_instance_valid(player):
+		player.call("play", cue, clampf(strength, 0.0, 1.5) * volume, pitch)
 	return true
 
 

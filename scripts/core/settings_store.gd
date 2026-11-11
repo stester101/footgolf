@@ -87,10 +87,11 @@ const FPS_CHOICES := [0, 30, 60]
 var max_fps := 0
 var keep_awake := true
 ## Accessibility / feel: reduced motion (no camera sweep, celebration bursts or reveal animation),
-## larger text on the Settings pages, and the sound mute (audio is a stub, so muted by default).
+## larger text on the Settings pages, the sound mute (muted by default) and the SFX volume (0..1).
 var reduced_motion := false
 var large_text := false
 var sound_muted := true
+var sfx_volume := 0.8
 ## Open the Pause menu when the app is sent to the background mid-round (offline rounds only).
 var auto_pause := true
 ## Last Round Setup choices (mulligans: 0 off, 1, 3, 5, -1 unlimited; players 1..4), restored on the next launch.
@@ -146,6 +147,7 @@ func load_settings() -> void:
 	reduced_motion = bool(d.get("reduced_motion", false))
 	large_text = bool(d.get("large_text", false))
 	sound_muted = bool(d.get("sound_muted", true))
+	sfx_volume = clampf(float(_num(d, "sfx_volume", 0.8)), 0.0, 1.0)
 	auto_pause = bool(d.get("auto_pause", true))
 	last_mulligans = sanitize_mulligans(int(_num(d, "last_mulligans", 0)))
 	last_players = clampi(int(_num(d, "last_players", 1)), 1, 4)
@@ -229,6 +231,7 @@ func save() -> bool:
 		"reduced_motion": reduced_motion,
 		"large_text": large_text,
 		"sound_muted": sound_muted,
+		"sfx_volume": sfx_volume,
 		"auto_pause": auto_pause,
 		"last_mulligans": last_mulligans,
 		"last_players": last_players,

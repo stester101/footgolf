@@ -1229,9 +1229,24 @@ func _open_settings_visual() -> void:
 	body.add_child(_toggle("Vibration on shots, penalties and hole-outs", st.vibration, func(on: bool) -> void:
 		st.vibration = on
 		st.save()))
-	body.add_child(_toggle("Sound effects (muted: no sounds are bundled yet)", not st.sound_muted, func(on: bool) -> void:
+	body.add_child(_toggle("Sound effects (kick, landings, cup, crowd)", not st.sound_muted, func(on: bool) -> void:
 		st.sound_muted = not on
 		st.save()))
+	var vol_row := UiKit.hbox(12)
+	vol_row.add_child(UiKit.label("SFX volume", int(round(21 * st.text_scale()))))
+	var vol := HSlider.new()
+	vol.min_value = 0.0
+	vol.max_value = 1.0
+	vol.step = 0.05
+	vol.value = st.sfx_volume
+	vol.custom_minimum_size = Vector2(0, 56)
+	UiKit.expand(vol)
+	vol.drag_ended.connect(func(_changed: bool) -> void:
+		st.sfx_volume = vol.value
+		Feedback.volume = vol.value
+		st.save())
+	vol_row.add_child(vol)
+	body.add_child(vol_row)
 	body.add_child(_toggle("Reduced motion (no camera sweep, celebration bursts or result animation)", st.reduced_motion, func(on: bool) -> void:
 		st.reduced_motion = on
 		st.save()))
