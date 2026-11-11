@@ -37,6 +37,30 @@
       "holes": ["hole_27", "hole_28", "hole_29", "hole_30", "hole_31", "hole_32"]
     },
     {
+      "id": "alpine",
+      "name": "Alpine Peaks",
+      "blurb": "6 mountain holes, steep climbs and drops, a glacial tarn",
+      "holes": ["hole_33", "hole_34", "hole_35", "hole_36", "hole_37", "hole_38"]
+    },
+    {
+      "id": "oasis",
+      "name": "Oasis Dunes",
+      "blurb": "6 desert-oasis holes, dunes, ponds, strong wind",
+      "holes": ["hole_39", "hole_40", "hole_41", "hole_42", "hole_43", "hole_44"]
+    },
+    {
+      "id": "islands",
+      "name": "Archipelago",
+      "blurb": "6 island holes, sea carries and an island green",
+      "holes": ["hole_45", "hole_46", "hole_47", "hole_48", "hole_49", "hole_50"]
+    },
+    {
+      "id": "stadium",
+      "name": "Stadium Park",
+      "blurb": "9 flat stadium holes, spectator banks, big greens",
+      "holes": ["hole_51", "hole_52", "hole_53", "hole_54", "hole_55", "hole_56", "hole_57", "hole_58", "hole_59"]
+    },
+    {
       "id": "full9",
       "name": "Full 9",
       "blurb": "Starter Links + Pinewood Ridge",

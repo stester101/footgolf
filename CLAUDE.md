@@ -16,9 +16,9 @@ Owner-approved deviations from the spec are logged in `docs/DECISIONS.md`.
 - `scripts/world/`, `scripts/camera/`, `scripts/ui/`, `scripts/round_controller.gd`, `scripts/main.gd`
   — presentation only; UI never decides score or consumption.
 - Autoload `App` (`scripts/core/app.gd`): repo, settings, hole loading. Logic classes must not use it.
-- Holes: `data/holes/hole_01..32.json`; courses in `data/courses.json` (Starter Links 1-3, Pinewood Ridge 4-9,
-  Coastal Links 10-13, Lakeside 14-17, Jizzy Nash Nash 18-26, Canyon Mesa 27-32, Full 9 = 1-9, Grand Tour = all 17 / Developer Test). Holes 4-17 come
-  from `tools/data/gen_forest_holes.py` (18-32: `gen_new_courses.py`; all holes get `tee_options`/`pin_options` from `tee_pin_options.py`) (themed specs; JSON is the source of truth). Hole lengths (owner-approved):
+- Holes: `data/holes/hole_01..59.json`; courses in `data/courses.json` (Starter Links 1-3, Pinewood Ridge 4-9,
+  Coastal Links 10-13, Lakeside 14-17, Jizzy Nash Nash 18-26, Canyon Mesa 27-32, Alpine Peaks 33-38, Oasis Dunes 39-44, Archipelago 45-50, Stadium Park 51-59, Full 9 = 1-9, Grand Tour = all 17 / Developer Test). Holes 4-17 come
+  from `tools/data/gen_forest_holes.py` (18-32: `gen_new_courses.py`; 33-59: `gen_more_courses.py`; all holes get `tee_options`/`pin_options` from `tee_pin_options.py`) (themed specs; JSON is the source of truth). Hole lengths (owner-approved):
   par 3 = 50-100 yd, par 4 = 100-200 yd, par 5 = 200-300 yd (docs/DECISIONS.md). Units: 1 world unit = 1 m, Y up, horizontal = X/Z.
   Bearing 0° = +Z, 90° = +X.
 
