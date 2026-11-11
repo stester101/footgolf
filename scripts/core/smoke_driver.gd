@@ -578,6 +578,9 @@ func _scroll_down() -> void:
 ## Career pages through the real menu and saves screenshots of them. Does not touch the player's own career.
 func _career_run() -> void:
 	await _frames(5)
+	if OS.get_cmdline_user_args().has("--large-text"):  # accessibility pass: Larger text + Reduced motion (not saved)
+		App.settings.large_text = true
+		App.settings.reduced_motion = true
 	var c := CareerManager.new(CareerSaveManager.new("user://smoke_career"))
 	c.store.delete_career()
 	CareerManager.course_source = func(id: String) -> Dictionary: return CourseSource.load_course(id, App.settings.par_overrides)
@@ -591,67 +594,101 @@ func _career_run() -> void:
 			c.skip_event(serial)
 		else:
 			c.enter_event(serial)
-			var t := c.tournament()
-			var par := TournamentManager.par_per_round(t)
-			var holes: int = ((t["snapshot"] as Dictionary)["holes"] as Array).size()
-			while String(c.tournament()["status"]) != "complete":
-				c.begin_round({}, 0)
-				c.complete_round(maxi(holes, par - 2 * holes + (played % 3)), par, holes)
+			_career_play_out(c, played)
 			c.finalize_tournament()
+		CareerKit.note_ranks(c)  # the UI's previous-table cache, so the rank movement arrows have something to show
 		played += 1
 	CareerManager.active = c
 	_say("career seeded: %d events, world rank %d" % [played, c.world_rank()])
+	await _frames(3)
+	var menu := get_tree().root.find_children("*", "MainMenu", true, false)[0] as MainMenu
+	if menu._tutorial != null and is_instance_valid(menu._tutorial):
+		menu.handle_back()  # first launch on this machine: close the tutorial
+		await _frames(3)
 	if not _press("Career Mode"):
 		return _fail("no Career Mode button")
-	await _frames(6)
-	await _shot("career_hub")
+	await _career_shot("career_hub")
 	_scroll_down()
+	await _career_shot("career_hub_lower")
+	# Schedule tab -> event -> report
+	if not await _career_step("career_tab_schedule", "career_schedule"):
+		return
+	if not await _career_step("career_event_1", "career_event"):
+		return
+	if not await _career_step("career_event_report", "career_report"):
+		return
+	_scroll_down()
+	await _career_shot("career_report_lower")
+	_press_id("back")
 	await _frames(3)
-	await _shot("career_hub_lower")
-	for step in [["career_world_ranking", "career_world_ranking"], ["career_standings", "career_standings"], ["career_rivals", "career_rivals"],
-			["career_trophies", "career_trophies"]]:
-		if not _press_id(String(step[0])):
-			return _fail("no career button %s" % step[0])
-		await _frames(6)
-		await _shot(String(step[1]))
+	_press_id("back")
+	await _frames(3)
+	# Rankings tab (world, standings, full table)
+	if not await _career_step("career_tab_rankings", "career_rankings_world"):
+		return
+	if not await _career_step("career_rank_view_1", "career_rankings_standings"):
+		return
+	if not await _career_step("career_rank_full", "career_standings_full"):
+		return
+	_press_id("back")
+	await _frames(3)
+	# Me tab and its pages
+	if not await _career_step("career_tab_me", "career_me"):
+		return
+	_scroll_down()
+	await _career_shot("career_me_lower")
+	for step in [["career_trophies", "career_trophies"], ["career_rivals", "career_rivals"], ["career_settings", "career_settings"]]:
+		if not await _career_step(String(step[0]), String(step[1])):
+			return
 		_press_id("back")
 		await _frames(3)
-	_scroll_down()
-	await _frames(3)
-	if not _press_id("career_sponsors"):
-		return _fail("no sponsors button")
-	await _frames(6)
-	await _shot("career_sponsors")
+	if not await _career_step("career_sponsors_me", "career_sponsors"):
+		return
 	var sign_btn := _find_ui_prefix("sponsor_sign_")
 	if sign_btn == null:
 		return _fail("no sponsor offer to sign")
 	sign_btn.pressed.emit()
-	await _frames(6)
-	await _shot("career_sponsors_signed")
+	await _career_shot("career_sponsors_signed")
 	_press_id("back")
 	await _frames(3)
-	_scroll_down()
-	await _frames(3)
-	if not _press_id("career_shop"):
-		return _fail("no shop button")
-	await _frames(6)
-	await _shot("career_shop")
+	if not await _career_step("career_shop_me", "career_shop"):
+		return
 	_press_id("back")
 	await _frames(3)
-	if not _press_id("career_calendar"):
-		return _fail("no calendar button")
-	await _frames(4)
-	await _shot("career_calendar")
-	if not _press_id("career_event_1"):
-		return _fail("no event 1 button")
-	await _frames(4)
-	if not _press_id("career_event_report"):
-		return _fail("no report button (event 1 has no result?)")
-	await _frames(6)
-	await _shot("career_report")
-	_scroll_down()
+	# Android Back from a non-Hub tab returns to the Hub
+	menu.handle_back()
 	await _frames(3)
-	await _shot("career_report_lower")
+	if String(menu._stack.back().get_meta("career_tab", "")) != "hub":
+		return _fail("Back from the Me tab did not return to the Hub")
+	_say("back from tab -> hub OK")
+	# enter the next event through the Hub CTA: tournament page and round setup
+	if not await _career_step("career_next_event", "career_tournament"):
+		return
+	if not await _career_step("career_setup_round", "career_round_setup"):
+		return
+	_press_id("back")
+	await _frames(3)
+	_career_play_out(c, 0)
+	CareerPages._replace(menu, func() -> void: CareerPages.open_tournament(menu))  # the page reflects the finished rounds
+	await _career_shot("career_tournament_done")
+	if not await _career_step("career_finish", "career_results"):
+		return
+	if not await _career_step("career_results_done", "career_hub_after_event"):
+		return
+	# finish the season (skips) and walk the off-season
+	while not c.season_finished():
+		c.skip_next_event()
+	CareerShell.go(menu, "schedule")
+	CareerShell.go(menu, "hub")
+	await _career_shot("career_hub_season_done")
+	if not await _career_step("career_next_season", "career_offseason_1"):
+		return
+	for i in range(2, 6):
+		if not await _career_step("career_offseason_next", "career_offseason_%d" % i):
+			return
+	if not _press_id("career_offseason_next"):
+		return _fail("no Start next season button")
+	await _career_shot("career_hub_new_season")
 	_say("PASS career pages")
 	get_tree().quit(0)
 
@@ -710,3 +747,27 @@ func _career_live_run() -> void:
 	c.store.delete_career()
 	_say("PASS career live board")
 	get_tree().quit(0)
+
+func _career_play_out(c: CareerManager, k: int) -> void:
+	var t := c.tournament()
+	var par := TournamentManager.par_per_round(t)
+	var holes: int = ((t["snapshot"] as Dictionary)["holes"] as Array).size()
+	while String(c.tournament()["status"]) != "complete":
+		c.begin_round({}, 0)
+		c.complete_round(maxi(holes, par - 2 * holes + (k % 3)), par, holes)
+
+
+## Waits for the Career entrance motion (count-ups, fades) to settle, then saves a screenshot.
+func _career_shot(name: String) -> void:
+	await _frames(4)
+	if shots_dir != "" and DisplayServer.get_name() != "headless":
+		await get_tree().create_timer(1.1).timeout
+	await _shot(name)
+
+
+func _career_step(ui_id: String, shot: String) -> bool:
+	if not _press_id(ui_id):
+		_fail("no career button %s" % ui_id)
+		return false
+	await _career_shot(shot)
+	return true

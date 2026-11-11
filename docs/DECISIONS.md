@@ -219,3 +219,9 @@ The pit rim, wall and floor use the SAME bounce/roll model as the green (speed-d
 - P2 Spin decay in flight: vertical spin is constant in the air and halves per bounce. Real spin decays ~3-5 %/s. Carry stays exact (solver includes spin) but the check/release after landing would soften slightly.
 - P3 Wind gradient: wind applies equally at all heights; a log-profile (weaker near the ground) would make Punch shots genuinely wind-proof and High shots more exposed. Carry is solved at zero wind, so calibration is unaffected; gameplay feel changes, so owner call.
 - P4 Rough grab on landing: rough uses the same speed-dependent restitution as fairway with lower retention; real rough also damps the first bounce height more. Small, roll-out only.
+
+## 2026-11-11: Career UI redesign (IMPLEMENTER, presentation only; no rules or numbers changed)
+- Career home is a tabbed shell (Hub / Schedule / Rankings / Me) with a hero header and a bottom tab bar; design in `docs/career/CAREER_UI_DESIGN.md`, widgets in `scripts/ui/career_kit.gd`. Android Back from Schedule / Rankings / Me returns to the Hub; Back on the Hub leaves Career.
+- The Hub's "Play next event" enters the next event directly when eligible (same `enter_event` call as the event page's "Enter event"); otherwise it opens the event page.
+- Rank movement arrows for other golfers come from a UI-only cache `user://career_ui_ranks_<hash>.json` (previous table since the last view); it never feeds the career save. The player's own arrow is the movement from the last event.
+- Count-ups / fades are skipped under Settings > Reduced motion; Career text follows Settings > Larger text.
