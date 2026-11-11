@@ -20,6 +20,9 @@ uniform float macro_amt = 0.0;
 uniform float cloud_shadow = 0.0;
 uniform float cloud_thr = 0.60;
 uniform vec2 cloud_drift = vec2(3.0, 1.0);
+// High graphics only (1 = on): fringe collar, cross-cut fairway, sand grain and bunker lip detail.
+// 0 = Low: no extra texture taps, original look.
+uniform float detail_amt = 0.0;
 
 vec4 turf_noise(vec2 p, float tile) {
 	return texture(noise_tex, p / tile);
@@ -43,7 +46,8 @@ vec3 turf_albedo(vec2 p, vec3 to_cam, out float rough_w, out float sand_w) {
 	vec4 wq = turf_noise(p, 19.0);
 	vec2 warp = (wq.rg - 0.5) * 2.4 + (fine.rg - 0.5) * 0.5;
 	vec2 uv = (p + warp - map_origin) / map_size;
-	vec3 base = texture(surface_tex, uv).rgb;
+	vec4 base4 = texture(surface_tex, uv);
+	vec3 base = base4.rgb;
 	vec4 kind = texture(kind_tex, uv);
 	float mown = kind.r;
 	float green = kind.g;
@@ -87,6 +91,29 @@ vec3 turf_albedo(vec2 p, vec3 to_cam, out float rough_w, out float sand_w) {
 	vec3 sandc = base * mix(0.9, 1.06, micro.g) * mix(0.97, 1.02, rake);
 	c = mix(c, sandc, sand);
 	c *= 1.0 - lip * 0.28;
+
+	// High graphics only: course-detail pass (one extra noise tap).
+	if (detail_amt > 0.0) {
+		vec4 grit = turf_noise(p, 0.43);
+		// fringe collar: a slightly richer, darker band around the green with a fine cross-hatch cut
+		float fringe = (1.0 - base4.a) * (1.0 - sand);
+		float hatch = turf_band(dot(p, stripe_dir) / 0.9) * turf_band(dot(p, along) / 0.9);
+		vec3 collar = c * vec3(0.90, 1.0, 0.86) * (1.0 + hatch * 0.06 * sheen);
+		c = mix(c, collar, fringe * detail_amt);
+		// fairway cross-cut: a faint second stripe pass at right angles -> soft checkerboard
+		float cross_cut = turf_band(dot(p, along) / stripe_width + (wq.a - 0.5) * 0.05);
+		c *= 1.0 + mown * (1.0 - fringe) * cross_cut * 0.07 * sheen * detail_amt;
+		// sand: coarse grain, dark pebbles, bright quartz glints, damp darker floor away from the lip
+		float grain2 = grit.r * 0.6 + grit.g * 0.4;
+		vec3 sd = c * mix(0.88, 1.10, grain2);
+		sd *= 1.0 - smoothstep(0.80, 0.92, grit.b) * 0.22;
+		sd += vec3(0.10, 0.09, 0.07) * smoothstep(0.88, 0.97, grit.a) * smoothstep(40.0, 8.0, length(to_cam));
+		sd *= mix(1.0, 0.93, smoothstep(0.95, 1.0, kind.a) * smoothstep(0.4, 0.7, mid.r));
+		c = mix(c, sd, sand * detail_amt);
+		// turf lip just outside the sand: a thin brighter crest catching the light
+		float crest = smoothstep(0.02, 0.15, kind.a) * (1.0 - smoothstep(0.2, 0.45, kind.a));
+		c *= 1.0 + crest * 0.22 * detail_amt;
+	}
 
 	// High graphics only (macro_amt > 0): very large hue/brightness drift plus distance mottling.
 	// Multiplicative and subtle, weakest on green/tee/fairway so lie colours and mowing stripes stay
