@@ -1238,7 +1238,7 @@ func _on_shot_resolved(r: ShotResult) -> void:
 	var rel := hs_now.relative_to_par() if hs_now != null and hs_now.complete else 0
 	var cue := Feedback.haptic_for_result(r.holed, r.penalty, rel)
 	Feedback.haptic(cue, App.settings.vibration)
-	Feedback.sfx("holed" if r.holed else ("penalty" if r.penalty > 0 else "shot"), App.settings.sound_muted)
+	# sounds for the shot and its outcome come from FxDirector (kick, landings, cup, crowd)
 	if _reveal != null and _reveal.is_valid():
 		_reveal.kill()
 	UiKit.clear(_result_box)

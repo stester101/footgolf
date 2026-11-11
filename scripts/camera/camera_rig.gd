@@ -27,6 +27,9 @@ func _ready() -> void:
 func set_hole(h: HoleDefinition) -> void:
 	hole = h
 	_initialised = false
+	_cup_t = 0.0
+	_cup_hold = false
+	_ball_prev = Vector3.INF
 
 
 func set_mode(m: int) -> void:
@@ -127,44 +130,141 @@ func _clamp_overhead() -> void:
 	cam.global_position = p
 
 
+## Camera feel (behind view only). Flight: chase with landing anticipation (the look point leads
+## towards where the ball will come down) and a slight speed FOV. Putt / roll near the cup: lower and
+## closer, framing ball and cup together. Cup drop: a short close-up of the cup (gentle orbit unless
+## reduced motion). Reduced motion keeps the tight follow, no FOV change, orbit or shake.
+const BASE_FOV := 68.0
+const CUP_MOMENT_S := 1.8
+const PUTT_CAM_RANGE := 22.0
+var _ball_prev := Vector3.INF
+var _ball_vel := Vector3.ZERO
+var _cup_t := 0.0
+var _cup_hold := false  # keep the cup framing after the moment until the next shot / hole
+var _cup_pos := Vector3.ZERO
+var _cup_dir := Vector3(0, 0, 1)
+var _cup_ang := 0.0
+var _shake := 0.0
+var _shake_t := 0.0
+
+
+## Hole-out close-up for CUP_MOMENT_S seconds (FxDirector calls this when the ball drops).
+func cup_moment(cup: Vector3) -> void:
+	if mode != Mode.BEHIND:
+		return
+	_cup_pos = cup
+	_cup_dir = _chase_dir if _chase_dir.length() > 0.1 else Vector3(0, 0, 1)
+	_cup_ang = 0.0
+	_cup_t = CUP_MOMENT_S
+	_cup_hold = true
+
+
+func in_cup_moment() -> bool:
+	return _cup_hold
+
+
+## Tiny decaying shake (kick contact / hard landing); ignored with reduced motion.
+func add_shake(amount: float) -> void:
+	if not reduced_motion:
+		_shake = maxf(_shake, clampf(amount, 0.0, 0.25))
+
+
+## Where a descending ball will meet the ground (gravity only, no drag/wind): good enough to aim the camera.
+func _predict_landing(ball: Vector3, v: Vector3) -> Vector3:
+	var g := 9.81
+	var gh := hole.terrain_height(ball.x, ball.z) if hole != null else 0.0
+	var h := maxf(0.0, ball.y - gh)
+	var t := (v.y + sqrt(maxf(0.0, v.y * v.y + 2.0 * g * h))) / g
+	t = clampf(t, 0.0, 3.0)
+	return Vector3(ball.x + v.x * t, gh, ball.z + v.z * t)
+
+
 ## Called every frame by the round controller.
 func update_rig(delta: float, ball: Vector3, aim: Vector3, moving: bool, rolling: bool = false) -> void:
 	if mode == Mode.OVERHEAD:
 		return
+	if delta > 0.0 and _ball_prev != Vector3.INF:
+		var v := (ball - _ball_prev) / delta
+		_ball_vel = _ball_vel.lerp(v, 1.0 - exp(-12.0 * delta)) if v.length() < 200.0 else _ball_vel
+	_ball_prev = ball
+	if not moving:
+		_ball_vel = Vector3.ZERO
+	elif _cup_hold and _cup_t <= 0.0:
+		_cup_hold = false  # a new shot is under way
+	var cup := hole.cup_position() if hole != null and hole.has_cup else Vector3.INF
 	var desired_pos: Vector3
 	var desired_look: Vector3
-	if moving and rolling:
+	var fov := BASE_FOV
+	var fast := false  # use the slower, sweeping follow rates
+	if _cup_hold:
+		_cup_t = maxf(0.0, _cup_t - delta)
+		if not reduced_motion and _cup_t > 0.0:
+			_cup_ang += delta * deg_to_rad(14.0)
+		var d := _cup_dir.rotated(Vector3.UP, _cup_ang)
+		desired_pos = _cup_pos - d * 2.6 + Vector3.UP * 1.15
+		# look below the cup so it sits in the upper free band, above the result card
+		desired_look = _cup_pos - Vector3.UP * 0.9
+	elif moving and rolling:
+		var vh := Vector3(_ball_vel.x, 0, _ball_vel.z)
+		if vh.length() > 0.3 and vh.normalized().dot(_chase_dir) > -0.2:  # no 180° swing on spin-back
+			_chase_dir = _chase_dir.slerp(vh.normalized(), clampf(delta * 2.0, 0.0, 1.0)).normalized()
 		desired_pos = ball - _chase_dir * 5.5 + Vector3.UP * 2.4
 		desired_look = ball + _chase_dir * 3.5
+		if cup != Vector3.INF:
+			var dc := Units.horizontal_distance(ball, cup)
+			if dc < PUTT_CAM_RANGE:
+				# putt cam: drop lower and frame the ball running at the cup
+				var w := 1.0 - dc / PUTT_CAM_RANGE
+				desired_pos = ball - _chase_dir * lerpf(5.5, 3.6, w) + Vector3.UP * lerpf(2.4, 1.3, w)
+				desired_look = desired_look.lerp(ball.lerp(cup, 0.5), w * 0.8)
 	elif moving:
 		var agl := 0.0
 		if hole != null:
 			agl = maxf(0.0, ball.y - hole.terrain_height(ball.x, ball.z))
 		desired_pos = ball - _chase_dir * (11.0 + agl * 0.25) + Vector3.UP * (3.5 + agl * 0.35)
 		desired_look = ball + _chase_dir * 2.0
+		if _ball_vel.y < -1.0 and hole != null:
+			# landing anticipation: lead the look point towards the predicted landing spot
+			var land := _predict_landing(ball, _ball_vel)
+			var lead := clampf(-_ball_vel.y / 12.0, 0.0, 1.0) * 0.45
+			desired_look = desired_look.lerp(land, lead)
+		if not reduced_motion:
+			fov = BASE_FOV + clampf(_ball_vel.length() / 40.0, 0.0, 1.0) * 6.0
+		fast = true
 	else:
 		_chase_dir = Vector3(aim.x, 0, aim.z).normalized()
 		desired_pos = ball - _chase_dir * 6.5 + Vector3.UP * 2.1
 		desired_look = ball + _chase_dir * 16.0 + Vector3.UP * 0.4
 	if hole != null:
-		var gh := hole.terrain_height(desired_pos.x, desired_pos.z) + 1.0
+		var gh := hole.terrain_height(desired_pos.x, desired_pos.z) + (0.5 if _cup_hold else 1.0)
 		desired_pos.y = maxf(desired_pos.y, gh)
 	if not _initialised:
 		_pos = desired_pos
 		_look = desired_look
 		_initialised = true
 	else:
-		var kp := 1.0 - exp(-(10.0 if rolling or not moving or reduced_motion else 3.0) * delta)
-		var kl := 1.0 - exp(-(14.0 if rolling or not moving or reduced_motion else 6.0) * delta)
+		var slow := fast and not reduced_motion
+		var kp := 1.0 - exp(-(3.0 if slow else 10.0) * delta)
+		var kl := 1.0 - exp(-(6.0 if slow else 14.0) * delta)
 		_pos = _pos.lerp(desired_pos, kp)
 		_look = _look.lerp(desired_look, kl)
+	cam.fov = lerpf(cam.fov, fov, 1.0 - exp(-4.0 * delta))
+	var off := Vector3.ZERO
+	if _shake > 0.001:
+		_shake_t += delta * 40.0
+		off = Vector3(sin(_shake_t * 1.3), sin(_shake_t * 1.7 + 1.0), 0.0) * _shake
+		_shake *= exp(-10.0 * delta)
 	if (_look - _pos).length() > 0.01:
 		cam.global_transform = Transform3D(Basis(), _pos)
 		cam.look_at(_look, Vector3.UP)
+		if off != Vector3.ZERO:
+			cam.global_position += cam.global_transform.basis * off
 
 
 func snap() -> void:
 	_initialised = false
+	_cup_t = 0.0
+	_cup_hold = false
 
 
 ## Ground point under a screen position (iterative terrain intersection).

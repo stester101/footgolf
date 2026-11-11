@@ -207,3 +207,15 @@ The pit rim, wall and floor use the SAME bounce/roll model as the green (speed-d
 - Android backgrounding mid-aim opens the Pause menu (offline only).
 - Result screen of a finished round has "Copy round summary" (plain text to the clipboard).
 - Tutorial: removed "all three holes" wording, added a Trajectory and spin page.
+
+## 2026-11-11: game feel pass (presentation only; no physics, scoring or consumption changes)
+- Sound: every cue is synthesised at runtime (`scripts/audio/sfx_synth.gd`, 16-bit mono AudioStreamWAV, fixed seeds; no audio assets). `FxDirector` (`scripts/fx/fx_director.gd`) watches the running BallSim read-only and plays: kick (3 coarse strength bands; putt tap for Putt shots), landing per surface (fairway/rough/green/sand), rim, flagstick, tree, water splash, cup drop, and crowd reactions (cheer/applause/groan) after the ball stops. Mute still defaults ON (unchanged); new Settings > Audio / Visual "SFX volume" slider (`sfx_volume`, default 0.8).
+- Camera (`scripts/camera/camera_rig.gd`): flight look point leads towards the predicted landing spot; slight speed FOV; putt cam (lower, frames ball and cup inside 22 m); a 1.8 s cup-drop close-up (gentle orbit) held until the next shot; tiny kick/landing shake. Reduced motion: no FOV change, orbit or shake, tight follow as before.
+- Impact particles (turf, green dew, sand, splash + ripple) skipped with reduced motion. Outcome callouts ("Birdie!", "Eagle!", "Hole in one!", "In the water", "Out of bounds", "Lipped out!", "Off the flagstick!") appear only from `shot_resolved` (ball at rest) and clear when a full overlay opens.
+- OWNER DECISION PROPOSED: now that real sounds exist, default sound to ON (currently muted by default; `test_polish2` asserts the muted default).
+
+## 2026-11-11: physics realism audit - PROPOSALS ONLY (nothing changed; every calibration test untouched)
+- P1 Angle-dependent bounce friction: tangential retention is a fixed per-surface value (fairway 0.37). Real landings lose more pace when steep and skip on when shallow (Punch/Low should run out more, High should check). Would change roll-out, not carry (solver stops at first contact); needs owner approval because run-out distances shift.
+- P2 Spin decay in flight: vertical spin is constant in the air and halves per bounce. Real spin decays ~3-5 %/s. Carry stays exact (solver includes spin) but the check/release after landing would soften slightly.
+- P3 Wind gradient: wind applies equally at all heights; a log-profile (weaker near the ground) would make Punch shots genuinely wind-proof and High shots more exposed. Carry is solved at zero wind, so calibration is unaffected; gameplay feel changes, so owner call.
+- P4 Rough grab on landing: rough uses the same speed-dependent restitution as fairway with lower retention; real rough also damps the first bounce height more. Small, roll-out only.

@@ -58,6 +58,7 @@ const PRELOAD_BUDGET_USEC := 9000
 const PRELOAD_TIMEOUT_MS := 20000
 var _pending: CourseView
 var _pending_key := ""
+var fx: FxDirector
 var _pending_t0 := 0
 
 
@@ -148,6 +149,9 @@ func _ready() -> void:
 	_canvas.add_child(ui)
 	ui.setup(session)
 	ui.markers.camera = rig.cam
+	fx = FxDirector.new()  # game feel: SFX, impact particles, camera moments, outcome callouts
+	add_child(fx)
+	fx.setup(session, rig, ui)
 	ui.camera_toggle_requested.connect(_toggle_camera)
 	ui.aim_here_requested.connect(_aim_at_marker)
 	ui.overhead_zoom_requested.connect(func(f: float) -> void:
