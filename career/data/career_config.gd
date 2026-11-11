@@ -36,9 +36,9 @@ const FLAGSHIP_CUT_EVERY := 2
 ## Majors: cut after round 2 [A]. Regular and finale: no cut [A].
 
 # --- courses used per event category [INVENTED mapping onto the existing courses; 3-17 holes, never 18]
-const REGULAR_COURSES := ["starter", "ridge", "coastal", "lakeside", "jizzy", "mesa"]
-const FLAGSHIP_COURSES := ["jizzy", "mesa", "lakeside", "full9"]
-const MAJOR_COURSES := ["jizzy", "full9", "mesa", "ridge"]
+const REGULAR_COURSES := ["starter", "ridge", "coastal", "lakeside", "jizzy", "mesa", "alpine", "oasis", "islands", "stadium"]
+const FLAGSHIP_COURSES := ["jizzy", "mesa", "lakeside", "full9", "stadium", "islands"]
+const MAJOR_COURSES := ["jizzy", "full9", "mesa", "ridge", "alpine"]
 const FINALE_COURSE := "jizzy"
 
 # --- eligibility [A: Rankings and eligibility; section 8 item 6]
