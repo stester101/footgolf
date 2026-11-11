@@ -63,6 +63,7 @@ func attach(p_session: GameSession, p_ui: GameUI = null) -> void:
 	session.shot_started.connect(_on_shot_started)
 	if ui != null:
 		ui.round_end_override = _on_round_end
+		LiveLeaderboard.attach_to(ui, career, session)  # live tournament board (read-only)
 	career.store.save_failed.connect(_on_save_failed)
 	career.store.save_recovered.connect(_on_save_recovered)
 

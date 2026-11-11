@@ -95,6 +95,9 @@ func _press(text_prefix: String) -> bool:
 
 
 func _run() -> void:
+	if OS.get_cmdline_user_args().has("--smoke-career-live"):  # pass together with --smoke-career (main.gd gate)
+		await _career_live_run()
+		return
 	if OS.get_cmdline_user_args().has("--smoke-career"):
 		await _career_run()
 		return
@@ -650,4 +653,60 @@ func _career_run() -> void:
 	await _frames(3)
 	await _shot("career_report_lower")
 	_say("PASS career pages")
+	get_tree().quit(0)
+
+
+# ------------------------------------------------------------------ live leaderboard (--smoke-career-live [--screenshots=<dir>])
+
+## Scratch career, enters the first event and opens its round so the live leaderboard shows; then marks the
+## player's holes done (birdie, then double bogey) to capture the ticker and the position change. Scratch only.
+func _career_live_run() -> void:
+	await _frames(5)
+	var c := CareerManager.new(CareerSaveManager.new("user://smoke_career_live"))
+	c.store.delete_career()
+	CareerManager.course_source = func(id: String) -> Dictionary: return CourseSource.load_course(id, App.settings.par_overrides)
+	if not c.create("Sam Smoke", "England", "short", 31337) or not c.enter_event(int(c.next_event()["serial"])):
+		return _fail("career live setup")
+	c.tournament()["event"]["cut"] = {"type": "percent", "percent": 50, "after_round": 1}  # show the projected cut line
+	if not c.begin_round(RoundConfig.new().to_dict(), 0):
+		return _fail("career begin round")
+	CareerManager.active = c
+	main._start_career_round()
+	await _frames(40)
+	var boards := get_tree().root.find_children("LiveLeaderboard", "", true, false)
+	if boards.is_empty():
+		return _fail("no live leaderboard in the career round")
+	var board := boards[0] as LiveLeaderboard
+	_say("live board rows: %d" % board._table.get_child_count())
+	await _shot("live_board_start")
+	if _press("Tee off"):
+		await _frames(40)
+		await _shot("live_board_aiming")
+	var rs := board.session.slot_round_state(0)
+	for i in mini(2, rs.holes.size()):
+		var hs: HoleState = rs.holes[i]
+		hs.strokes = hs.par - 1 if i == 0 else hs.par + 2
+		hs.complete = true
+		board.update()
+		await _frames(30)
+		await _shot("live_board_after_hole%d" % (i + 1))
+	board.toggle()
+	await _frames(4)
+	await _shot("live_board_collapsed")
+	board.toggle()
+	App.settings.large_text = true
+	var gui: Node = board.get_parent()
+	while gui != null and not gui is GameUI:
+		gui = gui.get_parent()
+	var sess := board.session
+	board.queue_free()
+	await _frames(2)
+	var big := LiveLeaderboard.attach_to(gui as Control, c, sess)
+	if big == null:
+		return _fail("large-text board")
+	await _frames(10)
+	await _shot("live_board_large_text")
+	App.settings.large_text = false
+	c.store.delete_career()
+	_say("PASS career live board")
 	get_tree().quit(0)

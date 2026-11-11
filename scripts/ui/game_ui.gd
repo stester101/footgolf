@@ -33,6 +33,7 @@ var _wind_icon: LineIcon
 var _wind_label: Label
 var _unit_btn: Button
 var _utility_row: HBoxContainer
+var hud_left: VBoxContainer  ## left HUD column under the wind chip (Career live leaderboard docks here)
 var _scorecard_root: Control
 var _right_shot: VBoxContainer
 var _right_map: VBoxContainer
@@ -418,6 +419,7 @@ func _build_utility_row() -> HBoxContainer:
 	# wind chip (upper left)
 	var left := UiKit.vbox(GAP)
 	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud_left = left
 	var wind := _plate(14, 10)
 	var wr := UiKit.hbox(10)
 	wr.mouse_filter = Control.MOUSE_FILTER_IGNORE
