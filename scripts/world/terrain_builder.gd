@@ -142,7 +142,8 @@ func step(deadline_usec: int) -> bool:
 	var cache_k := {}
 	for t in COLORS.keys():
 		var c: Color = COLORS[t]
-		cache_c[t] = PackedByteArray([c.r8, c.g8, c.b8, 255])
+		# alpha flags the fringe collar for the High turf shader (0 = fringe, 255 = everything else)
+		cache_c[t] = PackedByteArray([c.r8, c.g8, c.b8, 0 if t == Surface.Type.FRINGE else 255])
 		var kc: Color = KINDS[t]
 		cache_k[t] = PackedByteArray([kc.r8, kc.g8, kc.b8, kc.a8])
 	while _map_row < map_h:
@@ -156,7 +157,7 @@ func step(deadline_usec: int) -> bool:
 			color_bytes[k] = pc[0]
 			color_bytes[k + 1] = pc[1]
 			color_bytes[k + 2] = pc[2]
-			color_bytes[k + 3] = 255
+			color_bytes[k + 3] = pc[3]
 			kind_bytes[k] = pk[0]
 			kind_bytes[k + 1] = pk[1]
 			kind_bytes[k + 2] = pk[2]
@@ -166,6 +167,77 @@ func step(deadline_usec: int) -> bool:
 		if _map_row % 4 == 0 and Time.get_ticks_usec() > deadline_usec:
 			return false
 	return true
+
+
+## High graphics: bakes soft ambient occlusion into the base-colour map (zero runtime cost; the
+## map follows the analytic terrain exactly). Darkens the ground under tree crowns and around trunks,
+## the sand next to a bunker's turf lip, and any extra footprints (`blobs`: [{p: Vector2, r: float,
+## amt: float}] round, or [{xf: Transform2D, half: Vector2, amt}] boxes, e.g. grandstands).
+func bake_ao(blobs: Array = []) -> void:
+	if map_w == 0:
+		return
+	for t in hole.trees:
+		var cr: float = t["canopy_r"]
+		_splat(Vector2(t["x"], t["z"]), cr * 1.25, 0.30)
+		_splat(Vector2(t["x"], t["z"]), maxf(float(t["trunk_r"]) * 4.0, 1.2), 0.22)
+	for b in blobs:
+		if b.has("p"):
+			_splat(b["p"], b["r"], b["amt"])
+		else:
+			_splat_box(b["xf"], b["half"], b["amt"])
+	# bunker lip shadow: sand within ~1.2 m of the rim is darker (the turf lip overhangs it)
+	for i in hole.bunkers.size():
+		var e: HoleDefinition.Ellipse = hole.bunkers[i]
+		var px0 := _px(e.aabb.position)
+		var px1 := _px(e.aabb.end)
+		for pz in range(px0.y, px1.y + 1):
+			for px in range(px0.x, px1.x + 1):
+				var w := _world(px, pz)
+				var sd := e.signed_dist(w.x, w.y)
+				if sd <= 0.0 and sd > -1.6:
+					_darken(px, pz, 0.30 * smoothstep(-1.6, 0.0, sd))
+
+
+func _px(w: Vector2) -> Vector2i:
+	var r := hole.bounds
+	return Vector2i(clampi(int((w.x - r.position.x) / map_mpp), 0, map_w - 1), clampi(int((w.y - r.position.y) / map_mpp), 0, map_h - 1))
+
+
+func _world(px: int, pz: int) -> Vector2:
+	return hole.bounds.position + Vector2(px + 0.5, pz + 0.5) * map_mpp
+
+
+func _darken(px: int, pz: int, amt: float) -> void:
+	var k := (pz * map_w + px) * 4
+	var f := 1.0 - clampf(amt, 0.0, 0.8)
+	color_bytes[k] = int(color_bytes[k] * f)
+	color_bytes[k + 1] = int(color_bytes[k + 1] * f)
+	color_bytes[k + 2] = int(color_bytes[k + 2] * f)
+
+
+func _splat(c: Vector2, rad: float, amt: float) -> void:
+	var p0 := _px(c - Vector2(rad, rad))
+	var p1 := _px(c + Vector2(rad, rad))
+	for pz in range(p0.y, p1.y + 1):
+		for px in range(p0.x, p1.x + 1):
+			var d := _world(px, pz).distance_to(c) / rad
+			if d < 1.0:
+				var f := 1.0 - d
+				_darken(px, pz, amt * f * f * (3.0 - 2.0 * f))
+
+
+func _splat_box(xf: Transform2D, half: Vector2, amt: float) -> void:
+	var rad := half.length() + 2.5
+	var c := xf.origin
+	var inv := xf.affine_inverse()
+	var p0 := _px(c - Vector2(rad, rad))
+	var p1 := _px(c + Vector2(rad, rad))
+	for pz in range(p0.y, p1.y + 1):
+		for px in range(p0.x, p1.x + 1):
+			var l := inv * _world(px, pz)
+			var o := maxf(absf(l.x) - half.x, absf(l.y) - half.y)
+			if o < 2.5:
+				_darken(px, pz, amt * (1.0 - smoothstep(-0.5, 2.5, o)))
 
 
 func build_all() -> void:

@@ -40,6 +40,8 @@ var _jobs: Array = []  # [{w: float, run: Callable(deadline) -> bool, part: Call
 var _job_i := 0
 var _tree_i := 0
 var _tree_x := {}
+## High graphics only: grandstands, crowds, sponsor boards (planned with the terrain so their shadows bake in).
+var _dressing: CourseDressing
 
 var _terrain_shader: Shader = preload("res://assets/shaders/terrain.gdshader")
 var _water_shader: Shader = preload("res://assets/shaders/water.gdshader")
@@ -72,6 +74,7 @@ func begin_build(p_hole: HoleDefinition, p_cup_radius: float = 0.1524) -> void:
 	_flag_mat = null
 	_flag_pivot = null
 	_sky_life = null
+	_dressing = null
 	_grass_at = Vector3.INF
 	pin_label = null
 	progress = 0.0
@@ -87,6 +90,7 @@ func begin_build(p_hole: HoleDefinition, p_cup_radius: float = 0.1524) -> void:
 		{"n": "trees_xform", "w": 400.0 + hole.trees.size() * 40.0, "run": _step_trees, "part": func() -> float: return float(_tree_i) / maxf(hole.trees.size(), 1.0)},
 		{"n": "tree_multimeshes_sky", "w": 6000.0, "run": _job_tree_meshes},
 		{"n": "details_pin_grass", "w": 1500.0, "run": _job_details},
+		{"n": "dressing", "w": 2500.0, "run": _job_dressing},
 	]
 
 
@@ -117,6 +121,14 @@ func _job_details(_deadline: int) -> bool:
 	_build_tee_markers()
 	_build_oob_stakes()
 	_build_grass()
+	return true
+
+
+## Course dressing: yardage markers on every quality; grandstands, crowds and boards on High only.
+func _job_dressing(_deadline: int) -> bool:
+	CourseDressing.build_yardage_markers(self, hole, HoleAtmosphere.high_quality, terrain)
+	if _dressing != null:
+		_dressing.build(self)
 	return true
 
 
@@ -157,6 +169,10 @@ func _build_terrain() -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = "Terrain"
 	mi.mesh = terrain.commit_mesh()
+	if HoleAtmosphere.high_quality:
+		_dressing = CourseDressing.new(hole, terrain)
+		_dressing.plan()
+		terrain.bake_ao(_dressing.ao_blobs)
 	_terrain_mat = ShaderMaterial.new()
 	_terrain_mat.shader = _terrain_shader
 	var d := (hole.pin - hole.tee).normalized()
@@ -167,6 +183,7 @@ func _build_terrain() -> void:
 	_terrain_mat.set_shader_parameter("map_origin", hole.bounds.position)
 	_terrain_mat.set_shader_parameter("map_size", Vector2(terrain.map_w, terrain.map_h) * terrain.map_mpp)
 	_terrain_mat.set_shader_parameter("macro_amt", 1.0 if HoleAtmosphere.high_quality else 0.0)
+	_terrain_mat.set_shader_parameter("detail_amt", 1.0 if HoleAtmosphere.high_quality else 0.0)
 	if HoleAtmosphere.high_quality:
 		var cover: float = HoleAtmosphere.for_hole(hole)["cover"]
 		_terrain_mat.set_shader_parameter("cloud_shadow", CLOUD_SHADOW_AMT)
@@ -210,6 +227,7 @@ func _build_water() -> void:
 		var mat := ShaderMaterial.new()
 		mat.shader = _water_shader
 		mat.set_shader_parameter("noise_tex", WorldTextures.noise_texture())
+		mat.set_shader_parameter("foam_amt", 1.0 if HoleAtmosphere.high_quality else 0.0)
 		mi.material_override = mat
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(mi)
@@ -233,8 +251,14 @@ func _mesh(key: String) -> Mesh:
 		"crown0", "crown1", "crown2":
 			m = TreeMeshes.canopy_cluster(1000 + int(key.right(1)) * 77)
 			mat.shader = _foliage_shader
-		"pine0", "pine1":
+		"pine0", "pine1", "pine2":
 			m = TreeMeshes.conifer(2000 + int(key.right(1)) * 31)
+			mat.shader = _foliage_shader
+		"columnar":
+			m = TreeMeshes.columnar(5101)
+			mat.shader = _foliage_shader
+		"airy":
+			m = TreeMeshes.airy_crown(5202)
 			mat.shader = _foliage_shader
 		"crown_lo":
 			m = TreeMeshes.canopy_cluster(3001, true)
@@ -276,7 +300,16 @@ func _step_trees(deadline: int) -> bool:
 		var cy: float = t["canopy_y"]
 		var yaw := rng.randf() * TAU
 		var conif := int(t["kind"]) != 0
+		# species variety (visual only; every mesh is scaled into the same physics proxy)
+		var pick := rng.randf()
+		var crown_key := "crown%d" % (rng.randi() % 3)
+		if pick < 0.14:
+			crown_key = "columnar"
+		elif pick < 0.26:
+			crown_key = "airy"  # birch: pale bark, light airy crown
 		var bark := Color(0.17, 0.12, 0.085) if not conif else Color(0.20, 0.11, 0.07)
+		if not conif and crown_key == "airy":
+			bark = Color(0.80, 0.78, 0.72)
 		bark = bark * rng.randf_range(0.8, 1.1)
 		bark.a = 1.0
 		_push("trunk_c" if conif else "trunk_d", Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3(tr, th + 0.15, tr)), Vector3(x, base_y - 0.15, z)), bark)
@@ -285,16 +318,33 @@ func _step_trees(deadline: int) -> bool:
 		var lean := Basis(lean_axis, rng.randf_range(-0.035, 0.035))
 		if conif:
 			var col := Color.from_hsv(rng.randf_range(0.36, 0.43), rng.randf_range(0.48, 0.62), rng.randf_range(0.26, 0.34))
+			if pick > 0.85:
+				col = Color.from_hsv(rng.randf_range(0.44, 0.5), rng.randf_range(0.3, 0.42), rng.randf_range(0.3, 0.38))  # blue spruce
 			var y0 := cy - cry * 0.95
 			var b := lean * Basis(Vector3.UP, yaw).scaled(Vector3(cr, cry * 2.35, cr) * rng.randf_range(0.97, 1.03))
-			_push("pine%d" % (rng.randi() % 2), Transform3D(b, Vector3(x, y0, z)), col)
+			_push("pine%d" % (rng.randi() % 3), Transform3D(b, Vector3(x, y0, z)), col)
 		else:
 			var hue := rng.randf_range(0.22, 0.31)
-			if rng.randf() < 0.12:
+			var sat := rng.randf_range(0.55, 0.72)
+			var val := rng.randf_range(0.36, 0.48)
+			var tone := rng.randf()
+			if crown_key == "airy":
+				hue = rng.randf_range(0.19, 0.24)
+				sat = rng.randf_range(0.45, 0.6)
+				val = rng.randf_range(0.48, 0.58)
+			elif tone < 0.12:
 				hue = rng.randf_range(0.15, 0.19)  # the odd olive / yellowing crown
-			var col2 := Color.from_hsv(hue, rng.randf_range(0.55, 0.72), rng.randf_range(0.36, 0.48))
+			elif tone < 0.17:
+				hue = rng.randf_range(0.03, 0.10)  # early autumn: copper / orange
+				sat = rng.randf_range(0.62, 0.78)
+				val = rng.randf_range(0.42, 0.52)
+			elif tone < 0.20:
+				hue = rng.randf_range(0.93, 1.0)  # copper beech
+				sat = rng.randf_range(0.45, 0.6)
+				val = rng.randf_range(0.26, 0.34)
+			var col2 := Color.from_hsv(hue, sat, val)
 			var b2 := lean * Basis(Vector3.UP, yaw).scaled(Vector3(cr, cry, cr) * rng.randf_range(0.98, 1.04))
-			_push("crown%d" % (rng.randi() % 3), Transform3D(b2, Vector3(x, cy, z)), col2)
+			_push(crown_key, Transform3D(b2, Vector3(x, cy, z)), col2)
 		_tree_i += 1
 		if _tree_i % 32 == 0 and Time.get_ticks_usec() > deadline:
 			return false
@@ -338,6 +388,8 @@ func _build_backdrop() -> void:
 	var dc: Array[Color] = []
 	var px: Array[Transform3D] = []
 	var pc: Array[Color] = []
+	var cx: Array[Transform3D] = []
+	var cc: Array[Color] = []
 	var per := r.size.x * 2.0 + r.size.y * 2.0
 	var n := int(per / 7.0)
 	for i in n:
@@ -359,12 +411,18 @@ func _build_backdrop() -> void:
 				var w := hgt * rng.randf_range(0.26, 0.32)
 				px.append(Transform3D(yaw.scaled(Vector3(w, hgt * 0.92, w)), Vector3(q.x, outer_h + hgt * 0.08, q.y)))
 				pc.append(Color.from_hsv(rng.randf_range(0.36, 0.43), rng.randf_range(0.45, 0.6), rng.randf_range(0.22, 0.3)))
+			elif HoleAtmosphere.high_quality and rng.randf() < 0.18:
+				var cw := hgt * 0.22
+				cx.append(Transform3D(yaw.scaled(Vector3(cw, hgt * 0.42, cw)), Vector3(q.x, outer_h + hgt * 0.55, q.y)))
+				var au := rng.randf() < 0.25
+				cc.append(Color.from_hsv(rng.randf_range(0.05, 0.1) if au else rng.randf_range(0.2, 0.28), rng.randf_range(0.5, 0.7), rng.randf_range(0.32, 0.44)))
 			else:
 				var cr := hgt * 0.32
 				dx.append(Transform3D(yaw.scaled(Vector3(cr, cr * 1.15, cr)), Vector3(q.x, outer_h + hgt * 0.58, q.y)))
 				dc.append(Color.from_hsv(rng.randf_range(0.21, 0.30), rng.randf_range(0.52, 0.7), rng.randf_range(0.30, 0.42)))
 	_add_multimesh("Backdrop", _mesh("crown_lo"), dx, dc, false)
 	_add_multimesh("BackdropPines", _mesh("pine_lo"), px, pc, false)
+	_add_multimesh("BackdropColumns", _mesh("columnar"), cx, cc, false)
 
 
 # ------------------------------------------------------------------ grass tufts near the ball
@@ -372,7 +430,7 @@ func _build_backdrop() -> void:
 func _build_grass() -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = _grass_shader
-	for p in ["stripe_dir", "surface_tex", "kind_tex", "noise_tex", "map_origin", "map_size", "macro_amt", "cloud_shadow", "cloud_thr"]:
+	for p in ["stripe_dir", "surface_tex", "kind_tex", "noise_tex", "map_origin", "map_size", "macro_amt", "detail_amt", "cloud_shadow", "cloud_thr"]:
 		var pv = _terrain_mat.get_shader_parameter(p)
 		if pv != null:
 			mat.set_shader_parameter(p, pv)
@@ -514,8 +572,8 @@ func _build_pin() -> void:
 	var flag := MeshInstance3D.new()
 	var qm := QuadMesh.new()
 	qm.size = Vector2(0.72, 0.48)
-	qm.subdivide_width = 10
-	qm.subdivide_depth = 2
+	qm.subdivide_width = 18 if HoleAtmosphere.high_quality else 10
+	qm.subdivide_depth = 6 if HoleAtmosphere.high_quality else 2
 	flag.mesh = qm
 	var fmat := ShaderMaterial.new()
 	fmat.shader = _flag_shader

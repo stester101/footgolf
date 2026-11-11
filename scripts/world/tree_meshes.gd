@@ -102,6 +102,37 @@ static func canopy_cluster(seed_val: int, low_poly: bool = false) -> ArrayMesh:
 	return b.commit()
 
 
+## Columnar crown (poplar / hornbeam look): a stack of lobes, taller than wide, still filling most of
+## the unit ellipsoid so it stays true to the physics canopy.
+static func columnar(seed_val: int) -> ArrayMesh:
+	var b := _Builder.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_val
+	var noise := _noise(seed_val, 1.1)
+	var n := 5
+	for k in n:
+		var t := float(k) / float(n - 1)
+		var y := lerpf(-0.62, 0.66, t)
+		var r := 0.42 * sin(PI * lerpf(0.18, 0.86, t)) + 0.32
+		_blob(b, Vector3(rng.randf_range(-0.06, 0.06), y, rng.randf_range(-0.06, 0.06)), r, 5, 9, noise, 0.2)
+	return b.commit()
+
+
+## Airy birch-like crown: smaller, scattered lobes with gaps between them.
+static func airy_crown(seed_val: int) -> ArrayMesh:
+	var b := _Builder.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_val
+	var noise := _noise(seed_val, 1.4)
+	_blob(b, Vector3(0, 0.1, 0), 0.42, 5, 8, noise, 0.25)
+	for k in 9:
+		var a := TAU * float(k) / 9.0 + rng.randf_range(-0.25, 0.25)
+		var dist := rng.randf_range(0.45, 0.62)
+		var y := rng.randf_range(-0.55, 0.55)
+		_blob(b, Vector3(cos(a) * dist, y, sin(a) * dist), rng.randf_range(0.26, 0.36), 4, 7, noise, 0.25)
+	return b.commit()
+
+
 ## Conifer: stacked drooping star-shaped skirts (jagged branch tips), narrowing to a leader tip.
 static func conifer(seed_val: int, low_poly: bool = false) -> ArrayMesh:
 	var b := _Builder.new()

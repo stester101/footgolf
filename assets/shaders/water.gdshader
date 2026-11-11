@@ -12,6 +12,8 @@ uniform vec3 sky_top : source_color = vec3(0.20, 0.42, 0.78);
 uniform vec3 sky_horizon : source_color = vec3(0.66, 0.78, 0.90);
 uniform vec3 treeline : source_color = vec3(0.13, 0.20, 0.10);
 uniform float ripple = 1.0;
+// High graphics only (1 = on): animated shore foam lines and a stronger Fresnel sky reflection.
+uniform float foam_amt = 0.0;
 
 varying vec3 wpos;
 varying float shore;
@@ -43,11 +45,27 @@ void fragment() {
 	sky = mix(treeline, sky, smoothstep(0.015, 0.11, ry + (b.r - 0.5) * 0.04));
 	float shallow = smoothstep(0.55, 1.0, shore);
 	vec3 body = mix(deep_color, shallow_color, shallow);
-	ALBEDO = body * (1.0 - fres);
-	EMISSION = sky * fres * 0.7;
+	vec3 alb = body * (1.0 - fres);
+	vec3 emi = sky * fres * 0.7;
+	float alpha = clamp(mix(0.86, 1.0, fres) * (1.0 - smoothstep(0.94, 1.0, shore) * 0.45), 0.0, 1.0);
+	if (foam_amt > 0.0) {
+		// Fresnel: richer, slightly brighter sky at grazing angles, and a body tint that deepens with depth
+		emi = sky * fres * 0.85 + sky_horizon * pow(1.0 - ndv, 3.0) * 0.08;
+		// foam: lapping lines that run towards the shore, broken up by the ripple noise
+		float edge = smoothstep(0.84, 0.985, shore);
+		float lap = 0.5 + 0.5 * sin(shore * 70.0 - t * 1.6 + b.g * 5.0);
+		float brk = smoothstep(0.35, 0.75, c.a * 0.55 + a.b * 0.45);
+		float foam = edge * clamp(lap * brk * 1.6 + smoothstep(0.96, 1.0, shore) * 0.6, 0.0, 1.0) * foam_amt;
+		foam *= 1.0 - smoothstep(60.0, 160.0, dist) * 0.6;
+		alb = mix(alb, vec3(0.86, 0.90, 0.88), foam * 0.85);
+		emi *= 1.0 - foam * 0.6;
+		alpha = mix(alpha, 0.95, foam);
+	}
+	ALBEDO = alb;
+	EMISSION = emi;
 	SPECULAR = 0.0;
 	ROUGHNESS = 1.0;
-	ALPHA = clamp(mix(0.86, 1.0, fres) * (1.0 - smoothstep(0.94, 1.0, shore) * 0.45), 0.0, 1.0);
+	ALPHA = alpha;
 }
 
 void light() {
